@@ -22,6 +22,7 @@ SMD/THT x side counts; the .kicad_pcb (setup) block for via tenting; and (reusin
 Kicad_bom_sync's netlist_reader) the BOM ref set for the pick&place >= BOM check.
 """
 import argparse
+import csv
 import glob
 import json
 import os
@@ -140,20 +141,22 @@ def extract_tenting(pcb):
             "plugging": (plug_f, plug_b), "capping": flag("capping"), "filling": flag("filling")}
 
 def _pos_refs(path):
-    """-> {ref: side} from a kicad-cli pos CSV."""
+    """-> {ref: side} from a kicad-cli pos CSV. Uses a real CSV reader: a value
+    may contain commas (e.g. an LED valued 'Green, 570 nm'), which naive
+    comma-splitting would shift into the wrong column (mis-reporting the side)."""
     out = {}
     if not os.path.isfile(path):
         return out
-    rows = [r for r in open(path).read().splitlines() if r.strip()]
+    with open(path, newline="") as f:
+        rows = list(csv.reader(f))
     if not rows:
         return out
-    hdr = [c.strip().strip('"').lower() for c in rows[0].split(",")]
+    hdr = [h.strip().lower() for h in rows[0]]
     ri = hdr.index("ref") if "ref" in hdr else 0
     si = hdr.index("side") if "side" in hdr else len(hdr) - 1
     for r in rows[1:]:
-        c = [x.strip().strip('"') for x in r.split(",")]
-        if len(c) > max(ri, si):
-            out[c[ri]] = c[si].lower()
+        if len(r) > max(ri, si):
+            out[r[ri].strip()] = r[si].strip().lower()
     return out
 
 def extract_pos(outdir):
