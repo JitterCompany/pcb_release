@@ -1,0 +1,47 @@
+# ==========================================================================
+# PCB release configuration — EXAMPLE with sane defaults.
+# (Generic template — belongs in common/kicad_pcb_release; no project specifics.)
+#
+# Copy to `release.toml` beside your .kicad_pro and adjust. Principle: anything
+# KiCad already knows — stackup, board size, via tenting, SMD/THT placement — is
+# EXTRACTED from the design by CI; this file declares only INTENT, fab
+# REQUIREMENTS, and how STRICTLY the fab must follow the extracted stackup.
+# Use "any" for "no specific requirement" (it still prints, so it's explicit).
+# ==========================================================================
+
+[assembly]
+# PCBA on/off and side scope. CI extracts the real SMD/THT x side counts from the
+# pick&place export and reports them; this only declares which sides to assemble
+# (and thus which fab layers / pos / BOM / stencils get made) + cross-checks.
+#   "auto" = assemble every side that has parts    "none" = bare PCB, no PCBA
+#   "top" | "btm" | "both" = force
+sides = "auto"            # auto | none | top | btm | both
+
+[stencil]
+# A paste stencil is AUTO-required for every side that has SMD parts — leave
+# `force` empty for that. Set it only for special cases (hand-solder a side
+# despite SMD, a paste jig, etc.).
+force = ""                # "" = auto-derive from SMD | top | btm | both | none
+
+[stackup]
+# How tightly must the fab follow the KiCad-extracted stackup?
+#   "any-standard" = any standard N-layer stack at the extracted board thickness
+#   "controlled"   = dielectric build / impedance are specified; follow exactly
+follow = "any-standard"
+
+[fab]
+surface_finish    = "any"     # "ENIG" | "HASL-LF" | "ENIG+..." | "any"
+soldermask_color  = "any"     # read from KiCad stackup if set there; else here; "any"
+silkscreen_color  = "any"
+impedance_control = "none"    # "none" | gerber layer describing it, e.g. "Impedance.gbr"
+via_treatment     = "any"     # "tented both sides" | "soldermask-filled + tented" | "any"
+                              #   (cross-checked against KiCad tenting/plugging/filling)
+special_layers    = []        # e.g. ["Coating_top","Coating_bottom"] for conformal coating
+flex              = "none"    # "none" | stiffener spec (thickness + outline layer)
+notes             = "any"
+
+[requirements]
+# Compliance stated to the fab (printed in README-manufacturing). Defaults on.
+rohs    = true                # RoHS-compliant (lead-free) build
+ul94_v0 = true                # laminate flammability rating UL94 V-0
+# ipc_class = 2               # optional: IPC-A-600 / IPC-A-610 class (2 or 3)
