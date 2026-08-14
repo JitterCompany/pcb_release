@@ -4,9 +4,11 @@
 #
 # Automated (config-driven) workflow — needs a <project>/release.toml:
 #   pcb-release.sh PROJECT_DIR check       ERC+schema, DRC+pos>=BOM, release-spec drift
-#   pcb-release.sh PROJECT_DIR release     generate gerbers/drill/pos + spec + README
+#   pcb-release.sh PROJECT_DIR release     fab zip (production/ -> partner) + customer set
+#   pcb-release.sh PROJECT_DIR docs        customer set only: STEP/PDF/renders/iBOM -> customer/
 #   pcb-release.sh PROJECT_DIR erc|drc|all just that check gate (used by CI jobs)
 #   pcb-release.sh PROJECT_DIR pnp|drift   single checks
+# Env (docs): KICAD_IBOM_DIR = InteractiveHtmlBom dir, to include an interactive BOM.
 #
 # Manual (interactive, legacy) workflow — no config, prompts you step by step:
 #   pcb-release.sh PROJECT_DIR manual      guided export + zip (scripts/release_pcb.py)
@@ -17,7 +19,7 @@
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"; S="$here/scripts"
 
-proj="${1:?usage: $0 PROJECT_DIR <check|release|erc|drc|all|pnp|drift|manual> [--strict]}"; shift || true
+proj="${1:?usage: $0 PROJECT_DIR <check|release|docs|erc|drc|all|pnp|drift|manual> [--strict]}"; shift || true
 cmd="${1:-check}"; shift || true
 strict=""; for a in "$@"; do [ "$a" = "--strict" ] && strict="--strict"; done
 
@@ -47,8 +49,11 @@ case "$cmd" in
   all)     gate_erc; gate_drc ;;
   pnp)     python3 "$S/release_ci.py" "$proj" --mode pnp   || rc=1 ;;
   drift)   python3 "$S/release_ci.py" "$proj" --mode drift || rc=1 ;;
+  docs)    python3 "$S/release_ci.py" "$proj" --mode docs  || rc=1 ;;   # customer set (not the fab zip)
   check)   gate_erc; gate_drc; python3 "$S/release_ci.py" "$proj" --mode drift || rc=1 ;;
-  release) gate_erc; gate_drc; python3 "$S/release_ci.py" "$proj" --mode build || rc=1 ;;
+  release) gate_erc; gate_drc
+           python3 "$S/release_ci.py" "$proj" --mode build || rc=1     # fab zip (PCBA partner)
+           python3 "$S/release_ci.py" "$proj" --mode docs  || rc=1 ;;  # STEP/PDF/renders/iBOM (customer)
   *) echo "pcb-release: unknown command '$cmd'" >&2; exit 2 ;;
 esac
 echo "reports in: $out"

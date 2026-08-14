@@ -9,7 +9,7 @@ them against the config, and emits:
 
   * release_spec.toml            -- committed, drift-checked (like pinmap.toml).
                                     Each value carries a terse provenance comment.
-  * production/README-manufacturing.md  -- the fab-spec checklist.
+  * production/README-manufacturing.txt  -- the fab-spec checklist.
 
 Modes:
   --build   generate outputs into production/, emit spec + README, run checks.
@@ -23,10 +23,12 @@ Kicad_bom_sync's netlist_reader) the BOM ref set for the pick&place >= BOM check
 """
 import argparse
 import csv
+import datetime
 import glob
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -66,6 +68,18 @@ def load_toml(path):
             cur[k.strip()] = _val(v)
     return root
 
+def validate_config(cfg):
+    """Fail fast on invalid / contradictory config, before any export."""
+    su = cfg.get("stackup", {})
+    spec = su.get("spec", "standard")
+    if spec not in ("standard", "impedance", "controlled"):
+        print(f"::error::[release] [stackup] spec must be standard|impedance|controlled, got '{spec}'")
+        sys.exit(1)
+    if spec == "standard" and str(su.get("impedance_note", "")).strip():
+        print("::error::[release] [stackup] spec='standard' but impedance_note is set -- "
+              "use spec='impedance' (or clear impedance_note)")
+        sys.exit(1)
+
 # ----------------------------- kicad-cli helpers -----------------------------
 def cli(*args):
     subprocess.run(["kicad-cli", *args], check=True,
@@ -80,12 +94,136 @@ def generate_pos(pcb, outdir):
     cli("pcb", "export", "pos", "--format", "csv", "--units", "mm", "--side", "both",
         "--exclude-dnp", "--smd-only", "-o", outdir + "/smd-pos.csv", pcb)
 
-def generate(pcb, sch, outdir):
-    """All structured exports the spec/checks read from."""
+def generate_gerbers(pcb, outdir, layers):
+    """Export ONLY the required gerber layers (+ drill). An explicit --layers list
+    avoids kicad-cli's default dump of adhesive/courtyard/user/margin layers no fab
+    needs -- matching what the manual process would hand-export.
+
+    kicad-cli SILENTLY IGNORES an unknown/disabled layer name, so we count the
+    gerbers actually produced and fail if it doesn't equal the layers requested --
+    a missing fab layer must never slip through."""
     os.makedirs(outdir, exist_ok=True)
-    cli("pcb", "export", "gerbers", "-o", outdir + "/", pcb)            # -> *.gbrjob + layers
+    before = set(os.listdir(outdir))
+    cli("pcb", "export", "gerbers", "--layers", ",".join(layers), "-o", outdir + "/", pcb)
+    produced = [f for f in os.listdir(outdir) if f not in before and not f.endswith(".gbrjob")]
+    if len(produced) != len(layers):
+        print(f"::error::[release] exported {len(produced)} gerbers but requested {len(layers)} "
+              f"layers ({', '.join(layers)}) -- a layer was rejected/silently dropped by kicad-cli")
+        sys.exit(1)
     cli("pcb", "export", "drill", "--excellon-separate-th", "-o", outdir + "/", pcb)
-    generate_pos(pcb, outdir)
+
+def board_layers(pcb):
+    """Parse the board's enabled layers -> (copper_canonical_in_order, resolve),
+    where resolve(name) maps a friendly layer name (canonical OR user name; '.'/'_'
+    and case-insensitive, gerber extension tolerated) to its canonical --layers
+    token, or None."""
+    m = re.search(r"\(layers\s*(.*?)\n\t\)", open(pcb).read(), re.S)
+    canon2user = {}
+    for lm in re.finditer(r'\(\d+ "([^"]+)" \w+(?:\s+"([^"]+)")?\)', m.group(1)):
+        canon2user[lm.group(1)] = lm.group(2) or lm.group(1)
+    def cu_key(c):
+        if c == "F.Cu": return -1
+        if c == "B.Cu": return 1 << 30
+        mm = re.match(r"In(\d+)\.Cu", c); return int(mm.group(1)) if mm else 1 << 20
+    copper = sorted([c for c in canon2user if c.endswith(".Cu")], key=cu_key)
+    norm = lambda s: re.sub(r"[^a-z0-9]", "", re.sub(r"\.(gbr|gm\d|g[a-z][a-z0-9]*)$", "", s.lower()))
+    lut = {}
+    for canon, usr in canon2user.items():
+        lut.setdefault(norm(canon), canon); lut.setdefault(norm(usr), canon)
+    return copper, (lambda name: lut.get(norm(name)))
+
+def required_layers(cfg, resolve, copper, asm_sides, stencil_sides):
+    """The layers a fab actually needs, from the config (like the manual script's
+    categories): all copper + both mask/silk + Edge.Cuts, paste per STENCIL side,
+    fab per ASSEMBLY side, plus configured special layers. Unknown special layers
+    warn (never silently drop)."""
+    L = list(copper) + ["F.Mask", "B.Mask", "F.SilkS", "B.SilkS", "Edge.Cuts"]
+    if "top" in stencil_sides: L.append("F.Paste")
+    if "bottom" in stencil_sides: L.append("B.Paste")
+    if "top" in asm_sides: L.append("F.Fab")
+    if "bottom" in asm_sides: L.append("B.Fab")
+    for name in cfg.get("fab", {}).get("special_layers", []):
+        tok = resolve(name)
+        if not tok:
+            print(f"::error::[release] special layer '{name}' (release.toml [fab]) is not on the board")
+            sys.exit(1)
+        L.append(tok)
+    # if the stackup spec involves impedance, auto-add the board's marked impedance
+    # gerber -- a user layer named ~"Impedance" (list it in special_layers instead
+    # if yours has a different name).
+    if cfg.get("stackup", {}).get("spec", "standard") in ("impedance", "controlled"):
+        imp_layer = resolve("Impedance")
+        if imp_layer:
+            L.append(imp_layer)
+    return list(dict.fromkeys(L))    # dedup, preserve order (impedance layer may repeat a special layer)
+
+_PASSIVE_METRIC = re.compile(r"(^.*\s+[0-9]+)\s+[0-9]+[Mm]etric$")
+def translate_fp(fp):
+    """Footprint -> readable form (same rules as Kicad_bom_sync/translate_fp): drop
+    the library prefix, '_' -> space, drop the metric-size suffix on passives.
+    E.g. 'Capacitor_SMD:C_0603_1608Metric' -> 'C 0603'."""
+    if not fp:
+        return ""
+    fp = str(fp).partition(":")[2] or str(fp)
+    fp = fp.replace("_", " ").strip()
+    m = _PASSIVE_METRIC.match(fp)
+    return m.group(1) if m else fp
+
+def _translate_bom_footprints(csv_path):
+    """Rewrite the Footprint column of a kicad-cli BOM CSV to the readable form."""
+    with open(csv_path, newline="") as f:
+        rows = list(csv.reader(f))
+    if not rows:
+        return
+    hdr = [h.strip().lower() for h in rows[0]]
+    if "footprint" not in hdr:
+        return
+    fi = hdr.index("footprint")
+    for r in rows[1:]:
+        if len(r) > fi:
+            r[fi] = translate_fp(r[fi])
+    with open(csv_path, "w", newline="") as f:
+        csv.writer(f).writerows(rows)
+
+def generate_bom(sch, out_csv, readable_footprints=True):
+    """Grouped assembly BOM (CSV) via kicad-cli, DNP excluded. Same columns/order
+    as Kicad_bom_sync's xlsx (BOM.py header_names) minus its 'Sync' column, so the
+    CSV diffs cleanly against the sync BOM. readable_footprints post-processes the
+    Footprint column like Kicad_bom_sync (readable + minimal v1/v2 diff)."""
+    cli("sch", "export", "bom", "--exclude-dnp",
+        "--group-by", "Value,Footprint",
+        "--fields", "Reference,Footprint,Value,rating,QUANTITY,Manufacturer,MPN,Farnell,Mouser,Digikey",
+        "--labels", "Ref,Footprint,Value,Rating,Qty,Manufacturer,MPN,Farnell,Mouser,Digikey",
+        "-o", out_csv, sch)
+    if readable_footprints:
+        _translate_bom_footprints(out_csv)
+
+def generate_customer(pcb, sch, cdir, stem):
+    """CUSTOMER deliverables (NOT the fab zip): STEP, schematic PDF, top/bottom 3D
+    renders, and -- if $KICAD_IBOM_DIR points at InteractiveHtmlBom -- an
+    interactive HTML BOM. Renders + iBOM are best-effort (warn + skip on failure)
+    so a missing 3D model or the iBOM's heavier deps can't fail the release."""
+    if os.path.isdir(cdir):
+        shutil.rmtree(cdir)
+    os.makedirs(cdir)
+    cli("pcb", "export", "step", "--subst-models", "-o", f"{cdir}/{stem}.step", pcb)
+    cli("sch", "export", "pdf", "-o", f"{cdir}/{stem}-schematic.pdf", sch)
+    for side in ("top", "bottom"):
+        try:
+            cli("pcb", "render", "--side", side, "--quality", "high", "--background", "opaque",
+                "-o", f"{cdir}/{stem}-render-{side}.png", pcb)
+        except subprocess.CalledProcessError:
+            print(f"::warning::[release] 3D render ({side}) failed -- skipped")
+    ibom = os.environ.get("KICAD_IBOM_DIR", "")
+    entry = os.path.join(ibom, "generate_interactive_bom.py")
+    if ibom and os.path.isfile(entry):
+        try:
+            subprocess.run(["python3", entry, "--no-browser", "--dest-dir", cdir, pcb],
+                           check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except subprocess.CalledProcessError:
+            print("::warning::[release] interactive HTML BOM failed -- skipped (needs KiCad's pcbnew python)")
+    else:
+        print("::notice::[release] interactive HTML BOM skipped (set $KICAD_IBOM_DIR to enable)")
 
 # ----------------------------- extractors (read structured exports) -----------------------------
 def extract_gbrjob(outdir):
@@ -190,7 +328,7 @@ SIDES = ("top", "bottom")
 def sides_with_parts(counts):
     return [s for s in SIDES if counts["smd"][s] or counts["tht"][s]]
 
-def resolve(cfg, gbr, tent, counts):
+def resolve(cfg, tent, counts):
     warn = []
     asm_cfg = cfg.get("assembly", {}).get("sides", "auto")
     if asm_cfg == "none":
@@ -265,7 +403,7 @@ def emit_spec(cfg, gbr, tent, counts, res):
           f'layer_count      = {gbr["layers"]}   # .gbrjob LayerNumber -- Board Setup > Physical Stackup',
           f'soldermask_color = "{_color(gbr, fab)}"   # release.toml [fab] (or .gbrjob MaterialStackup)',
           f'surface_finish   = "{gbr["finish"] or fab.get("surface_finish","any")}"   # .gbrjob Finish (else release.toml [fab])',
-          f'impedance        = "{"controlled" if gbr["impedance"] else fab.get("impedance_control","none")}"   # .gbrjob ImpedanceControlled',
+          f'impedance        = "{cfg.get("stackup",{}).get("spec","standard")}"   # release.toml [stackup] spec (standard|impedance|controlled)',
           ""]
     L += ["[via]",
           f'treatment = "{via_summary(tent)}"   # .kicad_pcb tenting/plugging/filling -- Board Setup > Solder Mask/Paste',
@@ -279,7 +417,7 @@ def emit_spec(cfg, gbr, tent, counts, res):
           f'stencil_sides = {json.dumps(res["stencil"])}   # auto: SMD sides being assembled (or stencil.force)',
           ""]
     L += ["[stackup]",
-          f'follow = "{cfg.get("stackup",{}).get("follow","any-standard")}"   # release.toml -- how tightly fab must match',
+          f'spec = "{cfg.get("stackup",{}).get("spec","standard")}"   # release.toml -- standard | impedance | controlled',
           "# layers below: .gbrjob MaterialStackup -- Board Setup > Physical Stackup"]
     n = 0
     for m in gbr["copper"]:
@@ -295,41 +433,122 @@ def emit_spec(cfg, gbr, tent, counts, res):
           ""]
     return "\n".join(L) + "\n"
 
-def emit_readme(cfg, gbr, tent, counts, res):
+def _copper_summary(copper):
+    ths = {round(float(m.get("Thickness", 0)) * 1000) for m in copper}
+    if len(ths) == 1:
+        return f"copper {next(iter(ths))}um on all {len(copper)} layers"
+    return "copper " + ", ".join(f"{round(float(m.get('Thickness',0))*1000)}um {m.get('Name')}" for m in copper)
+
+def _stackup_layers(gbr, with_dkdf=False):
+    """Per-layer stackup as separate bullets: 'L1: 35um copper (F.Cu)', then the
+    dielectric below it, etc., naming each copper gerber layer."""
+    lines, diel = [], gbr["dielectric"]
+    for i, cu in enumerate(gbr["copper"]):
+        lines.append(f"- L{i+1}: {round(float(cu.get('Thickness',0))*1000)}um copper ({cu.get('Name')})")
+        if i < len(diel):
+            d = diel[i]
+            extra = f" (Dk {_dec(d.get('DielectricConstant'))}, Df {_dec(d.get('LossTangent'))})" if with_dkdf else ""
+            lines.append(f"- {_dec(d.get('Thickness'))}mm {d.get('Material')}{extra}")
+    return lines
+
+def _impedance_str(spec, note):
+    """Impedance line. The tool auto-references the marked Impedance gerber, so the
+    note stays purely about the targets."""
+    if spec == "standard":
+        return "none"
+    tail = "marked on the Impedance gerber"
+    return f"{note}; {tail}" if note else tail
+
+def stackup_lines(cfg, gbr):
+    """Stackup + impedance at ONE strictness -- config [stackup] spec:
+      standard   -> any standard N-layer at the finished thickness; no impedance
+      impedance  -> impedance targets binding; stackup reference-only (substitution ok)
+      controlled -> exact dielectric build is binding"""
+    su = cfg.get("stackup", {})
+    spec, note = su.get("spec", "standard"), su.get("impedance_note", "")
+    th, n = gbr["thickness"], gbr["layers"]
+    cu_um = round(float(gbr["copper"][0].get("Thickness", 0)) * 1000) if gbr["copper"] else "?"
+    mat = gbr["dielectric"][0].get("Material") if gbr["dielectric"] else "FR4"   # KiCad material string
+    if spec == "standard":
+        return ["## Stackup",
+                f"- Any standard {n}-layer {mat}, finished {th} mm; copper {cu_um}um each layer.",
+                "- Impedance control: none"]
+    if spec == "impedance":
+        return (["## Stackup", "",
+                 "Reference stackup (informational, substitution permitted):"]
+                + _stackup_layers(gbr, with_dkdf=False)
+                + ["", "Requirements:",
+                   f"- Finished thickness: {th} mm +/- 10%",
+                   f"- Copper: {cu_um}um on each layer",
+                   f"- Material: {mat}, Tg >= 150 C",
+                   f"- Impedance: {_impedance_str(spec, note)}"])
+    return (["## Stackup -- controlled (build exactly)", "",
+             "Stackup (binding):"]
+            + _stackup_layers(gbr, with_dkdf=True)
+            + ["", "Requirements:",
+               f"- Finished thickness: {th} mm +/- 10%",
+               f"- Impedance: {_impedance_str(spec, note)}"])
+
+def special_sections(fab):
+    """Sections for special-process layers -- currently conformal coating (any
+    special layer whose name contains 'coating')."""
+    layers = fab.get("special_layers", []) or []
+    coating = [l for l in layers if "coating" in l.lower()]
+    other = [l for l in layers if "coating" not in l.lower()]
+    out = []
+    if coating:
+        sides = []
+        if any("top" in l.lower() for l in coating): sides.append("top")
+        if any("bot" in l.lower() for l in coating): sides.append("bottom")
+        out += ["## Conformal coating",
+                f"Apply conformal coating to {' + '.join(sides) if sides else 'the board'}.",
+                "Cover all components and pads EXCEPT the areas drawn on these gerber layers:"]
+        out += [f"- {l}" for l in coating] + [""]
+    if other:
+        out += ["## Special layers"] + [f"- {l}" for l in other] + [""]
+    return out
+
+def emit_readme(cfg, gbr, tent, counts, res, stem):
     sz = gbr["size"]
     fab = cfg.get("fab", {})
     req = cfg.get("requirements", {})
-    special = fab.get("special_layers", []) or ["(none)"]
     asm = res["assembly"] or ["(bare PCB, no assembly)"]
-    L = ["# Manufacturing specification", "",
-         "GENERATED from the KiCad design + release.toml. Review before ordering.", "",
+    flex = fab.get("flex", "none")
+    pcb_type = "rigid FR-4" if flex in ("none", "") else flex   # -> "flex", "rigid-flex ..." otherwise
+    L = ["Manufacturing specification", "=" * 27, "",
          "## PCB",
+         f"- PCB type: {pcb_type}",
          f"- Size: {sz.get('X','?')} x {sz.get('Y','?')} mm  (Edge.Cuts centerline)",
          f"- Layers: {gbr['layers']}",
          f"- Board thickness: {gbr['thickness']} mm",
          f"- Surface finish: {gbr['finish'] or fab.get('surface_finish','any')}",
          f"- Soldermask colour: {_color(gbr, fab)}",
          f"- Silkscreen colour: {fab.get('silkscreen_color','any')}",
-         f"- Impedance control: {'controlled -- ' + fab.get('impedance_control','') if gbr['impedance'] else fab.get('impedance_control','none')}",
          f"- Vias: {via_summary(tent)}",
-         f"- Copper: " + ", ".join(f"{round(float(m.get('Thickness',0))*1000)}um {m.get('Name')}" for m in gbr["copper"]),
-         f"- Dielectric: " + "; ".join(f"{m.get('Material')} {_dec(m.get('Thickness'))}mm (er {_dec(m.get('DielectricConstant'))}, tand {_dec(m.get('LossTangent'))})" for m in gbr["dielectric"]),
-         f"- Stackup strictness: {cfg.get('stackup',{}).get('follow','any-standard')}",
-         f"- Special layers: {', '.join(special)}",
-         f"- Flex: {fab.get('flex','none')}",
-         "",
-         "## Requirements",
-         f"- RoHS: {'yes' if req.get('rohs', True) else 'no'}",
-         f"- UL94 V-0: {'yes' if req.get('ul94_v0', True) else 'no'}",
-         "",
-         "## Assembly",
-         f"- Sides: {', '.join(asm)}",
-         f"- SMD: top {counts['smd']['top']}, bottom {counts['smd']['bottom']}",
-         f"- THT: top {counts['tht']['top']}, bottom {counts['tht']['bottom']}",
-         f"- Stencils: {', '.join(res['stencil']) or '(none)'}",
          ""]
+    L += stackup_lines(cfg, gbr) + [""]
+    L += special_sections(fab)
+    L += ["## Other requirements",
+          f"- RoHS: {'yes' if req.get('rohs', True) else 'no'}",
+          f"- UL94 V-0: {'yes' if req.get('ul94_v0', True) else 'no'}",
+          "",
+          "## Assembly"]
+    if res["assembly"]:
+        fabref = {"top": "F.Fab", "bottom": "B.Fab"}
+        for side in res["assembly"]:
+            L.append(f"- {side.capitalize()} side: {counts['smd'][side]} SMD, {counts['tht'][side]} THT "
+                     f"(components on {fabref[side]})")
+        L += ["",
+              f"Place only the parts listed in the BOM (BOM_{stem}.csv).",
+              "Pick & place positions are in all-pos.csv; see smd-pos.csv for the SMD components only.",
+              ""]
+    else:
+        L.append("- No assembly (bare PCB)")
+        if res["stencil"]:               # a stencil is a separate deliverable for a bare-PCB order
+            L.append(f"- Stencils: {', '.join(res['stencil'])}")
+        L.append("")
     if fab.get("notes", "any") not in ("any", ""):
-        L += [f"## Notes", fab["notes"], ""]
+        L += ["## Notes", fab["notes"], ""]
     return "\n".join(L) + "\n"
 
 # ----------------------------- checks -----------------------------
@@ -357,7 +576,7 @@ def main():
     ap.add_argument("project_dir", help="dir containing the .kicad_pro / .kicad_pcb / .kicad_sch")
     ap.add_argument("--config", default="release.toml")
     ap.add_argument("--spec", default="release_spec.toml", help="committed resolved-spec path (for drift)")
-    ap.add_argument("--mode", choices=["build", "drift", "check", "pnp"], default="build")
+    ap.add_argument("--mode", choices=["build", "drift", "check", "pnp", "docs"], default="build")
     a = ap.parse_args()
 
     pd = a.project_dir.rstrip("/")
@@ -367,6 +586,7 @@ def main():
     stem = os.path.splitext(os.path.basename(pro[0]))[0]     # root sch/pcb share the project name
     pcb, sch = f"{pd}/{stem}.kicad_pcb", f"{pd}/{stem}.kicad_sch"
     cfg = load_toml(os.path.join(pd, a.config))
+    validate_config(cfg)
 
     if a.mode == "pnp":                 # light early gate: pos >= BOM only (no gerbers)
         work = tempfile.mkdtemp(prefix="pnp_")
@@ -379,21 +599,35 @@ def main():
         print(f"[pnp>=bom] {len(bom)} BOM parts, {len(pos_all)} placed, {len(missing)} missing")
         return 1 if missing else 0
 
+    if a.mode == "docs":                # customer deliverables (STEP/PDF/renders/iBOM), NOT the fab zip
+        generate_customer(pcb, sch, os.path.join(pd, "customer"), stem)
+        print(f"[release] customer outputs in {pd}/customer/")
+        return 0
+
     outdir = os.path.join(pd, "production") if a.mode == "build" else tempfile.mkdtemp(prefix="release_")
-    generate(pcb, sch, outdir)
+    if a.mode == "build" and os.path.isdir(outdir):     # preserve the previous release, regenerate clean
+        stamp = datetime.datetime.now().replace(microsecond=0).isoformat()
+        os.rename(outdir, f"{outdir}.bak-{stamp}")
+
+    # pos + BOM -> counts -> resolved sides FIRST, so we can export only the layers
+    # the config actually needs (paste per stencil side, fab per assembly side).
+    generate_pos(pcb, outdir)
+    bom = bom_refs(sch)
+    pos_all, pos_smd = extract_pos(outdir)
+    counts = count_assembly(pos_all, pos_smd, bom)
+    tent = extract_tenting(pcb)
+    res = resolve(cfg, tent, counts)
+    copper, blresolve = board_layers(pcb)
+    generate_gerbers(pcb, outdir, required_layers(cfg, blresolve, copper, res["assembly"], res["stencil"]))
+
     gbr = extract_gbrjob(outdir)
     ew = extract_edge_width(outdir)                  # board is cut on the Edge.Cuts centerline
     if ew and isinstance(gbr["size"], dict):         # -> subtract the outline stroke from the bbox
         gbr["size"] = {k: round(v - ew, 3) for k, v in gbr["size"].items()}
     gbr["edge_width"] = ew
-    tent = extract_tenting(pcb)
-    bom = bom_refs(sch)
-    pos_all, pos_smd = extract_pos(outdir)
-    counts = count_assembly(pos_all, pos_smd, bom)
-    res = resolve(cfg, gbr, tent, counts)
 
     spec = emit_spec(cfg, gbr, tent, counts, res)
-    readme = emit_readme(cfg, gbr, tent, counts, res)
+    readme = emit_readme(cfg, gbr, tent, counts, res, stem)
 
     for w in res["warn"]:
         print(f"::warning::[release] {w}")
@@ -409,11 +643,19 @@ def main():
 
     if a.mode == "build":
         open(os.path.join(pd, a.spec), "w").write(spec)
-        open(os.path.join(outdir, "README-manufacturing.md"), "w").write(readme)
+        open(os.path.join(outdir, "README-manufacturing.txt"), "w").write(readme)  # .txt: opens everywhere
+        generate_bom(sch, os.path.join(outdir, f"BOM_{stem}.csv"),
+                     cfg.get("bom", {}).get("readable_footprints", True))
 
     problems = run_checks(outdir, res, pos_all, bom)
     for p in problems:
         print(f"::error::[release] {p}")
+
+    if a.mode == "build":                               # package production/ -> dated zip in the project dir
+        zbase = os.path.join(pd, f"production__{stem}__{datetime.date.today().isoformat()}")
+        zpath = shutil.make_archive(zbase, "zip", outdir)
+        print(f"[release] packaged {os.path.basename(zpath)}  ({len(os.listdir(outdir))} files in production/)")
+
     print(f"[release] mode={a.mode}: {len(res['warn'])} warning(s), {len(problems)} error(s)")
     return 1 if problems else 0
 

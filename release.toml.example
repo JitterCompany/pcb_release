@@ -24,16 +24,19 @@ sides = "auto"            # auto | none | top | btm | both
 force = ""                # "" = auto-derive from SMD | top | btm | both | none
 
 [stackup]
-# How tightly must the fab follow the KiCad-extracted stackup?
-#   "any-standard" = any standard N-layer stack at the extracted board thickness
-#   "controlled"   = dielectric build / impedance are specified; follow exactly
-follow = "any-standard"
+# Stackup + impedance strictness -- ONE spectrum (loose -> strict):
+#   "standard"   = any standard N-layer at the finished thickness; NO impedance control
+#   "impedance"  = impedance targets binding; stackup is reference-only -- the fab may
+#                  substitute dielectrics and adjust trace widths to hit the targets
+#   "controlled" = build the EXACT dielectric stackup (Dk/Df/thickness binding)
+# When not "standard", the board's Impedance gerber is auto-added + referenced.
+spec = "standard"
+impedance_note = ""            # optional targets, e.g. "50R SE on L1 (ref plane L2)"
 
 [fab]
 surface_finish    = "any"     # "ENIG" | "HASL-LF" | "ENIG+..." | "any"
 soldermask_color  = "any"     # read from KiCad stackup if set there; else here; "any"
 silkscreen_color  = "any"
-impedance_control = "none"    # "none" | gerber layer describing it, e.g. "Impedance.gbr"
 via_treatment     = "any"     # "tented both sides" | "soldermask-filled + tented" | "any"
                               #   (cross-checked against KiCad tenting/plugging/filling)
 special_layers    = []        # e.g. ["Coating_top","Coating_bottom"] for conformal coating
@@ -45,3 +48,9 @@ notes             = "any"
 rohs    = true                # RoHS-compliant (lead-free) build
 ul94_v0 = true                # laminate flammability rating UL94 V-0
 # ipc_class = 2               # optional: IPC-A-600 / IPC-A-610 class (2 or 3)
+
+[bom]
+# Shorten footprint names like Kicad_bom_sync (drop lib prefix, '_'->space, drop
+# metric suffix on passives): "Capacitor_SMD:C_0603_1608Metric" -> "C 0603".
+# Readable BOM + minimal diff vs the sync xlsx. false = raw KiCad footprint names.
+readable_footprints = true
