@@ -49,6 +49,14 @@ rohs    = true                # RoHS-compliant (lead-free) build
 ul94_v0 = true                # laminate flammability rating UL94 V-0
 # ipc_class = 2               # optional: IPC-A-600 / IPC-A-610 class (2 or 3)
 
+[customer]
+# The STEP a customer fit-checks their enclosure against. Default shows the board
+# AS ASSEMBLED: do-not-populate parts left out (kicad-cli --no-dnp), consistent
+# with the pick&place and BOM which already drop them. false = include DNP bodies
+# (e.g. clearance for a variant that does fit them). Affects the STEP ONLY --
+# `pcb render` has no DNP filter, so DNP parts always appear in the PNG renders.
+step_exclude_dnp = true
+
 [bom]
 # Shorten footprint names like Kicad_bom_sync (drop lib prefix, '_'->space, drop
 # metric suffix on passives): "Capacitor_SMD:C_0603_1608Metric" -> "C 0603".

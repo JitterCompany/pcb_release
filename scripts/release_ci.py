@@ -81,9 +81,34 @@ def validate_config(cfg):
         sys.exit(1)
 
 # ----------------------------- kicad-cli helpers -----------------------------
+# kicad-cli is chatty on success, so we capture rather than stream -- but we must
+# never DISCARD it: an unresolvable 3D model is reported on stdout with exit 0,
+# and a failing export used to leave us with no diagnostics at all.
+# kicad-cli has three separate wordings for "this part won't be in the output":
+# the path didn't resolve, the file isn't there, or the file is there but is not
+# readable / not a model it can parse. All three mean a hollow deliverable.
+MODEL_FAIL = re.compile(r"Could not add 3D model for \S+|"
+                        r"^File not found:|"
+                        r"^Cannot identify actual file type for|"
+                        r"^No model for filename")
+
 def cli(*args):
-    subprocess.run(["kicad-cli", *args], check=True,
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    """Run kicad-cli -> combined stdout+stderr. Raises on non-zero, printing the
+    captured output first so CI shows WHY the export failed."""
+    p = subprocess.run(["kicad-cli", *args], capture_output=True, text=True)
+    out = (p.stdout or "") + (p.stderr or "")
+    if p.returncode != 0:
+        print(f"::error::[release] kicad-cli {' '.join(args[:3])} failed (exit {p.returncode})")
+        for line in out.splitlines():
+            print(f"    | {line}")
+        raise subprocess.CalledProcessError(p.returncode, ["kicad-cli", *args], out)
+    return out
+
+def model_failures(out):
+    """-> [str] kicad-cli's own complaints about 3D models it could not load.
+    The 3d-lint gate should have caught these already; this is the backstop that
+    also covers whatever the linter's own path resolution gets wrong."""
+    return [l.strip() for l in out.splitlines() if MODEL_FAIL.match(l.strip())]
 
 def generate_pos(pcb, outdir):
     """Just the pick&place CSVs (all placed + SMD-only), DNP excluded -- light,
@@ -198,22 +223,42 @@ def generate_bom(sch, out_csv, readable_footprints=True):
     if readable_footprints:
         _translate_bom_footprints(out_csv)
 
-def generate_customer(pcb, sch, cdir, stem):
+def generate_customer(pcb, sch, cdir, stem, exclude_dnp=True):
     """CUSTOMER deliverables (NOT the fab zip): STEP, schematic PDF, top/bottom 3D
     renders, and -- if $KICAD_IBOM_DIR points at InteractiveHtmlBom -- an
-    interactive HTML BOM. Renders + iBOM are best-effort (warn + skip on failure)
-    so a missing 3D model or the iBOM's heavier deps can't fail the release."""
+    interactive HTML BOM.
+
+    The STEP is what a customer fit-checks their enclosure against, so it must be
+    COMPLETE or absent -- never quietly hollow. kicad-cli disagrees: a model it
+    cannot resolve is one stdout line and exit 0, and `pcb render` does not even
+    say that much (measured: silent, exit 0, components simply missing from the
+    image). So both are hard failures here, and the renders are no longer
+    best-effort -- a render that can't be produced is a release defect, not a
+    nice-to-have. Only the iBOM stays optional (heavier deps, not a deliverable
+    anyone dimensions against).
+
+    exclude_dnp puts `--no-dnp` on the STEP so it shows the board AS ASSEMBLED,
+    consistent with the pick&place and BOM which already drop DNP parts. NOTE the
+    asymmetry: `pcb render` has no DNP filter at all, so DNP bodies always appear
+    in the PNGs. The STEP is the dimensional deliverable, so that is where this
+    matters; the renders stay illustrative."""
     if os.path.isdir(cdir):
         shutil.rmtree(cdir)
     os.makedirs(cdir)
-    cli("pcb", "export", "step", "--subst-models", "-o", f"{cdir}/{stem}.step", pcb)
+    step = ["pcb", "export", "step", "--subst-models"] + (["--no-dnp"] if exclude_dnp else [])
+    print(f"[release] STEP: DNP parts {'excluded (as assembled)' if exclude_dnp else 'INCLUDED'}"
+          f" -- renders always include them (kicad-cli has no render DNP filter)")
+    out = cli(*step, "-o", f"{cdir}/{stem}.step", pcb)
+    bad = model_failures(out)
+    for line in bad:
+        print(f"::error::[release] STEP export: {line}")
+    if bad:
+        os.remove(f"{cdir}/{stem}.step")                 # never ship a hollow STEP
+        sys.exit(f"release: {len(bad)} 3D model(s) missing from the STEP -- see errors above")
     cli("sch", "export", "pdf", "-o", f"{cdir}/{stem}-schematic.pdf", sch)
     for side in ("top", "bottom"):
-        try:
-            cli("pcb", "render", "--side", side, "--quality", "high", "--background", "opaque",
-                "-o", f"{cdir}/{stem}-render-{side}.png", pcb)
-        except subprocess.CalledProcessError:
-            print(f"::warning::[release] 3D render ({side}) failed -- skipped")
+        cli("pcb", "render", "--side", side, "--quality", "high", "--background", "opaque",
+            "-o", f"{cdir}/{stem}-render-{side}.png", pcb)
     ibom = os.environ.get("KICAD_IBOM_DIR", "")
     entry = os.path.join(ibom, "generate_interactive_bom.py")
     if ibom and os.path.isfile(entry):
@@ -600,7 +645,8 @@ def main():
         return 1 if missing else 0
 
     if a.mode == "docs":                # customer deliverables (STEP/PDF/renders/iBOM), NOT the fab zip
-        generate_customer(pcb, sch, os.path.join(pd, "customer"), stem)
+        generate_customer(pcb, sch, os.path.join(pd, "customer"), stem,
+                          cfg.get("customer", {}).get("step_exclude_dnp", True))
         print(f"[release] customer outputs in {pd}/customer/")
         return 0
 
