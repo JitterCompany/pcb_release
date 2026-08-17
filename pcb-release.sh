@@ -52,16 +52,31 @@ gate_drc() { kicad_check DRC kicad-cli pcb drc --schematic-parity "$pcb"; echo "
 # against that STEP, so it gates.
 gate_3d()  { echo "== 3D MODELS =="; python3 "$S/model3d_lint.py" "$pcb" --require-model $m3d || rc=1; }
 
+# Point the project's private model libraries (release.toml [models3d.VAR]) at a
+# real directory, exported so BOTH kicad-cli and the linter resolve the same
+# files. The STOCK KiCad library is deliberately NOT handled here -- it is an
+# environment prerequisite (kicad-packages3d / the `-full` image), not something
+# to re-implement a package manager for.
+setup_models() {
+  local out line
+  out=$(python3 "$S/model_libs.py" "$proj") || rc=1   # progress/errors go to stderr
+  while IFS= read -r line; do
+    [ -n "$line" ] && export "$line"
+  done <<<"$out"
+}
+
 case "$cmd" in
   erc)     gate_erc ;;
   drc)     gate_drc ;;
-  3d)      gate_3d ;;
-  all)     gate_erc; gate_drc; gate_3d ;;
+  3d)      setup_models; gate_3d ;;
+  all)     gate_erc; gate_drc; setup_models; gate_3d ;;
   pnp)     python3 "$S/release_ci.py" "$proj" --mode pnp   || rc=1 ;;
   drift)   python3 "$S/release_ci.py" "$proj" --mode drift || rc=1 ;;
-  docs)    gate_3d; python3 "$S/release_ci.py" "$proj" --mode docs  || rc=1 ;;   # customer set (not the fab zip)
-  check)   gate_erc; gate_drc; gate_3d; python3 "$S/release_ci.py" "$proj" --mode drift || rc=1 ;;
-  release) gate_erc; gate_drc; gate_3d
+  docs)    setup_models; gate_3d
+           python3 "$S/release_ci.py" "$proj" --mode docs  || rc=1 ;;   # customer set (not the fab zip)
+  check)   gate_erc; gate_drc; setup_models; gate_3d
+           python3 "$S/release_ci.py" "$proj" --mode drift || rc=1 ;;
+  release) gate_erc; gate_drc; setup_models; gate_3d
            python3 "$S/release_ci.py" "$proj" --mode build || rc=1     # fab zip (PCBA partner)
            python3 "$S/release_ci.py" "$proj" --mode docs  || rc=1 ;;  # STEP/PDF/renders/iBOM (customer)
   *) echo "pcb-release: unknown command '$cmd'" >&2; exit 2 ;;
