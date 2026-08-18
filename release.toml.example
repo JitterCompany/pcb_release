@@ -57,6 +57,13 @@ ul94_v0 = true                # laminate flammability rating UL94 V-0
 # `pcb render` has no DNP filter, so DNP parts always appear in the PNG renders.
 step_exclude_dnp = true
 
+# Layer visibility for the 3D renders. kicad-cli's own default,
+# "follow_plot_settings", shows everything we PLOT -- including non-physical
+# fab-intent layers (impedance, conformal coating), which paint coloured films
+# over the board and hide the silkscreen. "follow_pcb_editor" uses the 3D viewer
+# defaults: physical layers only. Or name a preset saved in the project.
+render_preset = "follow_pcb_editor"
+
 [bom]
 # Shorten footprint names like Kicad_bom_sync (drop lib prefix, '_'->space, drop
 # metric suffix on passives): "Capacitor_SMD:C_0603_1608Metric" -> "C 0603".

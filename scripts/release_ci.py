@@ -24,6 +24,7 @@ Kicad_bom_sync's netlist_reader) the BOM ref set for the pick&place >= BOM check
 import argparse
 import csv
 import datetime
+import difflib
 import glob
 import json
 import os
@@ -55,15 +56,18 @@ def _val(v):
             return v
 
 def load_toml(path):
-    """Parse the small subset used by release.toml: [section], key = string|bool|int|[strings]."""
-    root, cur = {}, None
+    """Parse the small subset we use: [section], key = string|bool|int|[strings].
+    Keys before any [section] land at the root, so a small single-purpose config
+    (e.g. pinmap.config.toml) needn't invent a section just to hold three keys."""
+    root = {}
+    cur = root
     for raw in open(path):
         line = raw.split("#", 1)[0].strip()          # (no '#' inside our string values)
         if not line:
             continue
         if line.startswith("[") and line.endswith("]"):
             cur = root.setdefault(line[1:-1].strip(), {})
-        elif "=" in line and cur is not None:
+        elif "=" in line:
             k, v = line.split("=", 1)
             cur[k.strip()] = _val(v)
     return root
@@ -223,7 +227,7 @@ def generate_bom(sch, out_csv, readable_footprints=True):
     if readable_footprints:
         _translate_bom_footprints(out_csv)
 
-def generate_customer(pcb, sch, cdir, stem, exclude_dnp=True):
+def generate_customer(pcb, sch, cdir, stem, exclude_dnp=True, preset="follow_pcb_editor"):
     """CUSTOMER deliverables (NOT the fab zip): STEP, schematic PDF, top/bottom 3D
     renders, and -- if $KICAD_IBOM_DIR points at InteractiveHtmlBom -- an
     interactive HTML BOM.
@@ -241,7 +245,16 @@ def generate_customer(pcb, sch, cdir, stem, exclude_dnp=True):
     consistent with the pick&place and BOM which already drop DNP parts. NOTE the
     asymmetry: `pcb render` has no DNP filter at all, so DNP bodies always appear
     in the PNGs. The STEP is the dimensional deliverable, so that is where this
-    matters; the renders stay illustrative."""
+    matters; the renders stay illustrative.
+
+    preset picks the render's layer visibility. The kicad-cli default,
+    'follow_plot_settings', shows every layer we PLOT -- which includes the
+    non-physical fab-intent layers (Impedance, Coating.top/bottom), so they paint
+    coloured films over the board and hide the silkscreen. 'follow_pcb_editor'
+    uses the 3D viewer's own defaults, which show only physical layers. Verified
+    deterministic in CI: byte-identical with and without a .kicad_prl (the 3D view
+    does not read the 2D visible_layers, which were all-on in that test), so it
+    does not depend on that gitignored local file."""
     if os.path.isdir(cdir):
         shutil.rmtree(cdir)
     os.makedirs(cdir)
@@ -256,19 +269,76 @@ def generate_customer(pcb, sch, cdir, stem, exclude_dnp=True):
         os.remove(f"{cdir}/{stem}.step")                 # never ship a hollow STEP
         sys.exit(f"release: {len(bad)} 3D model(s) missing from the STEP -- see errors above")
     cli("sch", "export", "pdf", "-o", f"{cdir}/{stem}-schematic.pdf", sch)
+    print(f"[release] renders: layer preset '{preset}'")
     for side in ("top", "bottom"):
         cli("pcb", "render", "--side", side, "--quality", "high", "--background", "opaque",
-            "-o", f"{cdir}/{stem}-render-{side}.png", pcb)
-    ibom = os.environ.get("KICAD_IBOM_DIR", "")
-    entry = os.path.join(ibom, "generate_interactive_bom.py")
-    if ibom and os.path.isfile(entry):
-        try:
-            subprocess.run(["python3", entry, "--no-browser", "--dest-dir", cdir, pcb],
-                           check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except subprocess.CalledProcessError:
-            print("::warning::[release] interactive HTML BOM failed -- skipped (needs KiCad's pcbnew python)")
-    else:
-        print("::notice::[release] interactive HTML BOM skipped (set $KICAD_IBOM_DIR to enable)")
+            "--preset", preset, "-o", f"{cdir}/{stem}-render-{side}.png", pcb)
+    generate_ibom(pcb, cdir)
+
+
+IBOM_REPO = "https://github.com/openscopeproject/InteractiveHtmlBom.git"
+
+def ibom_entry(pcb):
+    """-> path to generate_interactive_bom.py, cloning InteractiveHtmlBom if needed.
+
+    $KICAD_IBOM_DIR wins and may point at either the repo root or the inner
+    InteractiveHtmlBom/ package -- the entry script lives in the latter, and
+    getting that wrong is the usual reason iBOM 'isn't configured'."""
+    for base in ([os.environ["KICAD_IBOM_DIR"]] if os.environ.get("KICAD_IBOM_DIR") else []):
+        for cand in (os.path.join(base, "generate_interactive_bom.py"),
+                     os.path.join(base, "InteractiveHtmlBom", "generate_interactive_bom.py")):
+            if os.path.isfile(cand):
+                return cand
+        print(f"::warning::[release] $KICAD_IBOM_DIR={base} holds no generate_interactive_bom.py")
+        return None
+
+    dst = os.path.join(os.path.dirname(os.path.abspath(pcb)), ".ibom")
+    entry = os.path.join(dst, "InteractiveHtmlBom", "generate_interactive_bom.py")
+    if not os.path.isfile(entry):                     # ~2MB, shallow -- cheap enough to just do
+        shutil.rmtree(dst, ignore_errors=True)
+        print(f"[release] fetching InteractiveHtmlBom -> {dst}")
+        p = subprocess.run(["git", "clone", "--quiet", "--depth=1", IBOM_REPO, dst],
+                           capture_output=True, text=True)
+        if p.returncode or not os.path.isfile(entry):
+            print(f"::warning::[release] could not fetch InteractiveHtmlBom: {p.stderr.strip()}")
+            return None
+    return entry
+
+
+def generate_ibom(pcb, cdir):
+    """Interactive HTML BOM -- an assembly aid, not a dimensional deliverable, so
+    it warns rather than gating (it needs KiCad's pcbnew python bindings, which a
+    plain python3 does not have). The failure is now LOUD with kicad/iBOM's own
+    output, instead of the silent skip it used to be."""
+    entry = ibom_entry(pcb)
+    if not entry:
+        print("::warning::[release] interactive HTML BOM skipped -- see above")
+        return
+    # iBOM reads its settings from config.ini inside its OWN package dir, not from
+    # the project. Copy the project's in so committed preferences (dark mode, the
+    # Sourced/Placed checkboxes, board rotation, ...) actually apply in CI.
+    proj_ini = os.path.join(os.path.dirname(os.path.abspath(pcb)), "ibom.config.ini")
+    if os.path.isfile(proj_ini):
+        shutil.copyfile(proj_ini, os.path.join(os.path.dirname(entry), "config.ini"))
+        print("[release] iBOM: applying the project's ibom.config.ini")
+    # --dest-dir is documented as relative to the board file.
+    dest = os.path.relpath(cdir, os.path.dirname(os.path.abspath(pcb)))
+    p = subprocess.run([sys.executable, entry, "--no-browser", "--dest-dir", dest, pcb],
+                       capture_output=True, text=True)
+    made = glob.glob(os.path.join(cdir, "*.html"))
+    if p.returncode or not made:
+        out = (p.stdout or "") + (p.stderr or "")
+        print("::warning::[release] interactive HTML BOM failed")
+        if "No module named 'pcbnew'" in out:
+            # By far the most common cause: iBOM parses the board through KiCad's
+            # own swig bindings, which a bare python3 has no idea about.
+            print(f"::warning::[release] {os.path.basename(sys.executable)} cannot import 'pcbnew'"
+                  f" -- run this in a KiCad image (the CI ones have it), or point PYTHONPATH at"
+                  f" KiCad's dist-packages")
+        for line in out.splitlines()[-15:]:
+            print(f"    | {line}")
+        return
+    print(f"[release] interactive HTML BOM: {os.path.basename(made[0])}")
 
 # ----------------------------- extractors (read structured exports) -----------------------------
 def extract_gbrjob(outdir):
@@ -645,8 +715,10 @@ def main():
         return 1 if missing else 0
 
     if a.mode == "docs":                # customer deliverables (STEP/PDF/renders/iBOM), NOT the fab zip
+        cus = cfg.get("customer", {})
         generate_customer(pcb, sch, os.path.join(pd, "customer"), stem,
-                          cfg.get("customer", {}).get("step_exclude_dnp", True))
+                          cus.get("step_exclude_dnp", True),
+                          cus.get("render_preset", "follow_pcb_editor"))
         print(f"[release] customer outputs in {pd}/customer/")
         return 0
 
@@ -680,9 +752,19 @@ def main():
 
     if a.mode == "drift":
         committed = os.path.join(pd, a.spec)
-        old = open(committed).read() if os.path.isfile(committed) else ""
+        if not os.path.isfile(committed):
+            # Distinct from "stale": a board that has never been released has no
+            # spec yet, and "regenerate" reads like the file merely drifted.
+            print(f"::error::[release] {a.spec} does not exist yet -- bootstrap it with "
+                  f"a release build, then commit it (it is a reviewed artifact)")
+            return 1
+        old = open(committed).read()
         if old != spec:
-            print("::error::[release] release_spec.toml is stale -- regenerate and commit")
+            print(f"::error::[release] {a.spec} is stale -- the board no longer matches the "
+                  f"committed spec. Rebuild the release and commit the result.")
+            for l in difflib.unified_diff(old.splitlines(), spec.splitlines(),
+                                          "committed", "regenerated", lineterm="", n=1):
+                print(f"    | {l}")
             return 1
         print("[release] spec up to date")
         return 0

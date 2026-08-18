@@ -219,6 +219,10 @@ def main():
     skips = [g.strip() for g in a.skip_no_model.split(",") if g.strip()]
     err, note, undefined, dnp_refs = [], [], {}, []
     seen_ok, missing_files, used_vars = 0, set(), set()
+    # Footprints and model paths are DIFFERENT populations -- a footprint may carry
+    # two models (a variant) or none (a test point) -- so the summary reports each
+    # against its own total rather than inviting "254 of 283, where are the other 29?".
+    n_with, n_excused, n_paths = 0, 0, 0
 
     for fp in sorted(fps, key=reference):
         ref, at = reference(fp), attrs(fp)
@@ -230,6 +234,7 @@ def main():
             # excluded from the BOM (test point, net tie, fiducial, logo) or marked
             # board_only is not a soldered part, so a missing model is expected.
             if "exclude_from_bom" in at or "board_only" in at:
+                n_excused += 1
                 continue
             msg = f"{ref}: in BOM (will be placed) but has no 3D model" + \
                   (" -- its only model is hidden" if ms else "")
@@ -239,6 +244,8 @@ def main():
                 note.append(("no_model", msg))
             continue
 
+        n_with += 1
+        n_paths += len(visible)
         for path, _ in visible:
             for m in VARREF.finditer(path):
                 used_vars.add(m.group(1) or m.group(2))
@@ -308,8 +315,12 @@ def main():
             val = vars_.get(v)
             how = "  (KiCad built-in default)" if v in defaulted else ""
             print(f"[3d-lint]   ${{{v}}} = {val if val else '<< NOT DEFINED >>'}{how}")
+    # Two populations, each against its own total -- see n_with/n_excused above.
+    n_bad = len(fps) - n_with - n_excused
     scope = "path hygiene only, files not checked" if a.no_file_check else "resolved to a real file"
-    print(f"[3d-lint] {len(fps)} footprints, {seen_ok} model(s) OK ({scope}), "
+    print(f"[3d-lint] {len(fps)} footprints = {n_with} with a 3D model + {n_excused} without "
+          f"(not in BOM, none expected)" + (f" + {n_bad} MISSING one" if n_bad else ""))
+    print(f"[3d-lint] {seen_ok}/{n_paths} model paths {scope}, "
           f"{len(err)} error(s), {len(note)} note(s)")
     if missing_files:
         print(f"[3d-lint] {len(missing_files)} distinct model file(s) missing")

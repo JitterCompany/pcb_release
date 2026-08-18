@@ -1,0 +1,79 @@
+# Reusable KiCad manufacturing release — call this from a project.
+#
+# In the project (.github/workflows/hardware-release.yml):
+#
+#   name: hardware release
+#   on:
+#     workflow_dispatch:
+#     push: { tags: ["hw-v*"] }
+#   concurrency:
+#     group: hardware-release-${{ github.ref }}
+#     cancel-in-progress: false        # never cancel a release build midway
+#   jobs:
+#     release:
+#       uses: JitterCompany/pcb_release/.github/workflows/kicad-release.yml@master
+#       with:
+#         project-dir: hardware/5101-btb-pcb
+#
+# Builds the fab zip (production/, for the PCBA partner) and the customer set
+# (STEP/PDF/renders), and uploads both as workflow artifacts.
+name: KiCad release (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      project-dir:
+        description: "Directory holding the .kicad_pro — where the outputs land"
+        type: string
+        required: true
+      entry:
+        description: "Project entry script; receives 'release'"
+        type: string
+        default: hardware/tools/pcb.sh
+      image:
+        description: >-
+          MUST be a `-full` tag: this job exports the STEP and the renders, and
+          the plain image has kicad-cli but no stock 3D models, so those
+          deliverables would come out with every stock part silently missing.
+          Also must be >= the board's KiCad version.
+        type: string
+        default: ghcr.io/kicad/kicad:10.0-full
+      pinmap:
+        description: >-
+          Require the committed pin map to be current before releasing. Fails if
+          <project>/pinmap.config.toml is missing.
+        type: boolean
+        default: false
+      timeout-minutes:
+        type: number
+        default: 30
+
+jobs:
+  release:
+    name: PCB manufacturing release
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ inputs.image }}
+      options: --user root      # runner /__w/_temp is root-owned; checkout needs it
+    steps:
+      - uses: actions/checkout@v6
+        with: { submodules: recursive }
+      - name: Build release package
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          kicad-cli version
+          if [ "${{ inputs.pinmap }}" = "true" ]; then ${{ inputs.entry }} pinmap-drift; fi
+          ${{ inputs.entry }} release     # ERC+DRC+3D gates, then fab zip + customer set
+      - name: Upload fab package (PCBA partner)
+        uses: actions/upload-artifact@v4
+        with:
+          name: production
+          path: ${{ inputs.project-dir }}/production__*.zip
+          if-no-files-found: error
+      - name: Upload customer set (STEP / PDF / renders)
+        uses: actions/upload-artifact@v4
+        with:
+          name: customer
+          path: ${{ inputs.project-dir }}/customer/
+          if-no-files-found: error
