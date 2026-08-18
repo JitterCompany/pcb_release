@@ -59,6 +59,13 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with: { submodules: recursive }
+      # The interactive HTML BOM shells out to InteractiveHtmlBom, which builds a
+      # wx.App() even in CLI mode and so needs a display. xvfb gives it a virtual
+      # one. Best-effort: the iBOM is an assembly aid, not a gating deliverable,
+      # so a non-apt image just means it is skipped with a warning.
+      - name: Install xvfb (interactive HTML BOM needs a display)
+        continue-on-error: true
+        run: apt-get update -qq && apt-get install -y -qq --no-install-recommends xvfb
       - name: Build release package
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"

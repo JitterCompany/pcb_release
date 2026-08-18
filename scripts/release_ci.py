@@ -323,12 +323,21 @@ def generate_ibom(pcb, cdir):
         print("[release] iBOM: applying the project's ibom.config.ini")
     # --dest-dir is documented as relative to the board file.
     dest = os.path.relpath(cdir, os.path.dirname(os.path.abspath(pcb)))
-    p = subprocess.run([sys.executable, entry, "--no-browser", "--dest-dir", dest, pcb],
-                       capture_output=True, text=True)
+    cmd = [sys.executable, entry, "--no-browser", "--dest-dir", dest, pcb]
+    # iBOM constructs a wx.App() unconditionally -- even in CLI mode with
+    # --no-browser -- and that needs an X display, which no CI container has.
+    # A virtual framebuffer satisfies it; nothing is ever drawn.
+    if not os.environ.get("DISPLAY") and shutil.which("xvfb-run"):
+        cmd = ["xvfb-run", "-a"] + cmd
+    p = subprocess.run(cmd, capture_output=True, text=True)
     made = glob.glob(os.path.join(cdir, "*.html"))
     if p.returncode or not made:
         out = (p.stdout or "") + (p.stderr or "")
         print("::warning::[release] interactive HTML BOM failed")
+        if "Unable to access the X Display" in out:
+            print("::warning::[release] iBOM needs a display (it calls wx.App() even with "
+                  "--no-browser). Install xvfb in this job so it can run under xvfb-run: "
+                  "apt-get install -y xvfb")
         if "No module named 'pcbnew'" in out:
             # By far the most common cause: iBOM parses the board through KiCad's
             # own swig bindings, which a bare python3 has no idea about.
