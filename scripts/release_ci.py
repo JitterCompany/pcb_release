@@ -227,6 +227,15 @@ def generate_bom(sch, out_csv, readable_footprints=True):
     if readable_footprints:
         _translate_bom_footprints(out_csv)
 
+def package_stem(kind, stem):
+    """<kind>__<board>__<date>[_<build>] -- the shared naming for both deliverable
+    zips. The build number comes from CI ($BUILD_NUMBER, else GitHub's sequential
+    $GITHUB_RUN_NUMBER) and is simply omitted for a local build, so a hand-built
+    package is never mistaken for a numbered CI one."""
+    build = (os.environ.get("BUILD_NUMBER") or os.environ.get("GITHUB_RUN_NUMBER") or "").strip()
+    return f"{kind}__{stem}__{datetime.date.today().isoformat()}" + (f"_{build}" if build else "")
+
+
 def generate_customer(pcb, sch, cdir, stem, exclude_dnp=True, preset="follow_pcb_editor",
                       layers=None):
     """CUSTOMER deliverables (NOT the fab zip): STEP, schematic PDF, top/bottom 3D
@@ -799,8 +808,7 @@ def main():
         print(f"::error::[release] {p}")
 
     if a.mode == "build":                               # package production/ -> dated zip in the project dir
-        zbase = os.path.join(pd, f"production__{stem}__{datetime.date.today().isoformat()}")
-        zpath = shutil.make_archive(zbase, "zip", outdir)
+        zpath = shutil.make_archive(os.path.join(pd, package_stem("production", stem)), "zip", outdir)
         print(f"[release] packaged {os.path.basename(zpath)}  ({len(os.listdir(outdir))} files in production/)")
 
         # Customer set, from the SAME resolved layer list as the gerbers above --
@@ -810,7 +818,9 @@ def main():
         generate_customer(pcb, sch, os.path.join(pd, "customer"), stem,
                           cus.get("step_exclude_dnp", True),
                           cus.get("render_preset", "follow_pcb_editor"), layers)
-        print(f"[release] customer outputs in {pd}/customer/")
+        cdir = os.path.join(pd, "customer")
+        zpath = shutil.make_archive(os.path.join(pd, package_stem("customer", stem)), "zip", cdir)
+        print(f"[release] packaged {os.path.basename(zpath)}  ({len(os.listdir(cdir))} files in customer/)")
 
     print(f"[release] mode={a.mode}: {len(res['warn'])} warning(s), {len(problems)} error(s)")
     return 1 if problems else 0

@@ -72,15 +72,25 @@ jobs:
           kicad-cli version
           if [ "${{ inputs.pinmap }}" = "true" ]; then ${{ inputs.entry }} pinmap-drift; fi
           ${{ inputs.entry }} release     # ERC+DRC+3D gates, then fab zip + customer set
+      # upload-artifact ALWAYS zips what it is given, so handing it our .zip would
+      # produce a zip containing a zip. Upload the directories instead and put the
+      # package name on the artifact: downloading then yields exactly one archive,
+      # named the same as the local build's zip.
+      - name: Name the packages
+        id: pkg
+        run: |
+          cd "${{ inputs.project-dir }}"
+          echo "production=$(basename "$(ls -t production__*.zip | head -1)" .zip)" >> "$GITHUB_OUTPUT"
+          echo "customer=$(basename "$(ls -t customer__*.zip | head -1)" .zip)" >> "$GITHUB_OUTPUT"
       - name: Upload fab package (PCBA partner)
         uses: actions/upload-artifact@v4
         with:
-          name: production
-          path: ${{ inputs.project-dir }}/production__*.zip
+          name: ${{ steps.pkg.outputs.production }}
+          path: ${{ inputs.project-dir }}/production/
           if-no-files-found: error
-      - name: Upload customer set (STEP / PDF / renders)
+      - name: Upload customer set (STEP / PDFs / renders / iBOM)
         uses: actions/upload-artifact@v4
         with:
-          name: customer
+          name: ${{ steps.pkg.outputs.customer }}
           path: ${{ inputs.project-dir }}/customer/
           if-no-files-found: error
