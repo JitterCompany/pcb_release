@@ -5,14 +5,14 @@
 # Automated (config-driven) workflow — needs a <project>/release.toml:
 #   pcb-release.sh PROJECT_DIR check       ERC+schema, DRC+pos>=BOM, release-spec drift
 #   pcb-release.sh PROJECT_DIR release     fab zip (production/ -> partner) + customer set
-#   pcb-release.sh PROJECT_DIR docs        customer set only: STEP/PDF/renders/iBOM -> customer/
+#                                          (STEP/PDF/layout PDF/renders/iBOM -> customer/)
 #   pcb-release.sh PROJECT_DIR erc|drc|3d|all  just that check gate (used by CI jobs)
 #   pcb-release.sh PROJECT_DIR pnp|drift   single checks
 #   pcb-release.sh PROJECT_DIR pinmap | pinmap-check | pinmap-drift
 #                                          MCU pin map: regenerate / validate / drift-check
 #                                          ERRORS if <proj>/pinmap.config.toml is absent
 #                                          (composite 'check' skips it instead)
-# Env (docs): KICAD_IBOM_DIR = InteractiveHtmlBom dir, to include an interactive BOM.
+# Env: KICAD_IBOM_DIR  InteractiveHtmlBom checkout (else it is fetched automatically).
 #
 # Manual (interactive, legacy) workflow — no config, prompts you step by step:
 #   pcb-release.sh PROJECT_DIR manual      guided export + zip (scripts/release_pcb.py)
@@ -26,7 +26,7 @@
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"; S="$here/scripts"
 
-proj="${1:?usage: $0 PROJECT_DIR <check|release|docs|erc|drc|3d|all|pnp|drift|pinmap[-check|-drift]|manual> [--strict]}"; shift || true
+proj="${1:?usage: $0 PROJECT_DIR <check|release|erc|drc|3d|all|pnp|drift|pinmap[-check|-drift]|manual> [--strict]}"; shift || true
 cmd="${1:-check}"; shift || true
 strict=""; for a in "$@"; do [ "$a" = "--strict" ] && strict="--strict"; done
 
@@ -104,13 +104,11 @@ case "$cmd" in
   all)     gate_erc; gate_drc; setup_models; gate_3d ;;
   pnp)     python3 "$S/release_ci.py" "$proj" --mode pnp   || rc=1 ;;
   drift)   python3 "$S/release_ci.py" "$proj" --mode drift || rc=1 ;;
-  docs)    setup_models; gate_3d
-           python3 "$S/release_ci.py" "$proj" --mode docs  || rc=1 ;;   # customer set (not the fab zip)
   check)   gate_erc; gate_drc; setup_models; gate_3d; pinmap drift optional
            python3 "$S/release_ci.py" "$proj" --mode drift || rc=1 ;;
   release) gate_erc; gate_drc; setup_models; gate_3d
-           python3 "$S/release_ci.py" "$proj" --mode build || rc=1     # fab zip (PCBA partner)
-           python3 "$S/release_ci.py" "$proj" --mode docs  || rc=1 ;;  # STEP/PDF/renders/iBOM (customer)
+           # one pass: fab zip (PCBA partner) + customer set (STEP/PDF/renders/iBOM)
+           python3 "$S/release_ci.py" "$proj" --mode build || rc=1 ;;
   *) echo "pcb-release: unknown command '$cmd'" >&2; exit 2 ;;
 esac
 echo "reports in: $out"

@@ -227,7 +227,8 @@ def generate_bom(sch, out_csv, readable_footprints=True):
     if readable_footprints:
         _translate_bom_footprints(out_csv)
 
-def generate_customer(pcb, sch, cdir, stem, exclude_dnp=True, preset="follow_pcb_editor"):
+def generate_customer(pcb, sch, cdir, stem, exclude_dnp=True, preset="follow_pcb_editor",
+                      layers=None):
     """CUSTOMER deliverables (NOT the fab zip): STEP, schematic PDF, top/bottom 3D
     renders, and -- if $KICAD_IBOM_DIR points at InteractiveHtmlBom -- an
     interactive HTML BOM.
@@ -269,6 +270,14 @@ def generate_customer(pcb, sch, cdir, stem, exclude_dnp=True, preset="follow_pcb
         os.remove(f"{cdir}/{stem}.step")                 # never ship a hollow STEP
         sys.exit(f"release: {len(bad)} 3D model(s) missing from the STEP -- see errors above")
     cli("sch", "export", "pdf", "-o", f"{cdir}/{stem}-schematic.pdf", sch)
+    # Layout PDF: one page per layer, with the board outline drawn on EVERY page
+    # (--common-layers) so each layer can be read in context instead of floating
+    # in space. Plots every layer the board has enabled, so nothing is silently
+    # left out of the documentation set.
+    print(f"[release] layout PDF: {len(layers)} fab layer(s), Edge.Cuts on every page")
+    cli("pcb", "export", "pdf", "--mode-multipage", "--include-border-title",
+        "--common-layers", "Edge.Cuts", "--layers", ",".join(layers),
+        "-o", f"{cdir}/{stem}-layout.pdf", pcb)
     print(f"[release] renders: layer preset '{preset}'")
     for side in ("top", "bottom"):
         cli("pcb", "render", "--side", side, "--quality", "high", "--background", "opaque",
@@ -314,16 +323,24 @@ def generate_ibom(pcb, cdir):
     if not entry:
         print("::warning::[release] interactive HTML BOM skipped -- see above")
         return
-    # iBOM reads its settings from config.ini inside its OWN package dir, not from
-    # the project. Copy the project's in so committed preferences (dark mode, the
-    # Sourced/Placed checkboxes, board rotation, ...) actually apply in CI.
-    proj_ini = os.path.join(os.path.dirname(os.path.abspath(pcb)), "ibom.config.ini")
-    if os.path.isfile(proj_ini):
-        shutil.copyfile(proj_ini, os.path.join(os.path.dirname(entry), "config.ini"))
-        print("[release] iBOM: applying the project's ibom.config.ini")
     # --dest-dir is documented as relative to the board file.
     dest = os.path.relpath(cdir, os.path.dirname(os.path.abspath(pcb)))
     cmd = [sys.executable, entry, "--no-browser", "--dest-dir", dest, pcb]
+    # iBOM finds <board dir>/ibom.config.ini on its own -- but IGNORES it unless
+    # --use-ini is passed, which is why a committed config silently did nothing.
+    # With it, the ini becomes argparse *defaults*, so the flags we pass here still
+    # win (notably --dest-dir and --no-browser, which the ini would otherwise
+    # override with bom_dest_dir / open_browser=1).
+    if os.path.isfile(os.path.join(os.path.dirname(os.path.abspath(pcb)), "ibom.config.ini")):
+        cmd.insert(2, "--use-ini")
+        print("[release] iBOM: using the project's ibom.config.ini")
+    else:
+        # No project config: pick defaults that make it an ASSEMBLY aid rather than
+        # a parts list -- unfitted parts dropped, MPN/rating visible, pin 1 marked.
+        cmd[2:2] = ["--dnp-field", "kicad_dnp",          # KiCad's native DNP attribute
+                    "--show-fields", "Value,Footprint,MPN,rating",
+                    "--highlight-pin1", "selected", "--show-fabrication"]
+        print("[release] iBOM: no ibom.config.ini -- using built-in defaults")
     # iBOM constructs a wx.App() unconditionally -- even in CLI mode with
     # --no-browser -- and that needs an X display, which no CI container has.
     # A virtual framebuffer satisfies it; nothing is ever drawn.
@@ -700,7 +717,7 @@ def main():
     ap.add_argument("project_dir", help="dir containing the .kicad_pro / .kicad_pcb / .kicad_sch")
     ap.add_argument("--config", default="release.toml")
     ap.add_argument("--spec", default="release_spec.toml", help="committed resolved-spec path (for drift)")
-    ap.add_argument("--mode", choices=["build", "drift", "check", "pnp", "docs"], default="build")
+    ap.add_argument("--mode", choices=["build", "drift", "check", "pnp"], default="build")
     a = ap.parse_args()
 
     pd = a.project_dir.rstrip("/")
@@ -723,14 +740,6 @@ def main():
         print(f"[pnp>=bom] {len(bom)} BOM parts, {len(pos_all)} placed, {len(missing)} missing")
         return 1 if missing else 0
 
-    if a.mode == "docs":                # customer deliverables (STEP/PDF/renders/iBOM), NOT the fab zip
-        cus = cfg.get("customer", {})
-        generate_customer(pcb, sch, os.path.join(pd, "customer"), stem,
-                          cus.get("step_exclude_dnp", True),
-                          cus.get("render_preset", "follow_pcb_editor"))
-        print(f"[release] customer outputs in {pd}/customer/")
-        return 0
-
     outdir = os.path.join(pd, "production") if a.mode == "build" else tempfile.mkdtemp(prefix="release_")
     if a.mode == "build" and os.path.isdir(outdir):     # preserve the previous release, regenerate clean
         stamp = datetime.datetime.now().replace(microsecond=0).isoformat()
@@ -745,7 +754,8 @@ def main():
     tent = extract_tenting(pcb)
     res = resolve(cfg, tent, counts)
     copper, blresolve = board_layers(pcb)
-    generate_gerbers(pcb, outdir, required_layers(cfg, blresolve, copper, res["assembly"], res["stencil"]))
+    layers = required_layers(cfg, blresolve, copper, res["assembly"], res["stencil"])
+    generate_gerbers(pcb, outdir, layers)
 
     gbr = extract_gbrjob(outdir)
     ew = extract_edge_width(outdir)                  # board is cut on the Edge.Cuts centerline
@@ -792,6 +802,15 @@ def main():
         zbase = os.path.join(pd, f"production__{stem}__{datetime.date.today().isoformat()}")
         zpath = shutil.make_archive(zbase, "zip", outdir)
         print(f"[release] packaged {os.path.basename(zpath)}  ({len(os.listdir(outdir))} files in production/)")
+
+        # Customer set, from the SAME resolved layer list as the gerbers above --
+        # it was never a separable flow (nothing shipped docs without a fab
+        # package), and splitting it meant resolving assembly/stencil sides twice.
+        cus = cfg.get("customer", {})
+        generate_customer(pcb, sch, os.path.join(pd, "customer"), stem,
+                          cus.get("step_exclude_dnp", True),
+                          cus.get("render_preset", "follow_pcb_editor"), layers)
+        print(f"[release] customer outputs in {pd}/customer/")
 
     print(f"[release] mode={a.mode}: {len(res['warn'])} warning(s), {len(problems)} error(s)")
     return 1 if problems else 0
