@@ -49,7 +49,9 @@ on:
 
 jobs:
   # ERC — electrical rules on the schematic. Errors gate, warnings don't (the
-  # release gate adds --strict); KiCad-excluded items never gate. Findings are
+  # release runs these SAME gates with the SAME flags -- deliberately, so a green
+  # push predicts a green release; --strict is manual-only and no CI path passes
+  # it); KiCad-excluded items never gate. Findings are
   # GitHub annotations, shown inline in the checks UI. Tune exceptions in the
   # KiCad GUI — they live in the design files, so each one is reviewed in the diff.
   erc:

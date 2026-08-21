@@ -246,10 +246,12 @@ def generate_customer(pcb, sch, cdir, stem, exclude_dnp=True, preset="follow_pcb
     COMPLETE or absent -- never quietly hollow. kicad-cli disagrees: a model it
     cannot resolve is one stdout line and exit 0, and `pcb render` does not even
     say that much (measured: silent, exit 0, components simply missing from the
-    image). So both are hard failures here, and the renders are no longer
-    best-effort -- a render that can't be produced is a release defect, not a
-    nice-to-have. Only the iBOM stays optional (heavier deps, not a deliverable
-    anyone dimensions against).
+    image). NOTE the asymmetry: only the STEP's output is scanned by
+    model_failures() and deleted if hollow -- a render whose models silently
+    failed to load still ships, because kicad-cli says nothing for us to scan.
+    model3d_lint running BEFORE any export is the real defence for renders; what
+    is enforced here is only that a render must not fail outright. The iBOM stays
+    optional (heavier deps, not a deliverable anyone dimensions against).
 
     exclude_dnp puts `--no-dnp` on the STEP so it shows the board AS ASSEMBLED,
     consistent with the pick&place and BOM which already drop DNP parts. NOTE the
@@ -281,8 +283,8 @@ def generate_customer(pcb, sch, cdir, stem, exclude_dnp=True, preset="follow_pcb
     cli("sch", "export", "pdf", "-o", f"{cdir}/{stem}-schematic.pdf", sch)
     # Layout PDF: one page per layer, with the board outline drawn on EVERY page
     # (--common-layers) so each layer can be read in context instead of floating
-    # in space. Plots every layer the board has enabled, so nothing is silently
-    # left out of the documentation set.
+    # in space. Plots the passed `layers` -- the SAME set the gerber export used --
+    # so the PDF documents what is manufactured and cannot drift from the gerbers.
     print(f"[release] layout PDF: {len(layers)} fab layer(s), Edge.Cuts on every page")
     cli("pcb", "export", "pdf", "--mode-multipage", "--include-border-title",
         "--common-layers", "Edge.Cuts", "--layers", ",".join(layers),

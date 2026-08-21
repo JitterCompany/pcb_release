@@ -7,27 +7,34 @@
 #   pcb-release.sh PROJECT_DIR release     fab zip (production/ -> partner) + customer set
 #                                          (STEP/PDF/layout PDF/renders/iBOM -> customer/)
 #   pcb-release.sh PROJECT_DIR erc|drc|3d|all  just that check gate (used by CI jobs)
-#   pcb-release.sh PROJECT_DIR pnp|drift   single checks
+#   pcb-release.sh PROJECT_DIR drift       is the committed release_spec.toml still true?
 #   pcb-release.sh PROJECT_DIR pinmap | pinmap-check | pinmap-drift
 #                                          MCU pin map: regenerate / validate / drift-check
 #                                          ERRORS if <proj>/pinmap.config.toml is absent
 #                                          (composite 'check' skips it instead)
 # Env: KICAD_IBOM_DIR  InteractiveHtmlBom checkout (else it is fetched automatically).
+#      CHECK_OUT      dir for the ERC/DRC JSON reports (default: a fresh tmp dir).
+#                     LOCAL DEBUGGING ONLY -- CI never sets it; findings surface as
+#                     GitHub annotations instead, so nothing needs downloading.
 #
 # Manual (interactive, legacy) workflow — no config, prompts you step by step:
 #   pcb-release.sh PROJECT_DIR manual      guided export + zip (scripts/release_pcb.py)
 #
 # Env: KICAD_IGNORE_TYPES  comma-sep ERC/DRC 'type' keys to suppress as CI-env
 #                          noise (headless run has no library table).
-#      CHECK_OUT           dir for the JSON reports (default: fresh tmp dir).
 #      KICAD_3D_LINT_ARGS  extra flags for the 3D gate (scripts/model3d_lint.py),
 #                          e.g. -D for a private model library, or --no-file-check
 #                          when the model files aren't fetched in this job.
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"; S="$here/scripts"
 
-proj="${1:?usage: $0 PROJECT_DIR <check|release|erc|drc|3d|all|pnp|drift|pinmap[-check|-drift]|manual> [--strict]}"; shift || true
+proj="${1:?usage: $0 PROJECT_DIR <check|release|erc|drc|3d|all|drift|pinmap[-check|-drift]|manual> [--strict]}"; shift || true
 cmd="${1:-check}"; shift || true
+# --strict (warnings also fail) is MANUAL-ONLY and deliberately unreachable from CI:
+# no workflow and no pcb.sh path passes it. A release gates EXACTLY like a normal
+# push, so that observing a green CI run predicts a green release. Do not wire this
+# into CI -- to make a warning gate, raise its severity in the KiCad GUI, where the
+# decision travels with the project and is reviewed in the diff.
 strict=""; for a in "$@"; do [ "$a" = "--strict" ] && strict="--strict"; done
 
 # Manual workflow runs IN the project dir (it globs *.kicad_pro there, writes production/).
@@ -102,7 +109,6 @@ case "$cmd" in
   pinmap-drift) pinmap drift ;;
   3d)      setup_models; gate_3d ;;
   all)     gate_erc; gate_drc; setup_models; gate_3d ;;
-  pnp)     python3 "$S/release_ci.py" "$proj" --mode pnp   || rc=1 ;;
   drift)   python3 "$S/release_ci.py" "$proj" --mode drift || rc=1 ;;
   check)   gate_erc; gate_drc; setup_models; gate_3d; pinmap drift optional
            python3 "$S/release_ci.py" "$proj" --mode drift || rc=1 ;;
