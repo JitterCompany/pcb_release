@@ -96,8 +96,32 @@ def export_netlist(src, dst):
     subprocess.run(["kicad-cli", "sch", "export", "netlist",
                     "--format", "kicadsexpr", "-o", dst, src], check=True)
 
+# KiCad escapes characters that are special in its own net/label syntax before
+# writing them to disk, so a schematic label "R/W" reaches us as "R{slash}W".
+# Decode them, or the escape leaks verbatim into the map and into every warning.
+KICAD_ESC = {"slash": "/", "backslash": "\\", "lt": "<", "gt": ">", "colon": ":",
+             "quote": "'", "dblquote": '"', "dollar": "$", "brace": "{",
+             "space": " ", "tab": "\t"}
+def unescape_kicad(s):
+    return re.sub(r'\{(\w+)\}', lambda m: KICAD_ESC.get(m.group(1), m.group(0)), s)
+
+# The section key is BOTH a TOML bare key and the name a firmware engineer will
+# type, so it must be [a-z0-9_]. A net like "MCU_USB_D+" or "DISP_R/W" would
+# otherwise emit a key TOML cannot even parse -- the artifact looked fine and
+# silently was not loadable. '+'/'-' carry signal polarity, so they map to the
+# conventional _p/_n rather than being flattened to '_' like other punctuation.
+# NOTE: _n is also this tool's active-low suffix (from a ~{} overbar); a net that
+# is both active-low and negative-polarity collapses, which the collision check
+# below reports rather than silently merging.
+def toml_key(name):
+    k = re.sub(r'\+', '_p', re.sub(r'-', '_n', name))
+    k = re.sub(r'[^A-Za-z0-9_]', '_', k)
+    k = re.sub(r'_{2,}', '_', k).strip('_').lower()
+    return k or "net"
+
+
 def parse_netlist(path, ref):
-    """-> {pin_number: (net_short_name, assigned_pinfunction, full_net_name)} for `ref`.
+    """-> {pin_number: (net_short_name, assigned_pinfunction, full_net_name, pintype)} for `ref`.
 
     net_short_name is the display label — sheet path dropped, ~{...} overbar
     stripped — deliberately lossy for a readable TOML. full_net_name keeps the
@@ -114,10 +138,12 @@ def parse_netlist(path, ref):
         full = nm.group(1)                                     # sheet-qualified, overbar intact
         # local label; ~{X} overbar -> active-low "_N" suffix (survives to TOML)
         net = re.sub(r'~\{([^}]*)\}', r'\1_N', full.rsplit("/", 1)[-1])
+        net = unescape_kicad(net)      # {slash} etc are KiCad's on-disk escaping
         for nd in re.finditer(
-                rf'\(ref "{ref}"\)\s*\(pin "([^"]*)"\)(?:\s*\(pinfunction "([^"]*)"\))?', nl[x:y]):
+                rf'\(ref "{ref}"\)\s*\(pin "([^"]*)"\)(?:\s*\(pinfunction "([^"]*)"\))?'
+                rf'(?:\s*\(pintype "([^"]*)"\))?', nl[x:y]):
             func = re.sub(r'_\d+$', '', nd.group(2)) if nd.group(2) else None
-            out[nd.group(1)] = (net, func, full)
+            out[nd.group(1)] = (net, func, full, nd.group(3) or "")
     return out
 
 # --- locate the ref's sheet file + read its symbol (static pin table only) ---
@@ -160,6 +186,12 @@ if not a.sheet_net: export_netlist(sheet_path, sheet_net)
 pin2net = parse_netlist(root_net, a.ref)      # canonical (whole design)
 pin2local = parse_netlist(sheet_net, a.ref)   # local labels (intent suffixes)
 
+# Detect power supply nets.
+# derived from which nets drive pins with these electrical types, never from their name.
+POWER_TYPES = {"power_in", "power_out"}
+power_nets = {v[2] for v in pin2net.values() if v[3] in POWER_TYPES}
+power_pins = {n for n, v in pin2net.items() if v[2] in power_nets}
+
 # --- records for connected, non-placeholder pins ---
 # Primary net name comes from the ISOLATED-SHEET netlist, not the whole-design
 # ROOT one: the MCU-sheet-local label is unique per pin and preserves MCU-side
@@ -178,10 +210,10 @@ def strip_intent(n):
     return n
 rec = []
 full_by_num = {}                                   # pin number -> full sheet-local net id
-for num, (rnet, func, rfull) in pin2net.items():
+for num, (rnet, func, rfull, _rt) in pin2net.items():
     if rnet.startswith("unconnected-"): continue
     port, alts = pinmeta.get(num, ("?", []))
-    name, _lf, lfull = pin2local.get(num, (rnet, func, rfull))  # sheet-local name + full id
+    name, _lf, lfull, _lt = pin2local.get(num, (rnet, func, rfull, ""))  # sheet-local name + full id
     # rec[0] = emitted firmware name (suffix stripped); rec[5] = raw local name
     # (suffix intact) — the EXTI/analog matching below relies on the suffix.
     rec.append((strip_intent(name), port, alts, func, num, name))
@@ -194,10 +226,14 @@ def adc_ch(alts, func):
     if func and re.match(r'ADC\d+_IN', func): return func
     a2 = [x for x in alts if re.match(r'ADC\d+_IN', x)]
     return a2[0] if a2 else None
-POWER = re.compile(r'GND|VDD|VSS|VREF|VBAT|3V3|5V')
-
 # --- sanity checks ---
 warn = []
+# The power heuristic above rests entirely on the symbol being typed. If it is not,
+# supply pins silently fall through into the map and drag the rail into the
+# double-drive check -- say so rather than emitting a quietly wrong artifact.
+if not power_nets:
+    warn.append(f"no power_in/power_out pins found on {a.ref} -- is the symbol's pin "
+                f"electrical type set? supply pins will be listed as if they were I/O")
 for sig, want in [("SWDIO","PA13"),("SWCLK","PA14"),("LSE_P","PC14"),("LSE_N","PC15")]:
     got = [r[1] for r in rec if r[0] == sig]
     if got and want not in got: warn.append(f"{sig} on {got}, expected {want} (fixed-function)")
@@ -205,9 +241,11 @@ for sig, want in [("SWDIO","PA13"),("SWCLK","PA14"),("LSE_P","PC14"),("LSE_N","P
 # so two nets that merely share a local label can't false-positive. A net truly
 # spanning U1 pins keeps one full id and is still caught.
 netpins = defaultdict(list)
-for r in rec: netpins[full_by_num[r[4]]].append(r[1])
+for r in rec:
+    if r[4] in power_pins: continue         # supply pins share a rail by design
+    netpins[full_by_num[r[4]]].append(r[1])
 for n, ps in netpins.items():
-    if len(ps) > 1 and not POWER.search(n): warn.append(f"net {n} on multiple pins {ps} (double-drive?)")
+    if len(ps) > 1: warn.append(f"net {n} on multiple pins {ps} (double-drive?)")
 # suffix-stripping must not merge two DISTINCT nets into one firmware name
 seen = {}
 for r in rec:
@@ -215,6 +253,15 @@ for r in rec:
         warn.append(f"firmware name '{r[0].lower()}' collides after intent-suffix "
                     f"strip (pins {seen[r[0]]}+{r[4]}) -- rename one net")
     seen[r[0]] = r[4]
+# ...and neither may sanitising to a legal TOML key (e.g. "A+" and "A-" both -> a_p/a_n
+# are fine, but "A/B" and "A_B" both collapse to a_b)
+kseen = {}
+for r in rec:
+    k = toml_key(r[0])
+    if k in kseen and full_by_num[kseen[k]] != full_by_num[r[4]]:
+        warn.append(f"TOML key '{k}' collides after sanitising the net name "
+                    f"(pins {kseen[k]}+{r[4]}) -- rename one net")
+    kseen[k] = r[4]
 # EXTI collisions: intent from the SHEET-LOCAL net name (suffix-preserving).
 irq, irq_pins = defaultdict(list), set()
 for net, port, alts, func, num, local in rec:
@@ -264,7 +311,7 @@ def group_of(name):                                # GROUPS from [pinmap.groups]
 
 body, groups, power = [], defaultdict(list), []
 for r in rec:
-    (power if (POWER.search(r[0]) or POWER.search(r[1])) else
+    (power if r[4] in power_pins else
      groups[group_of(r[0])]).append(r)
 for pat, grp, hits in GROUPS:            # catch typo'd rules; non-gating (stderr)
     if not hits: print(f"[pinmap] note: group rule '{pat.lower()} = {grp}' matched no nets", file=sys.stderr)
@@ -279,7 +326,7 @@ for g in sorted(groups):
         if cap:    parts.append(f"cap: {cap}")
         if num in irq_pins:                      # EXTI line only relevant for declared IRQs
             parts.append(f"EXTI{ln} *IRQ*" if ln is not None else "*IRQ*")
-        body.append(f'{net.lower()} = "{port.lower()}"  # {" | ".join(parts)}')
+        body.append(f'{toml_key(net)} = "{port.lower()}"  # {" | ".join(parts)}')
     body.append("")
 if power:
     pc = defaultdict(int)
