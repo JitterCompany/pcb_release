@@ -146,7 +146,13 @@ def board_layers(pcb):
     where resolve(name) maps a friendly layer name (canonical OR user name; '.'/'_'
     and case-insensitive, gerber extension tolerated) to its canonical --layers
     token, or None."""
-    m = re.search(r"\(layers\s*(.*?)\n\t\)", open(pcb).read(), re.S)
+    # Close on ANY indentation: KiCad 7+ writes tabs, KiCad 6 writes spaces. The
+    # old r"\n\t\)" matched only tab-indented files, so a KiCad 6 board crashed here
+    # with a bare AttributeError on m.group(1).
+    m = re.search(r"\(layers\s*(.*?)\n[ \t]*\)", open(pcb).read(), re.S)
+    if not m:
+        sys.exit(f"release: cannot find the (layers ...) block in {pcb} -- unsupported "
+                 f"board format?")
     canon2user = {}
     for lm in re.finditer(r'\(\d+ "([^"]+)" \w+(?:\s+"([^"]+)")?\)', m.group(1)):
         canon2user[lm.group(1)] = lm.group(2) or lm.group(1)

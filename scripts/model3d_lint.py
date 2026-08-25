@@ -113,9 +113,12 @@ def kids(node, name):
 
 
 def reference(fp):
-    for p in kids(fp, "property"):
+    for p in kids(fp, "property"):                 # KiCad 7+
         if len(p) > 2 and p[1] == "Reference":
             return p[2]
+    for t in kids(fp, "fp_text"):                  # KiCad 6
+        if len(t) > 2 and t[1] == "reference":
+            return t[2]
     return "?"
 
 
