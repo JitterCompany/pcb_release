@@ -46,6 +46,35 @@ not restated. Copy `release.toml.example` → `<project>/release.toml`.
                            project's hardware/tools/pcb.sh, so both layers agree on
                            when to colour (TTY or GitHub Actions; NO_COLOR wins)
 
+## Console output
+
+Every stage ends with exactly one verdict line — `PASS` / `FAIL  <board> / <stage>`,
+green/red on a TTY — and nothing else claims a pass or fail.
+
+What a stage prints in between depends on where it runs, because the two audiences want
+opposite things:
+
+| stage | terminal | GitHub Actions |
+|---|---|---|
+| passed | just the verdict line | `::warning` / `::notice` still emitted |
+| failed | annotations, then dim detail, then the verdict | same |
+
+`::error` / `::warning` / `::notice` *are* the GitHub checks UI, so under Actions they
+always go out — a non-gating warning still belongs on the PR. In a terminal the same
+lines are noise on a green run, so there they are buffered and only surface if the stage
+actually failed. The verdict itself is deliberately NOT an annotation: the job's own
+red/green already says that, a failing stage has already annotated each real finding, and
+GitHub only surfaces a limited number of annotations per run — spending that budget on
+verdicts would push actual findings out of the UI.
+
+`PCB_VERBOSE=1` shows everything regardless. `NO_COLOR=1` disables colour.
+
+kicad-cli's own `Found N violations` is never shown directly: N counts warnings and
+deliberately-ignored types too, so on a PASS it only ever contradicted the verdict. (A
+headless run has no library table, so a clean board routinely reports hundreds — 219 on
+one of ours, every one of them environment noise.) The gating decision belongs to
+`scripts/check_report.py`, and the verdict line is the answer.
+
 ## Portability: note for developers
 
 These scripts must run unchanged on **macOS**, which still ships **Bash 3.2** (2007) as
