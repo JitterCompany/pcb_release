@@ -84,7 +84,7 @@ stage() {
   # else and only surface when the stage actually failed. Net effect locally:
   # a pass is ONE line; a fail shows warnings + errors + detail, then FAIL.
   if [ $ci -eq 1 ] || [ $show -eq 1 ]; then
-    grep -E '^::(error|warning|notice)' "$log" || true
+    grep -E '^::(error|warning|notice)' "$log" | annot_render || true
   fi
   if [ $show -eq 1 ]; then
     sed -E '/^::(error|warning|notice)/d' "$log" | sed "s/^/${C_DIM}    /;s/$/${C_OFF}/"
@@ -126,7 +126,7 @@ setup_models() {
   out=$(python3 "$S/model_libs.py" "$proj" 2>"$err"); k=$?   # progress/errors -> stderr
   [ $k -eq 0 ] || rc=1
   if [ "${GITHUB_ACTIONS:-}" = "true" ] || [ $k -ne 0 ] || [ -n "${PCB_VERBOSE:-}" ]; then
-    grep -E '^::(error|warning|notice)' "$err" || true
+    grep -E '^::(error|warning|notice)' "$err" | annot_render || true
   fi
   if [ $k -ne 0 ] || [ -n "${PCB_VERBOSE:-}" ]; then
     sed -E '/^::(error|warning|notice)/d' "$err" | sed "s/^/${C_DIM}    /;s/$/${C_OFF}/"
