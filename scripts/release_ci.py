@@ -737,7 +737,30 @@ def main():
         sys.exit(f"release: no .kicad_pro in {pd}")
     stem = os.path.splitext(os.path.basename(pro[0]))[0]     # root sch/pcb share the project name
     pcb, sch = f"{pd}/{stem}.kicad_pcb", f"{pd}/{stem}.kicad_sch"
-    cfg = load_toml(os.path.join(pd, a.config))
+    cfg_path = os.path.join(pd, a.config)
+    if not os.path.isfile(cfg_path):
+        # This used to die on a bare FileNotFoundError traceback. release.toml holds
+        # FAB INTENT (finish, stackup strictness, via treatment) -- decisions a human
+        # makes, not something we can derive from the board -- so we cannot write a
+        # real one. Drop the annotated template beside the project instead: the next
+        # step is then "fill this in and rename", not "go find the template".
+        here = os.path.dirname(os.path.abspath(__file__))          # pcb_release/scripts
+        example = os.path.join(os.path.dirname(here), "release.toml.example")
+        dest = os.path.join(pd, "release.toml.example")
+        print(f"::error::[release] {cfg_path} does not exist. It declares fabrication "
+              f"INTENT (surface finish, soldermask colour, stackup/impedance strictness, "
+              f"via treatment) -- a human decision, so CI cannot generate it.")
+        if os.path.isfile(dest):
+            print(f"::error::[release] fill in {dest} and rename it to {a.config}.")
+        elif os.path.isfile(example):
+            shutil.copyfile(example, dest)
+            print(f"::error::[release] wrote an annotated template to {dest} "
+                  f"-- fill it in and rename it to {a.config}.")
+        else:
+            print(f"::error::[release] template missing too ({example}); "
+                  f"copy release.toml.example from pcb_release by hand.")
+        return 2
+    cfg = load_toml(cfg_path)
     validate_config(cfg)
 
     if a.mode == "pnp":                 # light early gate: pos >= BOM only (no gerbers)

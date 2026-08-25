@@ -48,9 +48,16 @@ def run(*cmd):
 
 def fetch(board, dst):
     """Sparse-checkout just this board's models from REPO@master -> True on success."""
-    want = subprocess.run([sys.executable, os.path.join(HERE, "model3d_lint.py"),
-                           board, "--print-needed", VAR],
-                          capture_output=True, text=True).stdout.split()
+    # splitlines(), NOT split(): --print-needed emits one filename per line and a
+    # model name may legitimately contain spaces ("VQFN-HR-08 2x2.step"). Splitting
+    # on whitespace tore such a name into two nonexistent entries, so the real file
+    # was never sparse-checked-out and the board failed 3D lint with a "missing"
+    # model that was sitting in the library all along.
+    want = [w.strip() for w in
+            subprocess.run([sys.executable, os.path.join(HERE, "model3d_lint.py"),
+                            board, "--print-needed", VAR],
+                           capture_output=True, text=True).stdout.splitlines()
+            if w.strip()]
     if not want:
         log(f"[models] board references no ${{{VAR}}} models -- nothing to fetch")
         return False
