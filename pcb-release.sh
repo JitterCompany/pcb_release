@@ -55,7 +55,7 @@ rc=0
 # kicad-cli check -> all-severity JSON -> check_report.py policy (errors gate;
 # warnings only with --strict; KiCad-excluded never gate; --ignore-type suppressed).
 kicad_check() {
-  local label="$1"; shift; local rep="$out/${label,,}.json"
+  local label="$1"; shift; local rep="$out/$(printf %s "$label" | tr '[:upper:]' '[:lower:]').json"
   echo "== $label =="; set +e; "$@" --severity-all --format json --output "$rep"; local k=$?; set -e
   [ -s "$rep" ] || { echo "::error::[$label] kicad-cli produced no report (exit $k)"; rc=1; return; }
   python3 "$S/check_report.py" --label "$label" $strict --ignore-type "$ignore" "$rep" || rc=1
