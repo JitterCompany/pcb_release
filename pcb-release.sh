@@ -48,33 +48,79 @@ stem=$(basename "$pro" .kicad_pro); sch="$proj/$stem.kicad_sch"; pcb="$proj/$ste
 # design finding -- suppress it by default so a new project needs no config at
 # all; set KICAD_IGNORE_TYPES to override (empty string = suppress nothing).
 ignore="${KICAD_IGNORE_TYPES-lib_symbol_issues,footprint_link_issues,lib_footprint_issues}"
-out="${CHECK_OUT:-$(mktemp -d)}"; mkdir -p "$out"
+# BSD/macOS mktemp REQUIRES a template; GNU accepts one. Always pass one, or this
+# dies on a Mac with a bare usage error.
+TMPL="${TMPDIR:-/tmp}/pcb-release.XXXXXX"
+out="${CHECK_OUT:-$(mktemp -d "$TMPL")}"; mkdir -p "$out"
 m3d="${KICAD_3D_LINT_ARGS:-}"                  # word-split on purpose: it carries flags
 rc=0
+board=$(basename "$proj")
+
+# ---- console -------------------------------------------------------------
+. "$here/colors.sh"
+
+# EVERY stage ends with exactly one of these and nothing else claims a verdict,
+# so a scroll-back reads as one PASS/FAIL column per board.
+stage_result() {                       # $1 = stage label, $2 = rc
+  if [ "$2" -eq 0 ]; then printf '%s  PASS%s  %s / %s\n' "$C_OK" "$C_OFF" "$board" "$1"
+  else                    printf '%s  FAIL%s  %s / %s\n' "$C_ERR" "$C_OFF" "$board" "$1"; fi
+}
+
+# Run a stage QUIETLY: its chatter is shown only if it fails (or PCB_VERBOSE=1).
+# GitHub annotations (::error/::warning/::notice) always pass through -- those are
+# the findings, not chatter, so a green run stays quiet without hiding anything
+# that matters. This is why kicad-cli's "Found N violations" no longer confuses:
+# that count includes warnings and deliberately-ignored types, so on a PASS it
+# only ever contradicted the verdict.
+stage() {
+  local label="$1"; shift
+  local log; log=$(mktemp "$TMPL")
+  "$@" >"$log" 2>&1; local k=$?
+  grep -E '^::(error|warning|notice)' "$log" || true
+  if [ $k -ne 0 ] || [ -n "${PCB_VERBOSE:-}" ]; then
+    sed -E '/^::(error|warning|notice)/d' "$log" | sed "s/^/${C_DIM}    /;s/$/${C_OFF}/"
+  fi
+  rm -f "$log"
+  stage_result "$label" "$k"
+  [ $k -eq 0 ] || rc=1
+  return $k
+}
 
 # kicad-cli check -> all-severity JSON -> check_report.py policy (errors gate;
 # warnings only with --strict; KiCad-excluded never gate; --ignore-type suppressed).
 kicad_check() {
   local label="$1"; shift; local rep="$out/$(printf %s "$label" | tr '[:upper:]' '[:lower:]').json"
-  echo "== $label =="; set +e; "$@" --severity-all --format json --output "$rep"; local k=$?; set -e
-  [ -s "$rep" ] || { echo "::error::[$label] kicad-cli produced no report (exit $k)"; rc=1; return; }
-  python3 "$S/check_report.py" --label "$label" $strict --ignore-type "$ignore" "$rep" || rc=1
+  "$@" --severity-all --format json --output "$rep" >/dev/null 2>&1; local k=$?
+  [ -s "$rep" ] || { echo "::error::[$label] kicad-cli produced no report (exit $k)"; return 1; }
+  python3 "$S/check_report.py" --label "$label" $strict --ignore-type "$ignore" "$rep"
 }
-gate_erc() { kicad_check ERC kicad-cli sch erc "$sch"; echo "== SCHEMA (dnp-lint) =="; python3 "$S/dnp_lint.py" "$sch" || rc=1; }
-gate_drc() { kicad_check DRC kicad-cli pcb drc --schematic-parity "$pcb"; echo "== SCHEMA (pos>=bom) =="; python3 "$S/release_ci.py" "$proj" --mode pnp || rc=1; }
+gate_erc() { stage ERC kicad_check ERC kicad-cli sch erc "$sch"
+             stage "SCHEMA (dnp-lint)" python3 "$S/dnp_lint.py" "$sch"; }
+gate_drc() { stage DRC kicad_check DRC kicad-cli pcb drc --schematic-parity "$pcb"
+             stage "SCHEMA (pos>=bom)" python3 "$S/release_ci.py" "$proj" --mode pnp; }
 # 3D: cheap (~1s, pure python) and it runs BEFORE any export, because kicad-cli
 # reports an unresolvable model on stdout and still exits 0 -- so a STEP with
 # parts silently missing looks exactly like a good one. Customers fit-check
 # against that STEP, so it gates.
-gate_3d()  { echo "== 3D MODELS =="; python3 "$S/model3d_lint.py" "$pcb" --require-model $m3d || rc=1; }
+gate_3d()  { stage "3D MODELS" python3 "$S/model3d_lint.py" "$pcb" --require-model $m3d; }
 
 # Point the shared 3D model library at a real directory, exported so BOTH
 # kicad-cli and the linter resolve the same files. The STOCK KiCad library is
 # deliberately NOT handled here -- it is an environment prerequisite
 # (kicad-packages3d / the `-full` image), not a package manager to re-implement.
+# NOTE: not wrapped in stage() -- this one must run in the CURRENT shell so its
+# exports survive, and its stdout is the KEY=VALUE payload, not chatter. Same quiet
+# policy applied by hand to its stderr progress.
 setup_models() {
-  local out line
-  out=$(python3 "$S/model_libs.py" "$proj") || rc=1   # progress/errors go to stderr
+  local out line err k
+  err=$(mktemp "$TMPL")
+  out=$(python3 "$S/model_libs.py" "$proj" 2>"$err"); k=$?   # progress/errors -> stderr
+  [ $k -eq 0 ] || rc=1
+  grep -E '^::(error|warning|notice)' "$err" || true
+  if [ $k -ne 0 ] || [ -n "${PCB_VERBOSE:-}" ]; then
+    sed -E '/^::(error|warning|notice)/d' "$err" | sed "s/^/${C_DIM}    /;s/$/${C_OFF}/"
+  fi
+  rm -f "$err"
   while IFS= read -r line; do
     [ -n "$line" ] && export "$line"
   done <<<"$out"
@@ -97,8 +143,7 @@ pinmap() {
          "or drop 'pinmap: true' from the workflow if this board has no MCU."
     rc=1; return 1
   fi
-  echo "== PINMAP ${1:-generate} =="
-  python3 "$S/generate_pinmap.py" --config "$conf" ${1:+--$1} "$sch" || rc=1
+  stage "PINMAP ${1:-generate}" python3 "$S/generate_pinmap.py" --config "$conf" ${1:+--$1} "$sch"
 }
 
 case "$cmd" in
@@ -109,13 +154,13 @@ case "$cmd" in
   pinmap-drift) pinmap drift ;;
   3d)      setup_models; gate_3d ;;
   all)     gate_erc; gate_drc; setup_models; gate_3d ;;
-  drift)   python3 "$S/release_ci.py" "$proj" --mode drift || rc=1 ;;
+  drift)   stage "RELEASE SPEC DRIFT" python3 "$S/release_ci.py" "$proj" --mode drift ;;
   check)   gate_erc; gate_drc; setup_models; gate_3d; pinmap drift optional
-           python3 "$S/release_ci.py" "$proj" --mode drift || rc=1 ;;
+           stage "RELEASE SPEC DRIFT" python3 "$S/release_ci.py" "$proj" --mode drift ;;
   release) gate_erc; gate_drc; setup_models; gate_3d
            # one pass: fab zip (PCBA partner) + customer set (STEP/PDF/renders/iBOM)
-           python3 "$S/release_ci.py" "$proj" --mode build || rc=1 ;;
+           stage "RELEASE BUILD" python3 "$S/release_ci.py" "$proj" --mode build ;;
   *) echo "pcb-release: unknown command '$cmd'" >&2; exit 2 ;;
 esac
-echo "reports in: $out"
+[ -n "${PCB_VERBOSE:-}" ] && echo "reports in: $out"
 exit $rc

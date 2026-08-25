@@ -108,14 +108,14 @@ def main():
     print(f"[{args.label}] summary: "
           f"errors={n_err} warnings={n_warn} excluded={n_excl} ignored={len(ignored)}")
 
+    # No RESULT line here on purpose: pcb-release.sh prints ONE verdict per stage,
+    # in one style, so nothing else claims a pass/fail. Say WHY we are about to
+    # fail, though -- the caller only knows the exit code.
     fail = n_err > 0 or (args.strict and n_warn > 0)
     if fail:
         why = "errors present" if n_err else "warnings present (--strict)"
-        print(f"[{args.label}] RESULT: FAIL ({why})")
+        print(f"[{args.label}] gating: {why}")
         return 1
-
-    tail = " (warnings present, not gating)" if n_warn else ""
-    print(f"[{args.label}] RESULT: PASS{tail}")
     return 0
 
 
