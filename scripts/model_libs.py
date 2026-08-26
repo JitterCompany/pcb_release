@@ -47,7 +47,14 @@ def run(*cmd):
 
 
 def fetch(board, dst):
-    """Sparse-checkout just this board's models from REPO@master -> True on success."""
+    """Sparse-checkout just this board's models from REPO@master.
+
+    -> "ok"    fetched
+       "empty" the board references no shared models at all, which is NORMAL for a board
+               built entirely from stock footprints. This used to share a False return
+               with a genuine fetch failure, so such a board failed the whole run with no
+               error line to show for it.
+       "fail"  the fetch itself failed (network / access)."""
     # splitlines(), NOT split(): --print-needed emits one filename per line and a
     # model name may legitimately contain spaces ("VQFN-HR-08 2x2.step"). Splitting
     # on whitespace tore such a name into two nonexistent entries, so the real file
@@ -60,7 +67,7 @@ def fetch(board, dst):
             if w.strip()]
     if not want:
         log(f"[models] board references no ${{{VAR}}} models -- nothing to fetch")
-        return False
+        return "empty"
     log(f"[models] fetching {len(want)} model(s) <- {REPO} @ master")
     shutil.rmtree(dst, ignore_errors=True)
     os.makedirs(dst, exist_ok=True)
@@ -74,7 +81,7 @@ def fetch(board, dst):
     if not ok:
         log(f"::error::[models] could not fetch {REPO} (network? access?)")
         shutil.rmtree(dst, ignore_errors=True)
-    return ok
+    return "ok" if ok else "fail"
 
 
 def main():
@@ -95,10 +102,12 @@ def main():
         log(f"[models] {VAR}: using the value already in the environment")
     else:
         path = os.path.join(proj, ".kicad-3d", SUBDIR)
-        if fetch(os.path.join(proj, pcbs[0]), os.path.join(proj, ".kicad-3d")):
+        got = fetch(os.path.join(proj, pcbs[0]), os.path.join(proj, ".kicad-3d"))
+        if got == "ok":
             print(f"{VAR}={os.path.abspath(path)}")
-        else:
+        elif got == "fail":
             rc = 1
+        # "empty" is not a failure: there was simply nothing to fetch.
     log(f"[models] {VAR} = {os.path.abspath(path)}")
 
     # Stock library: reported, never fetched -- it is the environment's job.

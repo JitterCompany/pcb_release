@@ -124,7 +124,9 @@ setup_models() {
   local out line err k
   err=$(mktemp "$TMPL")
   out=$(python3 "$S/model_libs.py" "$proj" 2>"$err"); k=$?   # progress/errors -> stderr
-  [ $k -eq 0 ] || rc=1
+  # Emit a verdict line when this fails. Without one, rc was set here while every stage
+  # printed PASS, so the run ended "all PASS -> FAIL" with nothing to point at.
+  if [ $k -ne 0 ]; then stage_result "3D MODEL FETCH" "$k"; rc=1; fi
   if [ "${GITHUB_ACTIONS:-}" = "true" ] || [ $k -ne 0 ] || [ -n "${PCB_VERBOSE:-}" ]; then
     grep -E '^::(error|warning|notice)' "$err" | annot_render || true
   fi
