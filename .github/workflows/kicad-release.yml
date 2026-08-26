@@ -13,7 +13,7 @@
 #     release:
 #       uses: JitterCompany/pcb_release/.github/workflows/kicad-release.yml@master
 #       with:
-#         project-dir: hardware/5101-btb-pcb
+#         project-dir: hardware/my-board
 #
 # Builds the fab zip (production/, for the PCBA partner) and the customer set
 # (STEP/PDF/renders), and uploads both as workflow artifacts.

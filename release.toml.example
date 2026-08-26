@@ -1,71 +1,19 @@
-# ==========================================================================
-# PCB release configuration — EXAMPLE with sane defaults.
-# (Generic template — belongs in common/kicad_pcb_release; no project specifics.)
+# PCB release config. Full option reference: pcb_release/README.md
 #
-# Copy to `release.toml` beside your .kicad_pro and adjust. Principle: anything
-# KiCad already knows — stackup, board size, via tenting, SMD/THT placement — is
-# EXTRACTED from the design by CI; this file declares only INTENT, fab
-# REQUIREMENTS, and how STRICTLY the fab must follow the extracted stackup.
-# Use "any" for "no specific requirement" (it still prints, so it's explicit).
-# ==========================================================================
+# Anything KiCad already knows -- stackup, size, via tenting, SMD/THT placement -- is
+# extracted from the board. This file is only what KiCad cannot know: what you are
+# asking the fab for. Defaults are sane, so set the four below and you are done.
 
-[assembly]
-# PCBA on/off and side scope. CI extracts the real SMD/THT x side counts from the
-# pick&place export and reports them; this only declares which sides to assemble
-# (and thus which fab layers / pos / BOM / stencils get made) + cross-checks.
-#   "auto" = assemble every side that has parts    "none" = bare PCB, no PCBA
-#   "top" | "btm" | "both" = force
-sides = "auto"            # auto | none | top | btm | both
-
-[stencil]
-# A paste stencil is AUTO-required for every side that has SMD parts — leave
-# `force` empty for that. Set it only for special cases (hand-solder a side
-# despite SMD, a paste jig, etc.).
-force = ""                # "" = auto-derive from SMD | top | btm | both | none
-
-[stackup]
-# Stackup + impedance strictness -- ONE spectrum (loose -> strict):
-#   "standard"   = any standard N-layer at the finished thickness; NO impedance control
-#   "impedance"  = impedance targets binding; stackup is reference-only -- the fab may
-#                  substitute dielectrics and adjust trace widths to hit the targets
-#   "controlled" = build the EXACT dielectric stackup (Dk/Df/thickness binding)
-# When not "standard", the board's Impedance gerber is auto-added + referenced.
-spec = "standard"
-impedance_note = ""            # optional targets, e.g. "50R SE on L1 (ref plane L2)"
+[board]
+# name = "my-board-2"     # deliverable name + the text checked on the silkscreen.
+                          # Default: the KiCad project name.
+# date = "auto"           # let a release build stamp today into the title blocks.
 
 [fab]
-surface_finish    = "any"     # "ENIG" | "HASL-LF" | "ENIG+..." | "any"
-soldermask_color  = "any"     # read from KiCad stackup if set there; else here; "any"
-silkscreen_color  = "any"
-via_treatment     = "any"     # "tented both sides" | "soldermask-filled + tented" | "any"
-                              #   (cross-checked against KiCad tenting/plugging/filling)
-special_layers    = []        # e.g. ["Coating_top","Coating_bottom"] for conformal coating
-flex              = "none"    # "none" | stiffener spec (thickness + outline layer)
-notes             = "any"
+surface_finish    = "ENIG"                 # or "HASL-LF", "any"
+soldermask_color  = "green"                # or "any"
+silkscreen_color  = "white"                # or "any"
+via_treatment     = "tented both sides"    # or "any" -- cross-checked against KiCad
 
-[requirements]
-# Compliance stated to the fab (printed in README-manufacturing). Defaults on.
-rohs    = true                # RoHS-compliant (lead-free) build
-ul94_v0 = true                # laminate flammability rating UL94 V-0
-# ipc_class = 2               # optional: IPC-A-600 / IPC-A-610 class (2 or 3)
-
-[customer]
-# The STEP a customer fit-checks their enclosure against. Default shows the board
-# AS ASSEMBLED: do-not-populate parts left out (kicad-cli --no-dnp), consistent
-# with the pick&place and BOM which already drop them. false = include DNP bodies
-# (e.g. clearance for a variant that does fit them). Affects the STEP ONLY --
-# `pcb render` has no DNP filter, so DNP parts always appear in the PNG renders.
-step_exclude_dnp = true
-
-# Layer visibility for the 3D renders. kicad-cli's own default,
-# "follow_plot_settings", shows everything we PLOT -- including non-physical
-# fab-intent layers (impedance, conformal coating), which paint coloured films
-# over the board and hide the silkscreen. "follow_pcb_editor" uses the 3D viewer
-# defaults: physical layers only. Or name a preset saved in the project.
-render_preset = "follow_pcb_editor"
-
-[bom]
-# Shorten footprint names like Kicad_bom_sync (drop lib prefix, '_'->space, drop
-# metric suffix on passives): "Capacitor_SMD:C_0603_1608Metric" -> "C 0603".
-# Readable BOM + minimal diff vs the sync xlsx. false = raw KiCad footprint names.
-readable_footprints = true
+[stackup]
+spec = "standard"         # standard | impedance | controlled

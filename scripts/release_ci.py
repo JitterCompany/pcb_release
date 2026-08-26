@@ -22,6 +22,7 @@ SMD/THT x side counts; the .kicad_pcb (setup) block for via tenting; and (reusin
 Kicad_bom_sync's netlist_reader) the BOM ref set for the pick&place >= BOM check.
 """
 import argparse
+import atexit
 import csv
 import datetime
 import difflib
@@ -666,7 +667,7 @@ def special_sections(fab):
         out += ["## Special layers"] + [f"- {l}" for l in other] + [""]
     return out
 
-def emit_readme(cfg, gbr, tent, counts, res, stem):
+def emit_readme(cfg, gbr, tent, counts, res, name):
     sz = gbr["size"]
     fab = cfg.get("fab", {})
     req = cfg.get("requirements", {})
@@ -697,7 +698,7 @@ def emit_readme(cfg, gbr, tent, counts, res, stem):
             L.append(f"- {side.capitalize()} side: {counts['smd'][side]} SMD, {counts['tht'][side]} THT "
                      f"(components on {fabref[side]})")
         L += ["",
-              f"Place only the parts listed in the BOM (BOM_{stem}.csv).",
+              f"Place only the parts listed in the BOM (BOM_{name}.csv).",
               "Pick & place positions are in all-pos.csv; see smd-pos.csv for the SMD components only.",
               ""]
     else:
@@ -710,6 +711,37 @@ def emit_readme(cfg, gbr, tent, counts, res, stem):
     return "\n".join(L) + "\n"
 
 # ----------------------------- checks -----------------------------
+def make_board_alias(pd, stem, name):
+    """Give kicad-cli a board FILE already called <name>, instead of renaming its output
+    afterwards.
+
+    kicad-cli names every gerber, drill and export after the board file AND stamps that
+    name into each gerber's %TF.ProjectId, together with a GUID it derives from the name.
+    Renaming the files afterwards therefore leaves the project name inside them, and the
+    GUID cannot be regenerated without reimplementing KiCad's derivation. Handing it a
+    correctly named board file gets all of that right at the source.
+
+    The copy lives BESIDE the original: same directory, so ${KIPRJMOD} and every
+    relative asset still resolve. The .kicad_pro goes with it because kicad-cli pairs the
+    project file by matching basename, and without it the board loads with no project.
+
+    -> (board file to export from, [paths to clean up])"""
+    if name == stem:
+        return os.path.join(pd, stem + ".kicad_pcb"), []
+    made = []
+    for ext in (".kicad_pcb", ".kicad_pro"):
+        src, dst = os.path.join(pd, stem + ext), os.path.join(pd, name + ext)
+        if os.path.exists(dst):
+            for m in made:
+                os.remove(m)
+            sys.exit(f"release: refusing to overwrite {dst} -- a real file is already "
+                     f"named after [board] name. Remove it or choose another name.")
+        if os.path.exists(src):
+            shutil.copyfile(src, dst)
+            made.append(dst)
+    return os.path.join(pd, name + ".kicad_pcb"), made
+
+
 REQUIRED_GERBERS = ["F_Cu", "B_Cu", "F_Mask", "B_Mask", "Edge_Cuts"]
 def run_checks(outdir, res, pos_all, bom):
     problems = []
@@ -727,6 +759,174 @@ def run_checks(outdir, res, pos_all, bom):
         if missing:
             problems.append(f"{len(missing)} BOM part(s) missing from pick&place: {', '.join(missing[:15])}")
     return problems
+
+# ----------------------------- board identity -----------------------------
+# Two things a fab-ready board should carry and nothing else checks: its own NAME on
+# the silkscreen, and a logo. Both are trivially forgotten and expensive to discover
+# on a delivered panel, and neither shows up in ERC, DRC or the gerber job file.
+#
+# Opt out per board with [board] skip = ["name", "logo"] -- rarely needed, so a
+# release.toml without a [board] section behaves exactly as before.
+
+def _norm(t):
+    """Fold a silk string for comparison: case, and every separator we allow the
+    designer to have used (-, _, whitespace) or to have split a text item across."""
+    return re.sub(r"[^a-z0-9]", "", (t or "").lower())
+
+
+def silk_texts(pcb):
+    """-> {"F": [str], "B": [str]} of GRAPHIC silkscreen text.
+
+    Reference designators and values are deliberately excluded: they are not the
+    board's name and including them would make the check pass on almost anything."""
+    src = open(pcb).read()
+    out = {"F": [], "B": []}
+    for m in re.finditer(r'\((gr_text|gr_text_box|fp_text)\s+(?:(user|reference|value)\s+)?"((?:[^"\\]|\\.)*)"', src):
+        kind, sub, txt = m.group(1), m.group(2), m.group(3)
+        if kind == "fp_text" and sub != "user":        # skip refdes / value
+            continue
+        # find this node's extent so we read ITS layer, not a later sibling's
+        i = m.start(); depth = 0; j = i
+        while j < len(src):
+            if src[j] == "(": depth += 1
+            elif src[j] == ")":
+                depth -= 1
+                if depth == 0: break
+            j += 1
+        node = src[i:j + 1]
+        lm = re.search(r'\(layer\s+"([FB])\.SilkS"', node)
+        if lm:
+            # Unescape properly: KiCad writes a multi-line silk item as one string with
+            # a literal backslash-n. Left alone, that 'n' folds into the comparison and
+            # a name split across two silk LINES stops matching.
+            out[lm.group(1)].append(
+                txt.replace('\\n', '\n').replace('\\"', '"').replace('\\\\', '\\'))
+    return out
+
+
+def silk_has_name(name, texts):
+    """Is `name` present, allowing it to be split across several text items in any
+    order? A board legitimately silkscreens "MyModule-12" above "sensor-board"; that reads
+    as one name to a human and must count as one here."""
+    tgt = _norm(name)
+    if not tgt:
+        return True
+    for t in texts:                                    # whole name in one item
+        if tgt in _norm(t):
+            return True
+    pool = [t for t in texts if _norm(t)]              # or assembled from several
+    def rec(rem, avail):
+        if not rem:
+            return True
+        for k, t in enumerate(avail):
+            nt = _norm(t)
+            if rem.startswith(nt) and rec(rem[len(nt):], avail[:k] + avail[k + 1:]):
+                return True
+        return False
+    return rec(tgt, pool)
+
+
+def has_logo(pcb):
+    """A logo is a footprint whose library or reference says so -- the only portable
+    signal, since a logo has no pads, no net and no BOM entry to key on."""
+    src = open(pcb).read()
+    if re.search(r'\(footprint\s+"[^"]*logo[^"]*"', src, re.I):
+        return True
+    return bool(re.search(r'\((?:property\s+"Reference"|fp_text\s+reference)\s+"LOGO[^"]*"', src, re.I))
+
+
+def title_block(path):
+    """-> (title, rev) from a .kicad_sch / .kicad_pcb title block; either may be None."""
+    tb = title_fields(path)
+    return (tb.get("title"), tb.get("rev"))
+
+
+def title_fields(path):
+    """-> {title, rev, date} of the title block; missing fields absent from the dict."""
+    m = re.search(r'\(title_block\b(.*?)\n\s*\)', open(path).read(), re.S)
+    if not m:
+        return {}
+    out = {}
+    for k in ("title", "rev", "date"):
+        f = re.search(r'\(' + k + r'\s+"((?:[^"\\]|\\.)*)"', m.group(1))
+        if f:
+            out[k] = f.group(1).replace('\\"', '"')
+    return out
+
+
+def stamp_title_date(path, date):
+    """Set the title block's date, touching nothing else. -> old value, or None if the
+    file has no title block to stamp (we do not invent one -- that is a KiCad edit)."""
+    src = open(path).read()
+    m = re.search(r'\(title_block\b(.*?)\n(\s*)\)', src, re.S)
+    if not m:
+        return None
+    body, indent = m.group(1), m.group(2)
+    dm = re.search(r'\(date\s+"(?:[^"\\]|\\.)*"\)', body)
+    if dm:
+        old = re.search(r'\(date\s+"((?:[^"\\]|\\.)*)"\)', body).group(1)
+        nbody = body[:dm.start()] + f'(date "{date}")' + body[dm.end():]
+    else:
+        old = ""
+        nbody = body + f'\n{indent}\t(date "{date}")'
+    out = src[:m.start(1)] + nbody + src[m.end(1):]
+    if out != src:
+        with open(path, "w") as f:
+            f.write(out)
+    return old
+
+
+def split_revision(name):
+    """'my-board-x1-2' -> ('my-board-x1', '2');  'foo-v1.2' -> ('foo', '1.2').
+    None when the name carries no trailing revision. A separator is required, so a name
+    merely ENDING in digits ('X1234') is left alone."""
+    m = re.match(r'^(?P<base>.+?)(?:[-_ ]?[vV](?P<v>\d+(?:\.\d+)*)'
+                 r'|[-_](?P<n>\d+(?:\.\d+)*))$', name)
+    return (m.group("base"), m.group("v") or m.group("n")) if m else None
+
+
+def board_identity_problems(pcb, sch, cfg, name):
+    """-> [str] problems. Cheap, board-only, so it runs before any export."""
+    skip = [str(x).strip().lower() for x in (cfg.get("board", {}).get("skip") or [])]
+    problems = []
+    if "title" not in skip:
+        # The title block is what a reader sees on every exported schematic and layout
+        # PDF, so it must agree with the name on the deliverables and the silkscreen.
+        for path, what in ((sch, "schematic"), (pcb, "layout")):
+            title, rev = title_block(path)
+            if title is None:
+                problems.append(f"{what} has no title block title -- set it to '{name}' "
+                                f"(File > Page Settings), or [board] skip = [\"title\"]")
+                continue
+            if _norm(name) in _norm(title):
+                continue
+            # A trailing revision may live in the title block's own Revision field
+            # instead of being repeated in the title: name 'foo-2' is satisfied by
+            # title 'foo' + rev '2'.
+            sp = split_revision(name)
+            if sp and _norm(sp[0]) and _norm(sp[0]) in _norm(title) \
+                    and _norm(rev or "") == _norm(sp[1]):
+                continue
+            extra = ""
+            if sp:
+                extra = (f" (or leave the title '{sp[0]}' and set Revision to "
+                         f"'{sp[1]}'; it is currently '{rev if rev is not None else ''}')")
+            problems.append(f"{what} title block says '{title}' but the board is "
+                            f"'{name}' -- set it in File > Page Settings{extra}, or "
+                            f"[board] skip = [\"title\"]")
+    if "name" not in skip:
+        texts = silk_texts(pcb)
+        if not (silk_has_name(name, texts["F"]) or silk_has_name(name, texts["B"])):
+            found = ", ".join(repr(t) for t in (texts["F"] + texts["B"])[:8]) or "(no silkscreen text)"
+            problems.append(f"board name '{name}' is not on either silkscreen -- found: {found}. "
+                            f"Add it, set [board] name to what IS silkscreened, or "
+                            f"[board] skip = [\"name\"]")
+    if "logo" not in skip:
+        if not has_logo(pcb):
+            problems.append("no logo footprint found (looked for a footprint whose library "
+                            "or reference says 'logo') -- add one, or [board] skip = [\"logo\"]")
+    return problems
+
 
 # ----------------------------- main -----------------------------
 def main():
@@ -769,6 +969,10 @@ def main():
     cfg = load_toml(cfg_path)
     validate_config(cfg)
 
+    # The KiCad project name locates the files; the BOARD name is what goes on the
+    # deliverables and the silkscreen. They are usually the same, hence the default.
+    name = str(cfg.get("board", {}).get("name", "")).strip() or stem
+
     if a.mode == "pnp":                 # light early gate: pos >= BOM only (no gerbers)
         work = tempfile.mkdtemp(prefix="pnp_")
         generate_pos(pcb, work)
@@ -780,6 +984,29 @@ def main():
         print(f"[pnp>=bom] {len(bom)} BOM parts, {len(pos_all)} placed, {len(missing)} missing")
         return 1 if missing else 0
 
+    # Title block date. RELEASE ONLY: cutting a release is the deliberate, manual act
+    # that dates a board, and it is the one path whose PDFs a customer reads. drift and
+    # check stay strictly read-only, so a CI push never rewrites a design file.
+    #   "auto"          -> stamp today: you are publishing it today, so that is its date
+    #   absent / "skip" -> leave it alone and trust whatever is filled in by hand
+    if a.mode == "build" and str(cfg.get("board", {}).get("date", "")).strip().lower() == "auto":
+        today = datetime.date.today().isoformat()
+        for path, what in ((sch, "schematic"), (pcb, "layout")):
+            if title_fields(path).get("date") == today:
+                continue
+            old = stamp_title_date(path, today)
+            if old is None:
+                print(f"::warning::[release] {what} has no title block -- cannot stamp the date")
+            else:
+                print(f"::notice::[release] {what} title block date {old or '(empty)'} "
+                      f"-> {today} (commit this)")
+
+    ident = board_identity_problems(pcb, sch, cfg, name)
+    for pr in ident:
+        print(f"::error::[release] {pr}")
+    if ident:
+        return 1
+
     outdir = os.path.join(pd, "production") if a.mode == "build" else tempfile.mkdtemp(prefix="release_")
     if a.mode == "build" and os.path.isdir(outdir):     # preserve the previous release, regenerate clean
         stamp = datetime.datetime.now().replace(microsecond=0).isoformat()
@@ -787,7 +1014,16 @@ def main():
 
     # pos + BOM -> counts -> resolved sides FIRST, so we can export only the layers
     # the config actually needs (paste per stencil side, fab per assembly side).
-    generate_pos(pcb, outdir)
+    # Export under the BOARD name. build only: drift and check must not write into the
+    # project directory. atexit rather than try/finally so the cleanup also runs if an
+    # export raises, without wrapping the whole of main in another block.
+    export_pcb, alias_files = (pcb, [])
+    if a.mode == "build":
+        export_pcb, alias_files = make_board_alias(pd, stem, name)
+        if alias_files:
+            atexit.register(lambda: [os.remove(f) for f in alias_files if os.path.exists(f)])
+
+    generate_pos(export_pcb, outdir)
     bom = bom_refs(sch)
     pos_all, pos_smd = extract_pos(outdir)
     counts = count_assembly(pos_all, pos_smd, bom)
@@ -795,7 +1031,7 @@ def main():
     res = resolve(cfg, tent, counts)
     copper, blresolve = board_layers(pcb)
     layers = required_layers(cfg, blresolve, copper, res["assembly"], res["stencil"])
-    generate_gerbers(pcb, outdir, layers)
+    generate_gerbers(export_pcb, outdir, layers)
 
     gbr = extract_gbrjob(outdir)
     ew = extract_edge_width(outdir)                  # board is cut on the Edge.Cuts centerline
@@ -804,7 +1040,7 @@ def main():
     gbr["edge_width"] = ew
 
     spec = emit_spec(cfg, gbr, tent, counts, res)
-    readme = emit_readme(cfg, gbr, tent, counts, res, stem)
+    readme = emit_readme(cfg, gbr, tent, counts, res, name)
 
     for w in res["warn"]:
         print(f"::warning::[release] {w}")
@@ -831,7 +1067,7 @@ def main():
     if a.mode == "build":
         open(os.path.join(pd, a.spec), "w").write(spec)
         open(os.path.join(outdir, "README-manufacturing.txt"), "w").write(readme)  # .txt: opens everywhere
-        generate_bom(sch, os.path.join(outdir, f"BOM_{stem}.csv"),
+        generate_bom(sch, os.path.join(outdir, f"BOM_{name}.csv"),
                      cfg.get("bom", {}).get("readable_footprints", True))
 
     problems = run_checks(outdir, res, pos_all, bom)
@@ -839,18 +1075,18 @@ def main():
         print(f"::error::[release] {p}")
 
     if a.mode == "build":                               # package production/ -> dated zip in the project dir
-        zpath = shutil.make_archive(os.path.join(pd, package_stem("production", stem)), "zip", outdir)
+        zpath = shutil.make_archive(os.path.join(pd, package_stem("production", name)), "zip", outdir)
         print(f"[release] packaged {os.path.basename(zpath)}  ({len(os.listdir(outdir))} files in production/)")
 
         # Customer set, from the SAME resolved layer list as the gerbers above --
         # it was never a separable flow (nothing shipped docs without a fab
         # package), and splitting it meant resolving assembly/stencil sides twice.
         cus = cfg.get("customer", {})
-        generate_customer(pcb, sch, os.path.join(pd, "customer"), stem,
+        generate_customer(export_pcb, sch, os.path.join(pd, "customer"), name,
                           cus.get("step_exclude_dnp", True),
                           cus.get("render_preset", "follow_pcb_editor"), layers)
         cdir = os.path.join(pd, "customer")
-        zpath = shutil.make_archive(os.path.join(pd, package_stem("customer", stem)), "zip", cdir)
+        zpath = shutil.make_archive(os.path.join(pd, package_stem("customer", name)), "zip", cdir)
         print(f"[release] packaged {os.path.basename(zpath)}  ({len(os.listdir(cdir))} files in customer/)")
 
     print(f"[release] mode={a.mode}: {len(res['warn'])} warning(s), {len(problems)} error(s)")
