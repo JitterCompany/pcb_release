@@ -1,153 +1,84 @@
-# Reusable KiCad validation CI — call this from a project instead of copying jobs.
+# Reusable KiCad validation CI. Call this from a project instead of copying jobs.
 #
-# In the project (.github/workflows/hardware.yml):
+# In the project (.github/workflows/ci-hardware.yml):
 #
-#   name: hardware CI
-#   on:
-#     workflow_dispatch:
-#     push:         { branches: [master], paths: ["hardware/**", "**/hardware.yml"] }
-#     pull_request: { branches: [master], paths: ["hardware/**", "**/hardware.yml"] }
-#   concurrency:
-#     group: ci-hardware-${{ github.ref }}
-#     cancel-in-progress: true
 #   jobs:
 #     hardware:
 #       uses: JitterCompany/pcb_release/.github/workflows/kicad-checks.yml@master
+#       with:
+#         project-dirs: |
+#           hardware/my-board
+#           hardware/my-board/my-module   skip=pinmap
+#           hardware/my-old-board         skip=pinmap todo=drc,3d,drift
 #
-# Everything below is defaulted; a project that follows the layout convention
-# (hardware/tools/pcb.sh) needs no `with:` block at all.
+# The board list is the ONLY thing a project states. EVERY gate is enforced for
+# every board unless that board says otherwise, so a new board cannot go silently
+# unchecked and a gate cannot be forgotten, only exempted on purpose:
+#
+#   skip=   structurally impossible here (no MCU means no pin map). Silent.
+#   todo=   applies, not green yet. Warned about every run, does not fail.
+#
+# A single-board project writes one line:
+#   with: { project-dir: hardware/my-board }
+#
+# ONE job runs every board. The gates take seconds per board while the KiCad image
+# pull does not, so a job per board would multiply the only expensive part of the
+# run by the number of boards to save a few seconds of wall clock. Each board still
+# reports its own PASS/FAIL lines, and one failing board never stops the others.
 name: KiCad checks (reusable)
 
 on:
   workflow_call:
     inputs:
-      entry:
-        description: "Project entry script; receives erc | drc | 3d"
+      project-dir:
+        description: "A single board."
         type: string
-        default: hardware/tools/pcb.sh
-      image:
-        description: "KiCad image for ERC/DRC. MUST be >= the board's KiCad version — kicad-cli cannot open files newer than itself."
-        type: string
-        default: ghcr.io/kicad/kicad:10.0
-      image-3d:
+        default: ""
+      project-dirs:
         description: >-
-          KiCad image for the 3D gate. Use a `-full` tag: the plain image ships
-          kicad-cli WITHOUT kicad-packages3d, so every stock model silently fails
-          to resolve and the STEP/renders come out hollow.
+          Several boards, one per line, each optionally followed by skip=a,b and/or
+          todo=c,d. Takes precedence over project-dir.
+        type: string
+        default: ""
+      tools:
+        description: "Where the pcb_release submodule is checked out."
+        type: string
+        default: hardware/tools/pcb_release
+      extra-checks:
+        description: >-
+          Optional project-specific script, run once per board as
+          `<script> <project-dir>` after the standard gates. Absent by default.
+        type: string
+        default: ""
+      image:
+        description: >-
+          KiCad image. MUST be >= the board's KiCad version, kicad-cli cannot open
+          files newer than itself. Must be a `-full` tag: the plain image ships
+          kicad-cli WITHOUT kicad-packages3d, so every stock 3D model silently fails
+          to resolve and the STEP and renders come out hollow.
         type: string
         default: ghcr.io/kicad/kicad:10.0-full
-      pinmap:
-        description: >-
-          Also run the MCU pin-map validation + drift jobs. Opting in makes the
-          pin map REQUIRED: if <project>/pinmap.config.toml is missing the jobs
-          FAIL rather than pass having checked nothing.
-        type: boolean
-        default: false
       timeout-minutes:
         type: number
-        default: 15
+        default: 30
 
 jobs:
-  # ERC — electrical rules on the schematic. Errors gate, warnings don't (the
-  # release runs these SAME gates with the SAME flags -- deliberately, so a green
-  # push predicts a green release; --strict is manual-only and no CI path passes
-  # it); KiCad-excluded items never gate. Findings are
-  # GitHub annotations, shown inline in the checks UI. Tune exceptions in the
-  # KiCad GUI — they live in the design files, so each one is reviewed in the diff.
-  erc:
-    name: Schematic ERC
+  hardware:
+    name: KiCad checks
     timeout-minutes: ${{ inputs.timeout-minutes }}
     runs-on: ubuntu-latest
     container:
       image: ${{ inputs.image }}
       # KiCad images run as non-root 'kicad'; the runner's /__w/_temp is
-      # root-owned, so checkout can't write its state files -> run as root.
+      # root-owned, so checkout cannot write its state files -> run as root.
       options: --user root
     steps:
       - uses: actions/checkout@v6
         with: { submodules: recursive }
-      - run: ${{ inputs.entry }} erc
-
-  # DRC — board design rules + schematic/PCB parity. Same policy as ERC.
-  drc:
-    name: Board DRC
-    timeout-minutes: ${{ inputs.timeout-minutes }}
-    runs-on: ubuntu-latest
-    container:
-      image: ${{ inputs.image }}
-      options: --user root
-    steps:
-      - uses: actions/checkout@v6
-        with: { submodules: recursive }
-      - run: ${{ inputs.entry }} drc
-
-  # 3D MODELS — can every placed part actually be rendered? kicad-cli reports an
-  # unresolvable model on stdout and still exits 0, and `pcb render` doesn't
-  # report it at all, so the STEP a customer fit-checks against can ship hollow
-  # without a single red mark. This resolves every path up front instead. Cheap
-  # (~1s of python + a ~2s sparse model fetch), hence every push, not just tags.
-  models-3d:
-    name: 3D models resolve
-    timeout-minutes: ${{ inputs.timeout-minutes }}
-    runs-on: ubuntu-latest
-    container:
-      image: ${{ inputs.image-3d }}
-      options: --user root
-    steps:
-      - uses: actions/checkout@v6
-        with: { submodules: recursive }
-      - run: |
+      - name: Checks
+        run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          ${{ inputs.entry }} 3d
-
-  # RELEASE SPEC DRIFT — release_spec.toml is the reviewed record of what we are
-  # asking the fab to build (stackup, assembly sides, finish, requirements). It is
-  # committed so a change shows up in a diff instead of silently reaching the
-  # fabricator, which only works if something notices when the board moves on
-  # without it. Same shape as pinmap-drift, and kept separate from the checks for
-  # the same reason: "the spec is out of date" is a different signal from "the
-  # design is wrong". No 3D models needed, so the plain image is fine.
-  release-drift:
-    name: Release spec drift (committed spec matches the board)
-    timeout-minutes: ${{ inputs.timeout-minutes }}
-    runs-on: ubuntu-latest
-    container:
-      image: ${{ inputs.image }}
-      options: --user root
-    steps:
-      - uses: actions/checkout@v6
-        with: { submodules: recursive }
-      - run: ${{ inputs.entry }} drift
-
-  # Pin-map VALIDATION — EXTI collisions, double-booked peripherals, reserved
-  # peripherals, analog/double-drive. Opt-in: only MCU boards have a pin map.
-  pinmap-check:
-    name: Pin-map validation
-    if: inputs.pinmap
-    timeout-minutes: ${{ inputs.timeout-minutes }}
-    runs-on: ubuntu-latest
-    container:
-      image: ${{ inputs.image }}
-      options: --user root
-    steps:
-      - uses: actions/checkout@v6
-        with: { submodules: recursive }
-      - run: ${{ inputs.entry }} pinmap-check
-
-  # Pin-map DRIFT — did the committed TOML fall behind the schematic? Separate
-  # signal from validation: catches implicit/breaking pinout changes so a human
-  # re-reviews and re-commits it.
-  pinmap-drift:
-    name: Pin-map drift (committed TOML up to date)
-    if: inputs.pinmap
-    timeout-minutes: ${{ inputs.timeout-minutes }}
-    runs-on: ubuntu-latest
-    container:
-      image: ${{ inputs.image }}
-      options: --user root
-    steps:
-      - uses: actions/checkout@v6
-        with: { submodules: recursive }
-      - run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          ${{ inputs.entry }} pinmap-drift
+          cat <<'BOARDS' | "${{ inputs.tools }}/pcb-checks.sh" \
+              --extra-checks "${{ inputs.extra-checks }}"
+          ${{ inputs.project-dirs || inputs.project-dir }}
+          BOARDS

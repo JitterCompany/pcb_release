@@ -35,7 +35,14 @@ cmd="${1:-check}"; shift || true
 # push, so that observing a green CI run predicts a green release. Do not wire this
 # into CI -- to make a warning gate, raise its severity in the KiCad GUI, where the
 # decision travels with the project and is reviewed in the diff.
-strict=""; for a in "$@"; do [ "$a" = "--strict" ] && strict="--strict"; done
+strict=""; skip_gates=""; todo_gates=""
+for a in "$@"; do
+  case "$a" in
+    --strict)  strict="--strict" ;;
+    --skip=*)  skip_gates="${a#--skip=}" ;;
+    --todo=*)  todo_gates="${a#--todo=}" ;;
+  esac
+done
 
 # Manual workflow runs IN the project dir (it globs *.kicad_pro there, writes production/).
 if [ "$cmd" = "manual" ]; then cd "$proj" && exec python3 "$S/release_pcb.py"; fi
@@ -55,6 +62,36 @@ out="${CHECK_OUT:-$(mktemp -d "$TMPL")}"; mkdir -p "$out"
 m3d="${KICAD_3D_LINT_ARGS:-}"                  # word-split on purpose: it carries flags
 rc=0
 board=$(basename "$proj")
+
+# ---- per-board gate policy ------------------------------------------------
+# EVERY gate is enforced unless this board says otherwise, so a board cannot go
+# silently unchecked and a gate cannot be forgotten, only exempted on purpose.
+#   --skip=  structurally impossible here (no MCU means no pin map) -> silent
+#   --todo=  applies, not green yet -> warn every run, do not fail
+# `pinmap` in either list covers both pinmap gates: they are one concern to a
+# board owner, and naming them separately only invites listing one of the two.
+gate_listed() {                        # $1 = comma list, $2 = gate
+  local e
+  for e in ${1//,/ }; do
+    [ "$e" = "$2" ] && return 0
+    case "$2" in "$e"-*) return 0 ;; esac
+  done
+  return 1
+}
+
+# Run a gate subject to that policy. $1 = gate name, rest = what to run.
+gate() {
+  local g="$1"; shift
+  if gate_listed "$skip_gates" "$g"; then
+    echo "### $board: '$g' does not apply to this board -- skipped"
+    return 0
+  fi
+  if gate_listed "$todo_gates" "$g"; then
+    echo "::warning title=$g not enforced for $board::The '$g' gate is not green for $board yet and is NOT gating CI. Fix the findings, then drop '$g' from that board's todo= in the CI workflow." | annot_render
+    return 0
+  fi
+  "$@"
+}
 
 # ---- console -------------------------------------------------------------
 . "$here/colors.sh"
@@ -112,6 +149,12 @@ gate_drc() { stage DRC kicad_check DRC kicad-cli pcb drc --schematic-parity "$pc
 # parts silently missing looks exactly like a good one. Customers fit-check
 # against that STEP, so it gates.
 gate_3d()  { stage "3D MODELS" python3 "$S/model3d_lint.py" "$pcb" --require-model $m3d; }
+# The model fetch is part of the 3D gate, not a separate step: skipping the gate
+# must also skip the fetch, or a board with skip=3d still pays for a git clone.
+run_3d()   { setup_models; gate_3d; }
+# Both pinmap gates behind ONE policy decision, so a board that skips pinmap says so
+# once rather than once per sub-gate.
+run_pinmap() { pinmap check; pinmap drift; }
 
 # Point the shared 3D model library at a real directory, exported so BOTH
 # kicad-cli and the linter resolve the same files. The STOCK KiCad library is
@@ -159,18 +202,29 @@ pinmap() {
   stage "PINMAP ${1:-generate}" python3 "$S/generate_pinmap.py" --config "$conf" ${1:+--$1} "$sch"
 }
 
+# Policy applies exactly when the caller supplies it. Passing no --skip/--todo (the
+# default, and what `pcb-release.sh X erc` on its own does) runs the gate unchanged,
+# so naming a gate directly always runs it. A caller that DOES pass a board's policy
+# gets it honoured for single gates too, which is what "run this gate the way CI
+# would" means.
 case "$cmd" in
-  erc)     gate_erc ;;
-  drc)     gate_drc ;;
-  pinmap)       pinmap ;;
-  pinmap-check) pinmap check ;;
-  pinmap-drift) pinmap drift ;;
-  3d)      setup_models; gate_3d ;;
-  all)     gate_erc; gate_drc; setup_models; gate_3d ;;
-  drift)   stage "RELEASE SPEC DRIFT" python3 "$S/release_ci.py" "$proj" --mode drift ;;
-  check)   gate_erc; gate_drc; setup_models; gate_3d; pinmap drift optional
-           stage "RELEASE SPEC DRIFT" python3 "$S/release_ci.py" "$proj" --mode drift ;;
-  release) gate_erc; gate_drc; setup_models; gate_3d
+  erc)     gate erc gate_erc ;;
+  drc)     gate drc gate_drc ;;
+  pinmap)       gate pinmap pinmap ;;
+  pinmap-check) gate pinmap pinmap check ;;
+  pinmap-drift) gate pinmap pinmap drift ;;
+  3d)      gate 3d run_3d ;;
+  all)     gate erc gate_erc; gate drc gate_drc
+           gate 3d run_3d ;;
+  drift)   gate drift stage "RELEASE SPEC DRIFT" \
+                python3 "$S/release_ci.py" "$proj" --mode drift ;;
+  # `check` IS the CI gate set: every gate this board is held to, in one pass.
+  check)   gate erc gate_erc; gate drc gate_drc; gate 3d run_3d
+           gate pinmap run_pinmap
+           gate drift stage "RELEASE SPEC DRIFT" \
+                python3 "$S/release_ci.py" "$proj" --mode drift ;;
+  release) gate erc gate_erc; gate drc gate_drc; gate 3d run_3d
+           gate pinmap pinmap drift    # release: drift only, the map must be current
            # one pass: fab zip (PCBA partner) + customer set (STEP/PDF/renders/iBOM)
            stage "RELEASE BUILD" python3 "$S/release_ci.py" "$proj" --mode build ;;
   *) echo "pcb-release: unknown command '$cmd'" >&2; exit 2 ;;

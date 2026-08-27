@@ -18,6 +18,56 @@ as a git submodule.
 both pass. `release` regenerates the fab outputs plus a drift-checked spec, so an
 accidental layer-count / assembly-side / stackup change is caught on review.
 
+### Telling CI which boards exist
+
+The board list is the only thing a project states. Everything else lives here, so a
+`git pull` in the submodule is enough to pick up improvements.
+
+```yaml
+# one board
+with: { project-dir: hardware/my-board }
+
+# several: one per line, policy optional and in any order
+with:
+  project-dirs: |
+    hardware/my-board
+    hardware/my-board/my-module   skip=pinmap
+    hardware/my-old-board         skip=pinmap todo=drc,3d,drift
+```
+
+**Every gate is enforced for every board** unless that board says otherwise. A new board
+therefore cannot go silently unchecked, and a gate cannot be forgotten, only exempted on
+purpose.
+
+| field | meaning | output |
+|---|---|---|
+| *(nothing)* | enforced, a failure fails the build | `PASS` / `FAIL` |
+| `skip=` | structurally impossible here, e.g. no MCU means no pin map | silent |
+| `todo=` | applies, just not green yet | warning every run, does not fail |
+
+Gate names are `erc`, `drc`, `3d`, `drift`, `pinmap`. A typo is a hard error rather than a
+quietly unenforced gate. `pinmap` covers both pin-map gates, because they are one concern
+to a board owner and naming them separately only invites listing one of the two.
+
+Both workflows produce **one job per board**, so the checks UI reads `hardware (my-board)`.
+
+### Project-specific checks
+
+Set `extra-checks: hardware/tools/my-checks.sh` to run your own script once per board, as
+`<script> <project-dir>`, after the standard gates. Optional and absent by default. This
+is the supported way to keep a project-local script without CI depending on it.
+
+### One job, every board
+
+The checks run as a **single job** that loops over the boards. The gates take seconds per
+board while pulling the KiCad image does not, so a job per board would multiply the only
+expensive part of the run by the number of boards to save a few seconds of wall clock.
+Each board still prints its own `PASS`/`FAIL` lines, and one failing board never stops the
+others.
+
+The release workflow does use one job per board, because each board uploads its own
+artifact pair and the per-board work there is substantial.
+
 ### Manual workflow (interactive, legacy, no config)
 
     pcb-release.sh <project> manual     # guided step-by-step export + zip
@@ -126,7 +176,12 @@ no title block rather than inventing one.
 
 ## Layout
 
-    pcb-release.sh         the entry point (dispatch + the ERC/DRC gate)
+    pcb-release.sh         one board: dispatch + the ERC/DRC gate
+    pcb-checks.sh          a project's whole board list, what CI and the local
+                           wrapper both call. Not inline in the workflow, so it can
+                           be run and tested outside CI.
+    scripts/boards.py      parses and validates the board list. Emits it as lines
+                           for a shell loop, or as JSON for the release matrix.
     release.toml.example   template config
     scripts/               implementation, see scripts/README.md
     colors.sh              console palette helper, sourced by pcb-release.sh AND by each

@@ -23,13 +23,20 @@ on:
   workflow_call:
     inputs:
       project-dir:
-        description: "Directory holding the .kicad_pro — where the outputs land"
+        description: "A single board. The original input, still supported."
         type: string
-        required: true
-      entry:
-        description: "Project entry script; receives 'release'"
+        default: ""
+      project-dirs:
+        description: >-
+          Several boards, one per line, each optionally followed by skip=a,b and/or
+          todo=c,d. Takes precedence over project-dir. Each board is released
+          independently and uploads its own artifact pair.
         type: string
-        default: hardware/tools/pcb.sh
+        default: ""
+      tools:
+        description: "Where the pcb_release submodule is checked out."
+        type: string
+        default: hardware/tools/pcb_release
       image:
         description: >-
           MUST be a `-full` tag: this job exports the STEP and the renders, and
@@ -38,21 +45,46 @@ on:
           Also must be >= the board's KiCad version.
         type: string
         default: ghcr.io/kicad/kicad:10.0-full
-      pinmap:
-        description: >-
-          Require the committed pin map to be current before releasing. Fails if
-          <project>/pinmap.config.toml is missing.
-        type: boolean
-        default: false
       timeout-minutes:
         type: number
         default: 30
 
 jobs:
+  # The board list decides the fan-out. One release job per board, each uploading
+  # its own artifact pair, so a multi-board repo cuts every board from one tag.
+  prepare:
+    name: Board list
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+        with: { submodules: recursive }
+      - id: m
+        run: |
+          if [ -n "${{ inputs.project-dirs }}" ]; then
+            cat > /tmp/boards.txt <<'BOARDS'
+          ${{ inputs.project-dirs }}
+          BOARDS
+          else
+            # inputs.project-dir, NOT matrix.dir: this job BUILDS the matrix, so there
+            # is no matrix context here yet.
+            echo "${{ inputs.project-dir }}" > /tmp/boards.txt
+          fi
+          # Validates the list: a typo in a gate name is a hard error rather than a
+          # quietly unenforced gate.
+          M=$(python3 "${{ inputs.tools }}/scripts/boards.py" --stdin < /tmp/boards.txt)
+          echo "matrix=$M" >> "$GITHUB_OUTPUT"
+          echo "$M" | python3 -m json.tool
+
   release:
-    name: PCB manufacturing release
+    name: ${{ matrix.name }}
+    needs: prepare
     timeout-minutes: ${{ inputs.timeout-minutes }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false        # at release time you want every board's verdict at once
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
     container:
       image: ${{ inputs.image }}
       options: --user root      # runner /__w/_temp is root-owned; checkout needs it
@@ -70,8 +102,8 @@ jobs:
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           kicad-cli version
-          if [ "${{ inputs.pinmap }}" = "true" ]; then ${{ inputs.entry }} pinmap-drift; fi
-          ${{ inputs.entry }} release     # ERC+DRC+3D gates, then fab zip + customer set
+          "${{ inputs.tools }}/pcb-release.sh" "${{ matrix.dir }}" release \
+            --skip="${{ matrix.skip }}" --todo="${{ matrix.todo }}"
       # upload-artifact ALWAYS zips what it is given, so handing it our .zip would
       # produce a zip containing a zip. Upload the directories instead and put the
       # package name on the artifact: downloading then yields exactly one archive,
@@ -79,18 +111,18 @@ jobs:
       - name: Name the packages
         id: pkg
         run: |
-          cd "${{ inputs.project-dir }}"
+          cd "${{ matrix.dir }}"
           echo "production=$(basename "$(ls -t production__*.zip | head -1)" .zip)" >> "$GITHUB_OUTPUT"
           echo "customer=$(basename "$(ls -t customer__*.zip | head -1)" .zip)" >> "$GITHUB_OUTPUT"
       - name: Upload fab package (PCBA partner)
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.pkg.outputs.production }}
-          path: ${{ inputs.project-dir }}/production/
+          path: ${{ matrix.dir }}/production/
           if-no-files-found: error
       - name: Upload customer set (STEP / PDFs / renders / iBOM)
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.pkg.outputs.customer }}
-          path: ${{ inputs.project-dir }}/customer/
+          path: ${{ matrix.dir }}/customer/
           if-no-files-found: error
