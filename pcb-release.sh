@@ -194,9 +194,14 @@ pinmap() {
   local conf="$proj/pinmap.config.toml"
   if [ ! -f "$conf" ]; then
     [ "${2:-}" = optional ] && { echo "[pinmap] no $conf -- skipped (board has no pin map)"; return 0; }
-    echo "::error::[pinmap] a pin map was requested but $conf does not exist."
-    echo "::error::[pinmap] create it (see pcb_release/scripts/generate_pinmap.py load_config)," \
-         "or drop 'pinmap: true' from the workflow if this board has no MCU."
+    # The pin map is enforced by default, so a missing config is a real failure:
+    # either the board has an MCU and nobody made one, or it has none and should say
+    # skip=pinmap. Report it with a verdict line like every other gate, or the run
+    # ends "every stage PASS -> FAIL" with nothing to point at.
+    echo "::error::[pinmap] no $conf. Create one (see scripts/generate_pinmap.py" \
+         "load_config), or give this board skip=pinmap in the CI board list if it has" \
+         "no MCU." | annot_render
+    stage_result "PINMAP ${1:-generate}" 1
     rc=1; return 1
   fi
   stage "PINMAP ${1:-generate}" python3 "$S/generate_pinmap.py" --config "$conf" ${1:+--$1} "$sch"

@@ -20,6 +20,14 @@
 # never stops the others: every board is reported, then the exit code is the union.
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
+. "$here/colors.sh"
+
+# Every failure gets a verdict line. A path that sets rc without one produces a run
+# where each stage says PASS and the total says FAIL, with nothing to point at.
+verdict() {                            # $1 = label, $2 = rc
+  if [ "$2" -eq 0 ]; then printf '%s  PASS%s  %s\n' "$C_OK" "$C_OFF" "$1"
+  else                    printf '%s  FAIL%s  %s\n' "$C_ERR" "$C_OFF" "$1"; fi
+}
 
 cmd=check; only=""; extra=""
 while [ $# -gt 0 ]; do
@@ -49,7 +57,11 @@ while IFS='|' read -r dir skip todo; do
   else
     "$here/pcb-release.sh" "$dir" "$cmd" --skip="$skip" --todo="$todo" || rc=1
   fi
-  if [ -n "$extra" ]; then "$extra" "$dir" || rc=1; fi
+  if [ -n "$extra" ]; then
+    # A project's own script is a gate like any other, so it reports like one.
+    "$extra" "$dir"; k=$?
+    [ $k -eq 0 ] || { verdict "$(basename "$dir") / $(basename "$extra")" "$k"; rc=1; }
+  fi
 done <<EOF
 $boards
 EOF
@@ -57,7 +69,6 @@ EOF
 if [ "$ran" -eq 0 ]; then
   echo "$0: '$only' matched no board in the list" >&2; exit 2
 fi
-. "$here/colors.sh"
 if [ $rc -eq 0 ]; then v="${C_OK}PASS${C_OFF}"; else v="${C_ERR}FAIL${C_OFF}"; fi
 echo "=== $cmd: $ran board(s) -> $v ==="
 exit $rc
