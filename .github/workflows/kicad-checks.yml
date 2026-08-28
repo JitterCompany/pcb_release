@@ -50,6 +50,14 @@ on:
           `<script> <project-dir>` after the standard gates. Absent by default.
         type: string
         default: ""
+      model-dirs:
+        description: >-
+          3D path variables this repo defines itself, one NAME=PATH per line, paths
+          relative to the repo root. Those variables live in each developer's KiCad
+          preferences, so without this nothing tells CI where the repo's own model
+          library is and every such model fails to resolve.
+        type: string
+        default: ""
       image:
         description: >-
           KiCad image. MUST be >= the board's KiCad version, kicad-cli cannot open
@@ -78,7 +86,11 @@ jobs:
       - name: Checks
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          M=""
+          while read -r d; do [ -n "$d" ] && M="$M --model-dir $d"; done <<'DIRS'
+          ${{ inputs.model-dirs }}
+          DIRS
           cat <<'BOARDS' | "${{ inputs.tools }}/pcb-checks.sh" \
-              --extra-checks "${{ inputs.extra-checks }}"
+              --extra-checks "${{ inputs.extra-checks }}" $M
           ${{ inputs.project-dirs || inputs.project-dir }}
           BOARDS

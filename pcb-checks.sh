@@ -14,6 +14,10 @@
 #                     find out whether a gate has gone green.
 #     --extra-checks  project-specific script, run as `<script> <project-dir>`
 #                     after the standard gates.
+#     --model-dir     NAME=PATH for a 3D path variable this repo defines itself,
+#                     repeatable. Those variables live in each developer's KiCad
+#                     preferences, so without this nothing tells CI where the repo's
+#                     own model library is and every such model fails to resolve.
 #
 # This lives here rather than inline in the workflow so it can be run and tested
 # outside CI, which is also what a project's local wrapper calls. One failing board
@@ -29,12 +33,13 @@ verdict() {                            # $1 = label, $2 = rc
   else                    printf '%s  FAIL%s  %s\n' "$C_ERR" "$C_OFF" "$1"; fi
 }
 
-cmd=check; only=""; extra=""
+cmd=check; only=""; extra=""; model_args=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --cmd)          cmd="${2:?--cmd needs a gate}"; shift 2 ;;
     --only)         only="${2:?--only needs a board}"; shift 2 ;;
     --extra-checks) extra="${2:-}"; shift 2 ;;
+    --model-dir)    [ -n "${2:-}" ] && model_args="$model_args --model-dir=$2"; shift 2 ;;
     *) echo "$0: unknown argument '$1'" >&2; exit 2 ;;
   esac
 done
@@ -48,14 +53,31 @@ while IFS='|' read -r dir skip todo; do
   [ -n "${dir:-}" ] || continue
   name=$(basename "$dir")
   if [ -n "$only" ] && [ "$name" != "$(basename "$only")" ]; then continue; fi
+  # A board with EVERY gate spoken for runs nothing, so say it once instead of
+  # repeating a warning per gate. A repo that has just started listing its boards is
+  # mostly this, and 5 warnings x N boards drowns the boards that are actually checked.
+  if [ -z "$only" ]; then
+    covered=1
+    for g in erc drc 3d drift pinmap; do
+      case ",$skip,$todo," in *",$g,"*) ;; *) covered=0 ;; esac
+    done
+    if [ "$covered" -eq 1 ]; then
+      if [ -n "$todo" ]; then
+        echo "::warning title=$(basename "$dir") is not checked yet::No gate is enforced for $dir. Fix its findings and drop gates from its todo= in the CI board list." | annot_render
+      else
+        echo "### $dir: no gate applies to this board -- skipped"
+      fi
+      continue
+    fi
+  fi
   ran=$((ran + 1))
   echo "### =================================================="
   echo "### $dir"
   echo "### =================================================="
   if [ -n "$only" ]; then
-    "$here/pcb-release.sh" "$dir" "$cmd" || rc=1
+    "$here/pcb-release.sh" "$dir" "$cmd" $model_args || rc=1
   else
-    "$here/pcb-release.sh" "$dir" "$cmd" --skip="$skip" --todo="$todo" || rc=1
+    "$here/pcb-release.sh" "$dir" "$cmd" --skip="$skip" --todo="$todo" $model_args || rc=1
   fi
   if [ -n "$extra" ]; then
     # A project's own script is a gate like any other, so it reports like one.

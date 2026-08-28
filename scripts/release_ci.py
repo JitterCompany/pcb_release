@@ -725,9 +725,15 @@ def make_board_alias(pd, stem, name):
     relative asset still resolve. The .kicad_pro goes with it because kicad-cli pairs the
     project file by matching basename, and without it the board loads with no project.
 
-    -> (board file to export from, [paths to clean up])"""
+    -> (board file to export from, cleanup callable)"""
     if name == stem:
-        return os.path.join(pd, stem + ".kicad_pcb"), []
+        return os.path.join(pd, stem + ".kicad_pcb"), (lambda: None)
+    # Everything called <name>.* that exists BEFORE we start is somebody else's and is
+    # never touched. Cleanup then removes whatever <name>.* appeared while we ran, which
+    # is not just what we copied: kicad-cli writes its own sidecars next to the project
+    # it opens (a .kicad_prl), and removing only our two copies left those behind as a
+    # stray second project in the board directory.
+    pre = set(glob.glob(os.path.join(pd, name + ".*")))
     made = []
     for ext in (".kicad_pcb", ".kicad_pro"):
         src, dst = os.path.join(pd, stem + ext), os.path.join(pd, name + ext)
@@ -739,7 +745,14 @@ def make_board_alias(pd, stem, name):
         if os.path.exists(src):
             shutil.copyfile(src, dst)
             made.append(dst)
-    return os.path.join(pd, name + ".kicad_pcb"), made
+
+    def cleanup():
+        for f in set(glob.glob(os.path.join(pd, name + ".*"))) - pre:
+            try:
+                os.remove(f)
+            except OSError:
+                pass
+    return os.path.join(pd, name + ".kicad_pcb"), cleanup
 
 
 REQUIRED_GERBERS = ["F_Cu", "B_Cu", "F_Mask", "B_Mask", "Edge_Cuts"]
@@ -1017,11 +1030,10 @@ def main():
     # Export under the BOARD name. build only: drift and check must not write into the
     # project directory. atexit rather than try/finally so the cleanup also runs if an
     # export raises, without wrapping the whole of main in another block.
-    export_pcb, alias_files = (pcb, [])
+    export_pcb = pcb
     if a.mode == "build":
-        export_pcb, alias_files = make_board_alias(pd, stem, name)
-        if alias_files:
-            atexit.register(lambda: [os.remove(f) for f in alias_files if os.path.exists(f)])
+        export_pcb, alias_cleanup = make_board_alias(pd, stem, name)
+        atexit.register(alias_cleanup)   # runs on exceptions too, not just a clean exit
 
     generate_pos(export_pcb, outdir)
     bom = bom_refs(sch)

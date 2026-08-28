@@ -35,12 +35,16 @@ cmd="${1:-check}"; shift || true
 # push, so that observing a green CI run predicts a green release. Do not wire this
 # into CI -- to make a warning gate, raise its severity in the KiCad GUI, where the
 # decision travels with the project and is reviewed in the diff.
-strict=""; skip_gates=""; todo_gates=""
+strict=""; skip_gates=""; todo_gates=""; model_dirs=""
 for a in "$@"; do
   case "$a" in
-    --strict)  strict="--strict" ;;
-    --skip=*)  skip_gates="${a#--skip=}" ;;
-    --todo=*)  todo_gates="${a#--todo=}" ;;
+    --strict)      strict="--strict" ;;
+    --skip=*)      skip_gates="${a#--skip=}" ;;
+    --todo=*)      todo_gates="${a#--todo=}" ;;
+    # Repeatable NAME=PATH. A repo whose 3D models live in its own library needs to
+    # say where: that path variable is set in each developer's KiCad preferences, so
+    # nothing in the repo tells CI about it and every model silently fails to resolve.
+    --model-dir=*) model_dirs="$model_dirs ${a#--model-dir=}" ;;
   esac
 done
 
@@ -59,7 +63,19 @@ ignore="${KICAD_IGNORE_TYPES-lib_symbol_issues,footprint_link_issues,lib_footpri
 # dies on a Mac with a bare usage error.
 TMPL="${TMPDIR:-/tmp}/pcb-release.XXXXXX"
 out="${CHECK_OUT:-$(mktemp -d "$TMPL")}"; mkdir -p "$out"
-m3d="${KICAD_3D_LINT_ARGS:-}"                  # word-split on purpose: it carries flags
+# 3D lint flags. KICAD_3D_LINT_ARGS is word-split on purpose: it carries flags. Each
+# --model-dir becomes a -D NAME=<absolute path>, absolute because the lint resolves
+# model files by path and is not run from a fixed directory.
+m3d="${KICAD_3D_LINT_ARGS:-}"
+for md in $model_dirs; do
+  md_name="${md%%=*}"; md_path="${md#*=}"
+  case "$md_path" in
+    /*) ;;
+    *)  if [ -d "$md_path" ]; then md_path="$(cd "$md_path" && pwd)"
+        else echo "::warning::[3d] --model-dir $md_name: no such directory '$md_path'"; fi ;;
+  esac
+  m3d="$m3d -D $md_name=$md_path"
+done
 rc=0
 board=$(basename "$proj")
 

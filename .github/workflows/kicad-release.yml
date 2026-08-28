@@ -37,6 +37,14 @@ on:
         description: "Where the pcb_release submodule is checked out."
         type: string
         default: hardware/tools/pcb_release
+      model-dirs:
+        description: >-
+          3D path variables this repo defines itself, one NAME=PATH per line, paths
+          relative to the repo root. Those variables live in each developer's KiCad
+          preferences, so without this nothing tells CI where the repo's own model
+          library is and every such model fails to resolve.
+        type: string
+        default: ""
       image:
         description: >-
           MUST be a `-full` tag: this job exports the STEP and the renders, and
@@ -102,8 +110,12 @@ jobs:
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           kicad-cli version
+          M=""
+          while read -r d; do [ -n "$d" ] && M="$M --model-dir=$d"; done <<'DIRS'
+          ${{ inputs.model-dirs }}
+          DIRS
           "${{ inputs.tools }}/pcb-release.sh" "${{ matrix.dir }}" release \
-            --skip="${{ matrix.skip }}" --todo="${{ matrix.todo }}"
+            --skip="${{ matrix.skip }}" --todo="${{ matrix.todo }}" $M
       # upload-artifact ALWAYS zips what it is given, so handing it our .zip would
       # produce a zip containing a zip. Upload the directories instead and put the
       # package name on the artifact: downloading then yields exactly one archive,
