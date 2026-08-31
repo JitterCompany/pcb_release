@@ -49,6 +49,10 @@ Gate names are `erc`, `drc`, `3d`, `drift`, `pinmap`. A typo is a hard error rat
 quietly unenforced gate. `pinmap` covers both pin-map gates, because they are one concern
 to a board owner and naming them separately only invites listing one of the two.
 
+Naming one board in a local run enforces that board's `todo=` gates, which is how you find
+out whether a gate has gone green. Its `skip=` gates stay skipped, because a gate that
+cannot apply to the board has nothing to tell you either way.
+
 Both workflows produce **one job per board**, so the checks UI reads `hardware (my-board)`.
 
 ### Project-specific checks

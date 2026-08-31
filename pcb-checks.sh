@@ -9,9 +9,11 @@
 #   pcb-checks.sh [--cmd CMD] [--only NAME] [--extra-checks SCRIPT] < boards.txt
 #
 #     --cmd           gate to run per board (default: check, the whole set)
-#     --only NAME     just this board, and IGNORE its skip/todo. You named it, so
-#                     answering "skipped" would defeat the point. This is how you
-#                     find out whether a gate has gone green.
+#     --only NAME     just this board, and enforce its todo= gates. You named it, so
+#                     answering "not green yet" would defeat the point. This is how
+#                     you find out whether a gate has gone green. skip= is still
+#                     honoured: it means the gate cannot apply to this board at all,
+#                     so forcing it can only ever report the same failure twice.
 #     --extra-checks  project-specific script, run as `<script> <project-dir>`
 #                     after the standard gates.
 #     --model-dir     NAME=PATH for a 3D path variable this repo defines itself,
@@ -74,11 +76,12 @@ while IFS='|' read -r dir skip todo; do
   echo "### =================================================="
   echo "### $dir"
   echo "### =================================================="
-  if [ -n "$only" ]; then
-    "$here/pcb-release.sh" "$dir" "$cmd" $model_args || rc=1
-  else
-    "$here/pcb-release.sh" "$dir" "$cmd" --skip="$skip" --todo="$todo" $model_args || rc=1
-  fi
+  # --only drops todo= (that is the point: has this gate gone green yet?) but keeps
+  # skip=. The two are not the same kind of exception: todo= is "applies, not yet
+  # green", skip= is "does not apply here". Forcing a skip= gate produced a failure
+  # whose advice was to add the skip= the board already had.
+  [ -n "$only" ] && todo=""
+  "$here/pcb-release.sh" "$dir" "$cmd" --skip="$skip" --todo="$todo" $model_args || rc=1
   if [ -n "$extra" ]; then
     # A project's own script is a gate like any other, so it reports like one.
     "$extra" "$dir"; k=$?
