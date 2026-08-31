@@ -8,6 +8,9 @@
 #                                          (STEP/PDF/layout PDF/renders/iBOM -> customer/)
 #   pcb-release.sh PROJECT_DIR erc|drc|3d|all  just that check gate (used by CI jobs)
 #   pcb-release.sh PROJECT_DIR drift       is the committed release_spec.toml still true?
+#   pcb-release.sh PROJECT_DIR bom         BOM_<board>.csv beside the project, for a
+#                                          pre-release read-through. Not a gate, and
+#                                          needs no release.toml.
 #   pcb-release.sh PROJECT_DIR pinmap | pinmap-check | pinmap-drift
 #                                          MCU pin map: regenerate / validate / drift-check
 #                                          ERRORS if <proj>/pinmap.config.toml is absent
@@ -28,7 +31,7 @@
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"; S="$here/scripts"
 
-proj="${1:?usage: $0 PROJECT_DIR <check|release|erc|drc|3d|all|drift|pinmap[-check|-drift]|manual> [--strict]}"; shift || true
+proj="${1:?usage: $0 PROJECT_DIR <check|release|erc|drc|3d|all|drift|bom|pinmap[-check|-drift]|manual> [--strict]}"; shift || true
 cmd="${1:-check}"; shift || true
 # --strict (warnings also fail) is MANUAL-ONLY and deliberately unreachable from CI:
 # no workflow and no pcb.sh path passes it. A release gates EXACTLY like a normal
@@ -237,6 +240,11 @@ case "$cmd" in
   3d)      gate 3d run_3d ;;
   all)     gate erc gate_erc; gate drc gate_drc
            gate 3d run_3d ;;
+  # Not a gate, so no gate() wrapper: no board exempts itself from an export, and
+  # skip=/todo= have nothing to say about one. stage() is wrong here too -- it buffers
+  # a passing stage, and the path is the whole point of the command.
+  bom)     python3 "$S/release_ci.py" "$proj" --mode bom; k=$?
+           stage_result "BOM EXPORT" $k; [ $k -eq 0 ] || rc=1 ;;
   drift)   gate drift stage "RELEASE SPEC DRIFT" \
                 python3 "$S/release_ci.py" "$proj" --mode drift ;;
   # `check` IS the CI gate set: every gate this board is held to, in one pass.

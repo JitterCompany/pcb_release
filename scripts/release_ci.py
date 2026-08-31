@@ -947,7 +947,8 @@ def main():
     ap.add_argument("project_dir", help="dir containing the .kicad_pro / .kicad_pcb / .kicad_sch")
     ap.add_argument("--config", default="release.toml")
     ap.add_argument("--spec", default="release_spec.toml", help="committed resolved-spec path (for drift)")
-    ap.add_argument("--mode", choices=["build", "drift", "check", "pnp"], default="build")
+    ap.add_argument("--mode", choices=["build", "drift", "check", "pnp", "bom"], default="build")
+    ap.add_argument("--out", help="bom mode: where to write the CSV (default: <project>/BOM_<board>.csv)")
     a = ap.parse_args()
 
     pd = a.project_dir.rstrip("/")
@@ -957,6 +958,36 @@ def main():
     stem = os.path.splitext(os.path.basename(pro[0]))[0]     # root sch/pcb share the project name
     pcb, sch = f"{pd}/{stem}.kicad_pcb", f"{pd}/{stem}.kicad_sch"
     cfg_path = os.path.join(pd, a.config)
+
+    # A standalone BOM export, for eyeballing parts before a release. Deliberately
+    # ahead of the release.toml requirement below and never gating: the BOM falls out
+    # of the schematic alone, and wanting to read it is most likely EARLY, before the
+    # fab intent that release.toml holds has been decided at all.
+    #
+    # Written beside the project rather than into production/, which a release build
+    # wipes and regenerates. Same BOM_<board>.csv name the release deliverable uses,
+    # because it is the same file: a release does not produce a different BOM.
+    if a.mode == "bom":
+        # A panel or a layout-only project has a .kicad_pro and a .kicad_pcb but no
+        # schematic, and a BOM comes from the schematic. Say so, rather than letting
+        # kicad-cli's "Failed to load schematic" surface as a Python traceback.
+        if not os.path.isfile(sch):
+            print(f"::error::[bom] {sch} does not exist, so this project has no BOM to "
+                  f"export. A panel or a layout-only project is expected to hit this.")
+            return 1
+        cfg = load_toml(cfg_path) if os.path.isfile(cfg_path) else {}
+        name = str(cfg.get("board", {}).get("name", "")).strip() or stem
+        dest = a.out or os.path.join(pd, f"BOM_{name}.csv")
+        generate_bom(sch, dest, cfg.get("bom", {}).get("readable_footprints", True))
+        with open(dest) as f:
+            rows = max(0, sum(1 for _ in f) - 1)          # minus the header
+        # Absolute: this is usually reached through a project wrapper that runs from
+        # its own directory, so a relative path here is relative to somewhere the
+        # reader is not standing.
+        print(f"[bom] {rows} line(s), DNP excluded, grouped by Value+Footprint "
+              f"-> {os.path.abspath(dest)}")
+        return 0
+
     if not os.path.isfile(cfg_path):
         # This used to die on a bare FileNotFoundError traceback. release.toml holds
         # FAB INTENT (finish, stackup strictness, via treatment) -- decisions a human

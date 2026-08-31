@@ -8,7 +8,8 @@
 #
 #   pcb-checks.sh [--cmd CMD] [--only NAME] [--extra-checks SCRIPT] < boards.txt
 #
-#     --cmd           gate to run per board (default: check, the whole set)
+#     --cmd           gate to run per board (default: check, the whole set). Also
+#                     takes the non-gate commands, e.g. bom.
 #     --only NAME     just this board, and enforce its todo= gates. You named it, so
 #                     answering "not green yet" would defeat the point. This is how
 #                     you find out whether a gate has gone green. skip= is still
@@ -58,7 +59,10 @@ while IFS='|' read -r dir skip todo; do
   # A board with EVERY gate spoken for runs nothing, so say it once instead of
   # repeating a warning per gate. A repo that has just started listing its boards is
   # mostly this, and 5 warnings x N boards drowns the boards that are actually checked.
-  if [ -z "$only" ]; then
+  # 'bom' is an export, not a gate, so the all-gates-exempt collapse below must not
+  # swallow it: a board whose gates are all still todo= is precisely one whose parts
+  # you want to read through.
+  if [ -z "$only" ] && [ "$cmd" != bom ]; then
     covered=1
     for g in erc drc 3d drift pinmap; do
       case ",$skip,$todo," in *",$g,"*) ;; *) covered=0 ;; esac

@@ -13,6 +13,7 @@ as a git submodule.
     pcb-release.sh <project> check      # ERC+schema, DRC+pos>=BOM, release-spec drift
     pcb-release.sh <project> release    # gerbers/drill/pos + release_spec.toml + README-manufacturing
     pcb-release.sh <project> erc|drc|all   # one check gate (used by CI jobs)
+    pcb-release.sh <project> bom        # BOM_<board>.csv beside the project, to read through
 
 `check` runs the built-in ERC/DRC **and** our schema lints. It passes only if
 both pass. `release` regenerates the fab outputs plus a drift-checked spec, so an
@@ -177,6 +178,24 @@ no title block rather than inventing one.
 | `customer.step_exclude_dnp` | `true` | STEP shows the board as assembled (DNP parts left out). Affects the STEP only, renders always include DNP. |
 | `customer.render_preset` | `"follow_pcb_editor"` | physical layers only. `"follow_plot_settings"` also paints fab-intent layers (impedance, coating) over the board. |
 | `bom.readable_footprints` | `true` | shorten footprints (`C 0603`) instead of raw KiCad names |
+
+### Exporting the BOM on its own
+
+    pcb-release.sh hardware/my-board bom       # -> hardware/my-board/BOM_my-board.csv
+
+For reading the parts over before a release, without building one. It is the same
+BOM the release ships, so what you check is what the assembler gets: grouped by
+value and footprint, DNP parts excluded, footprints shortened per
+`bom.readable_footprints`.
+
+It is not a gate, so no board can exempt it and `skip=` / `todo=` do not apply. It
+needs no `release.toml` either, which is the point: the BOM comes out of the
+schematic alone, and you usually want to read it well before the fab intent is
+settled. Without that file the board name falls back to the KiCad project name.
+
+Written beside the project rather than into `production/`, which a release build
+wipes and regenerates. A project with no schematic, such as a panel, has no BOM and
+says so.
 
 ## Layout
 
