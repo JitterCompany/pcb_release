@@ -78,6 +78,17 @@ for md in $model_dirs; do
         else echo "::warning::[3d] --model-dir $md_name: no such directory '$md_path'"; fi ;;
   esac
   m3d="$m3d -D $md_name=$md_path"
+  # ALSO export it. -D only teaches our own linter; kicad-cli resolves ${VAR} in a
+  # footprint's model path from the ENVIRONMENT (and from a developer's personal
+  # KiCad config, which is why this works on a workstation and not in CI). Without
+  # the export the 3D gate passed while the STEP export logged "File not found:
+  # ${VAR}/part.stp" and still exited 0, so the STEP shipped with parts missing.
+  # This is exactly what setup_models does for the shared library.
+  case "$md_name" in
+    [!A-Za-z_]*|*[!A-Za-z0-9_]*)
+      echo "::warning::[3d] --model-dir '$md_name' is not a usable environment variable name, so kicad-cli cannot resolve \${$md_name}. Rename it to letters, digits and underscores." ;;
+    *) export "$md_name=$md_path" ;;
+  esac
 done
 rc=0
 board=$(basename "$proj")

@@ -62,6 +62,20 @@ Set `extra-checks: hardware/tools/my-checks.sh` to run your own script once per 
 `<script> <project-dir>`, after the standard gates. Optional and absent by default. This
 is the supported way to keep a project-local script without CI depending on it.
 
+### A repo with its own 3D model library
+
+Footprints that reference models through your own KiCad path variable need it named in
+the workflow, one `NAME=PATH` per line, path relative to the repo root:
+
+```yaml
+with:
+  model-dirs: |
+    MY_MODEL_DIR=libs/my_3d_models
+```
+
+Set it on **both** workflows. The name must work as an environment variable (letters,
+digits, underscores), which is how `kicad-cli` resolves it. `${JITTER}` needs no entry.
+
 ### One job, every board
 
 The checks run as a **single job** that loops over the boards. The gates take seconds per
@@ -183,19 +197,9 @@ no title block rather than inventing one.
 
     pcb-release.sh hardware/my-board bom       # -> hardware/my-board/BOM_my-board.csv
 
-For reading the parts over before a release, without building one. It is the same
-BOM the release ships, so what you check is what the assembler gets: grouped by
-value and footprint, DNP parts excluded, footprints shortened per
-`bom.readable_footprints`.
-
-It is not a gate, so no board can exempt it and `skip=` / `todo=` do not apply. It
-needs no `release.toml` either, which is the point: the BOM comes out of the
-schematic alone, and you usually want to read it well before the fab intent is
-settled. Without that file the board name falls back to the KiCad project name.
-
-Written beside the project rather than into `production/`, which a release build
-wipes and regenerates. A project with no schematic, such as a panel, has no BOM and
-says so.
+The same BOM the release ships, for reading the parts over beforehand: grouped by value
+and footprint, DNP excluded, footprints shortened per `bom.readable_footprints`. Not a
+gate, so `skip=` / `todo=` do not apply, and it needs no `release.toml`.
 
 ## Layout
 
