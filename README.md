@@ -3,10 +3,25 @@
 Automate KiCad projects: **design checks + manufacturing release**, driven from
 one entry script. Point it at a KiCad project directory. Designed to be consumed
 as a git submodule.
+Both useful locally on the command line (e.g. to create new board releases) and
+as CI workflow.
+
+## Requirements
+
+`kicad-cli` (KiCad 9/10) on PATH, Python 3.8+. No pip dependencies.
 
 ## Entry point
 
     pcb-release.sh PROJECT_DIR <command>
+
+### Manual workflow (legacy, interactive, no config)
+
+    pcb-release.sh <project> manual     # guided step-by-step export + zip
+
+The original interactive script: it prompts you to export gerbers / BOM /
+pick&place, sanity-checks them, writes a manufacturing README, and zips
+`production/`. Use it for existing designs or quick one-off boards.
+The automated workflow (see below) is recommended though.
 
 ### Automated workflow (config-driven, needs `<project>/release.toml`)
 
@@ -19,10 +34,25 @@ as a git submodule.
 both pass. `release` regenerates the fab outputs plus a drift-checked spec, so an
 accidental layer-count / assembly-side / stackup change is caught on review.
 
-### Telling CI which boards exist
+## Configuring CI
 
-The board list is the only thing a project states. Everything else lives here, so a
-`git pull` in the submodule is enough to pick up improvements.
+An example:
+```yaml
+jobs:
+  hardware:
+    uses: JitterCompany/pcb_release/.github/workflows/kicad-checks.yml@master
+    with:
+      tools: tools/pcb_release         # folder where JitterCompany/pcb_release/ is checked out as subrepo
+      model-dirs: |                    # (Optional: in case your project contains custom libraries)
+        MY_CUSTOM_MODELS=poth/to/3D
+      project-dirs: |                  # List of boards: folders where kicad projects exist
+        my-product/my-board
+        my-legacy-board        todo=drc,3d,drift
+```
+
+### List of boards
+
+The board list is the minimum required config. Its simply the relative path to the kicad project(s) in your repository.
 
 ```yaml
 # one board
@@ -36,19 +66,16 @@ with:
     hardware/my-old-board         skip=pinmap todo=drc,3d,drift
 ```
 
-**Every gate is enforced for every board** unless that board says otherwise. A new board
-therefore cannot go silently unchecked, and a gate cannot be forgotten, only exempted on
-purpose.
+### What is enforced
+
+This tool defines multiple 'gates' that a design can pass, such as `erc`, `drc`, `3d`, `drift`, `pinmap`.
+Boards are expected to pass *all* gates, unless explicitly configured otherwise:
 
 | field | meaning | output |
 |---|---|---|
-| *(nothing)* | enforced, a failure fails the build | `PASS` / `FAIL` |
-| `skip=` | structurally impossible here, e.g. no MCU means no pin map | silent |
-| `todo=` | applies, just not green yet | warning every run, does not fail |
-
-Gate names are `erc`, `drc`, `3d`, `drift`, `pinmap`. A typo is a hard error rather than a
-quietly unenforced gate. `pinmap` covers both pin-map gates, because they are one concern
-to a board owner and naming them separately only invites listing one of the two.
+| *(nothing)* | all enforced, any failure fails the build | `PASS` / `FAIL` |
+| `skip=` | gate not applicable, e.g. no MCU means no pin map | silent |
+| `todo=` | gate would be applicable, but is known to fail (for now) | warning every run, does not fail |
 
 Naming one board in a local run enforces that board's `todo=` gates, which is how you find
 out whether a gate has gone green. Its `skip=` gates stay skipped, because a gate that
@@ -56,13 +83,7 @@ cannot apply to the board has nothing to tell you either way.
 
 Both workflows produce **one job per board**, so the checks UI reads `hardware (my-board)`.
 
-### Project-specific checks
-
-Set `extra-checks: hardware/tools/my-checks.sh` to run your own script once per board, as
-`<script> <project-dir>`, after the standard gates. Optional and absent by default. This
-is the supported way to keep a project-local script without CI depending on it.
-
-### A repo with its own 3D model library
+### custom 3D model libraries
 
 Footprints that reference models through your own KiCad path variable need it named in
 the workflow, one `NAME=PATH` per line, path relative to the repo root:
@@ -76,29 +97,12 @@ with:
 Set it on **both** workflows. The name must work as an environment variable (letters,
 digits, underscores), which is how `kicad-cli` resolves it. `${JITTER}` needs no entry.
 
-### One job, every board
+### Project-specific checks
 
-The checks run as a **single job** that loops over the boards. The gates take seconds per
-board while pulling the KiCad image does not, so a job per board would multiply the only
-expensive part of the run by the number of boards to save a few seconds of wall clock.
-Each board still prints its own `PASS`/`FAIL` lines, and one failing board never stops the
-others.
+*Not needed in most cases*
 
-The release workflow does use one job per board, because each board uploads its own
-artifact pair and the per-board work there is substantial.
-
-### Manual workflow (interactive, legacy, no config)
-
-    pcb-release.sh <project> manual     # guided step-by-step export + zip
-
-The original interactive script: it prompts you to export gerbers / BOM /
-pick&place, sanity-checks them, writes a manufacturing README, and zips
-`production/`. Use it for a one-off board or when you don't want the config-driven
-pipeline. (Still fully supported.)
-
-## Requirements
-
-`kicad-cli` (KiCad 9/10) on PATH, Python 3.8+. No pip dependencies.
+Set `extra-checks: path/to/my-checks.sh` to run your own script once per board, as
+`<script> <project-dir>`, after the standard gates. Optional and absent by default.
 
 ## Config: `release.toml`
 
