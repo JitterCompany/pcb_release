@@ -1,89 +1,107 @@
 # pcb_release
 
-Automate KiCad projects: **design checks + manufacturing release**, driven from
-one entry script. Point it at a KiCad project directory. Designed to be consumed
-as a git submodule.
-Both useful locally on the command line (e.g. to create new board releases) and
-as CI workflow.
+Design checks and manufacturing releases for KiCad projects, from one entry script.
+Point it at a KiCad project directory. Useful both on the command line, to cut a board
+release, and as a CI workflow.
 
-## Requirements
+## What it checks
 
-`kicad-cli` (KiCad 9/10) on PATH, Python 3.8+. No pip dependencies.
+Five gates. Two are KiCad's own, the other three exist because nothing else would catch
+the failure before the boards are made.
 
-## Entry point
+| gate | fails when |
+|---|---|
+| `erc` | KiCad ERC reports an error, or a part carries an old do-not-populate marker that modern exports ignore, so it would be populated by mistake |
+| `drc` | KiCad DRC or schematic parity reports an error, or a BOM part has no pick&place position |
+| `3d` | a footprint's 3D model does not resolve, so the STEP would ship with that part missing |
+| `drift` | the board no longer matches the spec committed at its last release |
+| `pinmap` | the MCU pin map is invalid, or no longer matches the schematic |
+
+Every gate is enforced for every board unless that board says otherwise, so a new board
+cannot go silently unchecked. Details in **[Gates](docs/gates.md)**.
+
+## What it produces
+
+A release writes `production/` for the PCBA partner (gerbers, drill, pick&place, BOM and
+a fab-spec checklist) and `customer/` for whoever receives the board (STEP, schematic and
+layout PDFs, renders, interactive BOM), and zips both. Details in
+**[Deliverables](docs/deliverables.md)**.
+
+## Install
+
+Add the submodule, add two workflow files, add a `release.toml` per board. See
+**[Install](docs/install.md)**.
+
+## Running it locally
 
     pcb-release.sh PROJECT_DIR <command>
+
+| command | does |
+|---|---|
+| `check` | every gate: ERC and schema, DRC and pick&place, 3D, pin map, release-spec drift |
+| `release` | the full manufacturing release, see [Deliverables](docs/deliverables.md) |
+| `erc` \| `drc` \| `3d` \| `drift` \| `pinmap` | one gate on its own |
+| `bom` | `BOM_<board>.csv` beside the project, to read the parts over |
+| `manual` | the legacy interactive workflow, see below |
+
+`check` is what CI runs, so a green local run predicts a green CI run, provided both use
+the same version of this tool ([which version runs](docs/install.md#which-version-runs)).
+
+`PCB_VERBOSE=1` shows everything a passing stage would otherwise keep quiet.
+`NO_COLOR=1` disables colour.
+
+### Exporting the BOM on its own
+
+    pcb-release.sh hardware/my-board bom       # -> hardware/my-board/BOM_my-board.csv
+
+The same BOM the release ships, for reading the parts over beforehand: grouped by value
+and footprint, DNP excluded, footprints shortened per `bom.readable_footprints`. Not a
+gate, so `skip=` and `todo=` do not apply, and it needs no `release.toml`.
 
 ### Manual workflow (legacy, interactive, no config)
 
     pcb-release.sh <project> manual     # guided step-by-step export + zip
 
-The original interactive script: it prompts you to export gerbers / BOM /
-pick&place, sanity-checks them, writes a manufacturing README, and zips
-`production/`. Use it for existing designs or quick one-off boards.
-The automated workflow (see below) is recommended though.
+The original interactive script. It prompts you to export gerbers, BOM and pick&place,
+sanity-checks them, writes a manufacturing README and zips `production/`. Useful for an
+existing design or a quick one-off board, but the automated workflow above is
+recommended.
 
-### Automated workflow (config-driven, needs `<project>/release.toml`)
+## Running it in CI
 
-    pcb-release.sh <project> check      # ERC+schema, DRC+pos>=BOM, release-spec drift
-    pcb-release.sh <project> release    # gerbers/drill/pos + release_spec.toml + README-manufacturing
-    pcb-release.sh <project> erc|drc|all   # one check gate (used by CI jobs)
-    pcb-release.sh <project> bom        # BOM_<board>.csv beside the project, to read through
-
-`check` runs the built-in ERC/DRC **and** our schema lints. It passes only if
-both pass. `release` regenerates the fab outputs plus a drift-checked spec, so an
-accidental layer-count / assembly-side / stackup change is caught on review.
-
-## Configuring CI
-
-An example:
-```yaml
-jobs:
-  hardware:
-    uses: JitterCompany/pcb_release/.github/workflows/kicad-checks.yml@master
-    with:
-      tools: tools/pcb_release         # folder where JitterCompany/pcb_release/ is checked out as subrepo
-      model-dirs: |                    # (Optional: in case your project contains custom libraries)
-        MY_CUSTOM_MODELS=poth/to/3D
-      project-dirs: |                  # List of boards: folders where kicad projects exist
-        my-product/my-board
-        my-legacy-board        todo=drc,3d,drift
-```
-
-### List of boards
-
-The board list is the minimum required config. Its simply the relative path to the kicad project(s) in your repository.
+The board list is the only thing a project has to state. Everything else has a default.
 
 ```yaml
-# one board
-with: { project-dir: hardware/my-board }
-
-# several: one per line, policy optional and in any order
 with:
-  project-dirs: |
-    hardware/my-board
-    hardware/my-board/my-module   skip=pinmap
-    hardware/my-old-board         skip=pinmap todo=drc,3d,drift
+  tools: tools/pcb_release         # optional, see docs/install.md
+  project-dirs: |                  # your boards, relative to the repo root
+    my-product/my-board
+    my-product/my-module    skip=pinmap
+    my-legacy-board         todo=drc,3d,drift
 ```
 
-### What is enforced
+A single board can also be given as `project-dir: hardware/my-board`.
 
-This tool defines multiple 'gates' that a design can pass, such as `erc`, `drc`, `3d`, `drift`, `pinmap`.
-Boards are expected to pass *all* gates, unless explicitly configured otherwise:
+### Gate exceptions
+
+Boards pass all gates unless the board list says otherwise:
 
 | field | meaning | output |
 |---|---|---|
-| *(nothing)* | all enforced, any failure fails the build | `PASS` / `FAIL` |
+| *(nothing)* | enforced, a failure fails the build | `PASS` / `FAIL` |
 | `skip=` | gate not applicable, e.g. no MCU means no pin map | silent |
-| `todo=` | gate would be applicable, but is known to fail (for now) | warning every run, does not fail |
+| `todo=` | gate applies but is known to fail for now | warning every run, does not fail |
 
-Naming one board in a local run enforces that board's `todo=` gates, which is how you find
-out whether a gate has gone green. Its `skip=` gates stay skipped, because a gate that
+Gate names are `erc`, `drc`, `3d`, `drift`, `pinmap`, in any order and any combination. A
+typo is a hard error rather than a quietly unenforced gate.
+
+Naming one board in a local run enforces that board's `todo=` gates, which is how you
+find out whether one has gone green. Its `skip=` gates stay skipped, because a gate that
 cannot apply to the board has nothing to tell you either way.
 
-Both workflows produce **one job per board**, so the checks UI reads `hardware (my-board)`.
-
 ### custom 3D model libraries
+
+*Not needed in most cases*
 
 Footprints that reference models through your own KiCad path variable need it named in
 the workflow, one `NAME=PATH` per line, path relative to the repo root:
@@ -102,193 +120,54 @@ digits, underscores), which is how `kicad-cli` resolves it. `${JITTER}` needs no
 *Not needed in most cases*
 
 Set `extra-checks: path/to/my-checks.sh` to run your own script once per board, as
-`<script> <project-dir>`, after the standard gates. Optional and absent by default.
+`<script> <project-dir>`, after the standard gates.
+
+## Releasing a board
+
+1. Push a `hw-v*` tag, or start the release workflow from the Actions tab. A first
+   release needs no `release_spec.toml`, it writes one.
+2. Download the artifacts. Per board there are three: `production__<board>__<date>` for
+   the PCBA partner, `customer__<board>__<date>` with the STEP, PDFs, renders and
+   interactive BOM, and `release-spec__<board>`.
+3. Commit that `release_spec.toml`. It records the board as built, and the `drift` gate
+   fails later if the board stops matching it. Until a board has one, `drift` fails with
+   "does not exist yet", so a brand new board only goes fully green after its first
+   release.
+
+Locally it is one command. `pcb-release.sh hardware/my-board release` writes the same
+outputs and puts the spec straight into the project.
 
 ## Config: `release.toml`
 
-Declares fabrication INTENT + requirements + stackup strictness. Everything KiCad
-already knows (stackup, size, via tenting, SMD/THT placement) is **extracted**,
-not restated. Copy `release.toml.example` → `<project>/release.toml`.
+One per board, beside its `.kicad_pro`. It declares fabrication **intent**: surface
+finish, soldermask and silkscreen colour, via treatment, stackup strictness. Everything
+KiCad already knows, such as stackup, board size, via tenting and SMD/THT placement, is
+extracted from the design rather than restated here.
 
-`release.toml.example` is deliberately short, just the handful you normally set. Every
-option is listed here. Anything omitted takes the default, and a config that omits a
-whole section is fine.
+```toml
+[board]
+# name = "my-board-2"      # deliverable name, defaults to the KiCad project name
 
-### `[board]`
+[fab]
+surface_finish   = "ENIG"
+soldermask_color = "green"
+via_treatment    = "tented both sides"
 
-| key | default | meaning |
-|---|---|---|
-| `name` | KiCad project name | Deliverable name (zips, BOM, STEP, PDFs) and the text required on the silkscreen. Set it when the board is called something other than its project file, e.g. project `my-project`, board `my-board-2`. |
-| `skip` | `[]` | Identity checks to skip: `"name"`, `"title"`, `"logo"`. Rarely needed. |
-| `date` | *unset* | `"auto"` lets a `release` build stamp today into both title blocks. Unset, or `"skip"`, leaves them alone and trusts the value filled in by hand. |
-
-Three checks that nothing else catches, because none of them show up in ERC, DRC or the
-gerber job. Each can be turned off individually with `skip`.
-
-* **name on silkscreen.** The board must carry its own name on F.SilkS or B.SilkS.
-  Matching is lenient on purpose. Case is ignored, and `-`, `_` or whitespace may be any
-  separator, or a split across several text items in any order. A board silkscreening
-  `MyModule-12` above `sensor-board` satisfies `MyModule-12-sensor-board`, including when the two
-  lines are one multi-line text item. Reference designators and values are excluded,
-  because they are not the board's name and counting them would make the check pass on
-  almost anything. Set `name` to whatever is actually silkscreened, or
-  `skip = ["name"]` to turn the check off.
-* **title block.** The root schematic and the layout must both carry the board name in
-  their title block, because that is what a reader sees on every exported PDF. Matching
-  is the same lenient comparison, and the name only has to appear in the title, so
-  `"my-board-2 (main)"` is fine. A trailing revision may live in the title block's own
-  Revision field instead of being repeated in the title, so title `my-board` with
-  Revision `2` satisfies the name `my-board-2`. Use `skip = ["title"]` to turn it off.
-* **logo present.** At least one footprint whose library or reference says `logo`. Use
-  `skip = ["logo"]` to turn it off.
-
-The **title block date** is separate and is only touched when you cut a release. `drift`
-and `check` stay strictly read-only, so a CI push never rewrites a design file.
-
-There are two states and nothing in between. `date = "auto"` stamps today into the root
-schematic and the layout, on the grounds that you are publishing the board today, so that
-is its date. Leave `date` unset, or set it to `"skip"`, and the tool never looks at the
-field. The value you typed by hand then stands, which is the right answer for a board
-whose design genuinely has not moved in years.
-
-`"auto"` is the only setting that writes anything. It edits that one field and nothing
-else, prints a notice so you remember to commit the change, and reports a file that has
-no title block rather than inventing one.
-
-### `[fab]`
-
-| key | default | meaning |
-|---|---|---|
-| `surface_finish` | `"any"` | e.g. `"ENIG"`, `"HASL-LF"` |
-| `soldermask_color` | `"any"` | taken from the KiCad stackup if set there |
-| `silkscreen_color` | `"any"` | |
-| `via_treatment` | `"any"` | e.g. `"tented both sides"`, cross-checked against KiCad's tenting/plugging/filling |
-| `special_layers` | `[]` | e.g. `["Coating_top","Coating_bottom"]` for conformal coating |
-| `flex` | `"none"` | `"none"` or a stiffener spec |
-| `notes` | `"any"` | free text for the fab |
-
-### `[stackup]`
-
-| key | default | meaning |
-|---|---|---|
-| `spec` | `"standard"` | `standard` = any standard N-layer at the finished thickness, no impedance control · `impedance` = impedance targets binding, stackup reference-only · `controlled` = build the exact dielectric stackup |
-| `impedance_note` | `""` | e.g. `"50R SE on L1 (ref plane L2)"`. Only valid when `spec` is not `standard`. |
-
-### `[assembly]` / `[stencil]`
-
-| key | default | meaning |
-|---|---|---|
-| `assembly.sides` | `"auto"` | `auto` assembles every side that has parts · `none` = bare PCB · `top`/`btm`/`both` to force |
-| `stencil.force` | `""` | `""` auto-derives from SMD placement. Use `top`/`btm`/`both`/`none` to force |
-
-### `[requirements]`
-
-| key | default | meaning |
-|---|---|---|
-| `rohs` | `true` | RoHS-compliant (lead-free) build |
-| `ul94_v0` | `true` | laminate flammability rating UL94 V-0 |
-| `ipc_class` | *unset* | IPC-A-600 / IPC-A-610 class (`2` or `3`) |
-
-### `[customer]` / `[bom]`
-
-| key | default | meaning |
-|---|---|---|
-| `customer.step_exclude_dnp` | `true` | STEP shows the board as assembled (DNP parts left out). Affects the STEP only, renders always include DNP. |
-| `customer.render_preset` | `"follow_pcb_editor"` | physical layers only. `"follow_plot_settings"` also paints fab-intent layers (impedance, coating) over the board. |
-| `bom.readable_footprints` | `true` | shorten footprints (`C 0603`) instead of raw KiCad names |
-
-### Exporting the BOM on its own
-
-    pcb-release.sh hardware/my-board bom       # -> hardware/my-board/BOM_my-board.csv
-
-The same BOM the release ships, for reading the parts over beforehand: grouped by value
-and footprint, DNP excluded, footprints shortened per `bom.readable_footprints`. Not a
-gate, so `skip=` / `todo=` do not apply, and it needs no `release.toml`.
-
-## Layout
-
-    pcb-release.sh         one board: dispatch + the ERC/DRC gate
-    pcb-checks.sh          a project's whole board list, what CI and the local
-                           wrapper both call. Not inline in the workflow, so it can
-                           be run and tested outside CI.
-    scripts/boards.py      parses and validates the board list. Emits it as lines
-                           for a shell loop, or as JSON for the release matrix.
-    release.toml.example   template config
-    scripts/               implementation, see scripts/README.md
-    colors.sh              console palette helper, sourced by pcb-release.sh AND by each
-                           project's hardware/tools/pcb.sh, so both layers agree on
-                           when to colour (TTY or GitHub Actions, NO_COLOR wins)
-
-## Console output
-
-Every stage ends with exactly one verdict line, `PASS` / `FAIL  <board> / <stage>`,
-green/red on a TTY, and nothing else claims a pass or fail.
-
-What a stage prints in between depends on where it runs, because the two audiences want
-opposite things:
-
-| stage | terminal | GitHub Actions |
-|---|---|---|
-| passed | just the verdict line | `::warning` / `::notice` still emitted |
-| failed | annotations, then dim detail, then the verdict | same |
-
-`::error` / `::warning` / `::notice` *are* the GitHub checks UI, so under Actions they
-always go out, because a non-gating warning still belongs on the PR. In a terminal the same
-lines are noise on a green run, so there they are buffered and only surface if the stage
-actually failed. The verdict itself is deliberately NOT an annotation: the job's own
-red/green already says that, a failing stage has already annotated each real finding, and
-GitHub only surfaces a limited number of annotations per run, so spending that budget on
-verdicts would push actual findings out of the UI.
-
-`PCB_VERBOSE=1` shows everything regardless. `NO_COLOR=1` disables colour.
-
-kicad-cli's own `Found N violations` is never shown directly: N counts warnings and
-deliberately-ignored types too, so on a PASS it only ever contradicted the verdict. (A
-headless run has no library table, so a clean board routinely reports hundreds, 219 on
-one of ours, every one of them environment noise.) The gating decision belongs to
-`scripts/check_report.py`, and the verdict line is the answer.
-
-## Portability: note for developers
-
-These scripts must run unchanged on **macOS**, which still ships **Bash 3.2** (2007) as
-`/bin/bash` and a **BSD** userland. Linux CI will happily accept things a Mac then chokes
-on, so the rules are not enforced by simply "it worked for me":
-
-Do not use (Bash 4+ only):
-
-| Avoid | Use instead |
-|---|---|
-| `${var,,}` / `${var^^}` | `tr '[:upper:]' '[:lower:]'` |
-| `declare -A` / `local -A` (associative arrays) | parallel indexed arrays, or a `case` |
-| `mapfile` / `readarray` | `while IFS= read -r line; do … done <<<"$x"` |
-| `&>>`, `|&` | `>>file 2>&1`, `2>&1 |` |
-| `coproc`, `globstar` (`**`) | n/a |
-
-BSD-userland differences that bite just as hard:
-
-| Avoid | Use instead |
-|---|---|
-| `mktemp` / `mktemp -d` with no template | `mktemp "${TMPDIR:-/tmp}/name.XXXXXX"`, BSD **requires** a template |
-| `sed -i` (bare) | write to a temp file and `mv` |
-| `grep -P` | `grep -E` |
-| `readlink -f` | `cd "$(dirname "$x")" && pwd` |
-| `stat -c`, `date -r` | avoid, or branch on `uname` |
-
-Also note `set -uo pipefail` is used **without** `-e`: every call site checks its own exit
-status. Do not add a bare `set -e` inside a function. It stays on for the rest of the run
-and turns the first non-zero return into a silent early exit.
-
-Quick audit before committing a shell change:
-
-```bash
-grep -nE '\$\{[A-Za-z_][A-Za-z0-9_]*(,,|\^\^)|declare -A|local -A|mapfile|readarray|coproc|&>>|\|&' *.sh
-grep -nE 'mktemp[[:space:]]*(-d)?[[:space:]]*\)|readlink -f|grep -P|sed -i |stat -c|date -r ' *.sh
+[stackup]
+spec = "standard"          # standard | impedance | controlled
 ```
 
-If you have Homebrew bash (5.x) on a Mac, `/bin/bash script.sh` still uses 3.2, so test with
-that path explicitly.
+Anything omitted takes its default, and omitting a whole section is fine. Every option is
+listed in the **[`release.toml` reference](docs/release-toml.md)**.
+
+Do not confuse it with `release_spec.toml`, which you do not write: a release generates
+that one to record the board as built, and the `drift` gate watches it.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the repo layout, the console-output rules and
+the Bash 3.2 / BSD portability constraints.
 
 ## License
 
 MIT
-

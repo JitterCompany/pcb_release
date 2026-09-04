@@ -34,9 +34,18 @@ on:
         type: string
         default: ""
       tools:
-        description: "Where the pcb_release submodule is checked out."
+        description: >-
+          Path to the pcb_release submodule in your repo. Leave unset to run this
+          repo at tools-ref instead, which needs no submodule.
         type: string
-        default: hardware/tools/pcb_release
+        default: ""
+      tools-ref:
+        description: >-
+          What to fetch when tools: is not set. A branch, a tag, or a full commit SHA
+          (short ones are not accepted). The default floats on master, so pass a tag
+          or a SHA to pin which version of the checks runs.
+        type: string
+        default: master
       model-dirs:
         description: >-
           3D path variables this repo defines itself, one NAME=PATH per line, paths
@@ -68,6 +77,26 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with: { submodules: recursive }
+      # Where the scripts come from: the tools: input if given, otherwise this repo
+      # fetched on the fly. No guessing at submodule locations, so a project either
+      # says where its submodule is or gets tools-ref.
+      - id: tools
+        run: |
+          T="${{ inputs.tools }}"
+          if [ -n "$T" ]; then
+            [ -f "$T/pcb-release.sh" ] || {
+              echo "::error::tools: '$T' contains no pcb-release.sh"; exit 1; }
+          else
+            T=.pcb_release
+            echo "fetch=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "path=$T" >> "$GITHUB_OUTPUT"
+      - if: steps.tools.outputs.fetch == 'true'
+        uses: actions/checkout@v6
+        with:
+          repository: JitterCompany/pcb_release
+          ref: ${{ inputs.tools-ref }}
+          path: .pcb_release
       - id: m
         run: |
           if [ -n "${{ inputs.project-dirs }}" ]; then
@@ -81,7 +110,7 @@ jobs:
           fi
           # Validates the list: a typo in a gate name is a hard error rather than a
           # quietly unenforced gate.
-          M=$(python3 "${{ inputs.tools }}/scripts/boards.py" --stdin < /tmp/boards.txt)
+          M=$(python3 "${{ steps.tools.outputs.path }}/scripts/boards.py" --stdin < /tmp/boards.txt)
           echo "matrix=$M" >> "$GITHUB_OUTPUT"
           echo "$M" | python3 -m json.tool
 
@@ -99,6 +128,26 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with: { submodules: recursive }
+      # Where the scripts come from: the tools: input if given, otherwise this repo
+      # fetched on the fly. No guessing at submodule locations, so a project either
+      # says where its submodule is or gets tools-ref.
+      - id: tools
+        run: |
+          T="${{ inputs.tools }}"
+          if [ -n "$T" ]; then
+            [ -f "$T/pcb-release.sh" ] || {
+              echo "::error::tools: '$T' contains no pcb-release.sh"; exit 1; }
+          else
+            T=.pcb_release
+            echo "fetch=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "path=$T" >> "$GITHUB_OUTPUT"
+      - if: steps.tools.outputs.fetch == 'true'
+        uses: actions/checkout@v6
+        with:
+          repository: JitterCompany/pcb_release
+          ref: ${{ inputs.tools-ref }}
+          path: .pcb_release
       # The interactive HTML BOM shells out to InteractiveHtmlBom, which builds a
       # wx.App() even in CLI mode and so needs a display. xvfb gives it a virtual
       # one. Best-effort: the iBOM is an assembly aid, not a gating deliverable,
@@ -114,7 +163,7 @@ jobs:
           while read -r d; do [ -n "$d" ] && M="$M --model-dir=$d"; done <<'DIRS'
           ${{ inputs.model-dirs }}
           DIRS
-          "${{ inputs.tools }}/pcb-release.sh" "${{ matrix.dir }}" release \
+          "${{ steps.tools.outputs.path }}/pcb-release.sh" "${{ matrix.dir }}" release \
             --skip="${{ matrix.skip }}" --todo="${{ matrix.todo }}" $M
       # upload-artifact ALWAYS zips what it is given, so handing it our .zip would
       # produce a zip containing a zip. Upload the directories instead and put the
@@ -137,4 +186,14 @@ jobs:
         with:
           name: ${{ steps.pkg.outputs.customer }}
           path: ${{ matrix.dir }}/customer/
+          if-no-files-found: error
+      # The build writes release_spec.toml into the project dir, and the drift gate
+      # wants it committed. It is not part of either deliverable set, so without this
+      # a project that has no submodule checkout could never obtain the file and its
+      # drift gate would fail forever with "does not exist yet".
+      - name: Upload release_spec.toml (commit this to your repo)
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-spec__${{ matrix.name }}
+          path: ${{ matrix.dir }}/release_spec.toml
           if-no-files-found: error

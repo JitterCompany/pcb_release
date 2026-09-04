@@ -41,9 +41,18 @@ on:
         type: string
         default: ""
       tools:
-        description: "Where the pcb_release submodule is checked out."
+        description: >-
+          Path to the pcb_release submodule in your repo. Leave unset to run this
+          repo at tools-ref instead, which needs no submodule.
         type: string
-        default: hardware/tools/pcb_release
+        default: ""
+      tools-ref:
+        description: >-
+          What to fetch when tools: is not set. A branch, a tag, or a full commit SHA
+          (short ones are not accepted). The default floats on master, so pass a tag
+          or a SHA to pin which version of the checks runs.
+        type: string
+        default: master
       extra-checks:
         description: >-
           Optional project-specific script, run once per board as
@@ -83,6 +92,26 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with: { submodules: recursive }
+      # Where the scripts come from: the tools: input if given, otherwise this repo
+      # fetched on the fly. No guessing at submodule locations, so a project either
+      # says where its submodule is or gets tools-ref.
+      - id: tools
+        run: |
+          T="${{ inputs.tools }}"
+          if [ -n "$T" ]; then
+            [ -f "$T/pcb-release.sh" ] || {
+              echo "::error::tools: '$T' contains no pcb-release.sh"; exit 1; }
+          else
+            T=.pcb_release
+            echo "fetch=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "path=$T" >> "$GITHUB_OUTPUT"
+      - if: steps.tools.outputs.fetch == 'true'
+        uses: actions/checkout@v6
+        with:
+          repository: JitterCompany/pcb_release
+          ref: ${{ inputs.tools-ref }}
+          path: .pcb_release
       - name: Checks
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -90,7 +119,7 @@ jobs:
           while read -r d; do [ -n "$d" ] && M="$M --model-dir $d"; done <<'DIRS'
           ${{ inputs.model-dirs }}
           DIRS
-          cat <<'BOARDS' | "${{ inputs.tools }}/pcb-checks.sh" \
+          cat <<'BOARDS' | "${{ steps.tools.outputs.path }}/pcb-checks.sh" \
               --extra-checks "${{ inputs.extra-checks }}" $M
           ${{ inputs.project-dirs || inputs.project-dir }}
           BOARDS
