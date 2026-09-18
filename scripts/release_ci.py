@@ -243,8 +243,75 @@ def package_stem(kind, stem):
     return f"{kind}__{stem}__{datetime.date.today().isoformat()}" + (f"_{build}" if build else "")
 
 
+def render_copy(pcb, drop_dnp, drop_unspecified, workdir):
+    """-> a board to render that shows the same assembly as the STEP.
+
+    `kicad-cli pcb render` has NO component filters -- measured on 10.0.5, it
+    offers only --preset and --variant -- while `pcb export step` has --no-dnp
+    and --no-unspecified. Left alone, the PNGs beside the STEP in the same
+    customer zip show a different board: bodies the STEP deliberately omits.
+
+    So do the filtering here: copy the board and strip the 3D models of exactly
+    the components the STEP leaves out. MODELS are stripped rather than
+    footprints removed, because --no-dnp/--no-unspecified exclude 3D models and
+    not the parts -- pads, courtyards and silkscreen stay identical in both
+    deliverables, and only the bodies differ.
+
+    Returns the original path when nothing is excluded, so the common case does
+    no copying and renders the real file.
+    """
+    if not (drop_dnp or drop_unspecified):
+        return pcb
+
+    def balanced(t, i):
+        d = 0
+        for j in range(i, len(t)):
+            if t[j] == "(":
+                d += 1
+            elif t[j] == ")":
+                d -= 1
+                if d == 0:
+                    return j + 1
+        return len(t)
+
+    t = open(pcb, errors="replace").read()
+    out, last, stripped = [], 0, []
+    i = 0
+    while True:
+        i = t.find("(footprint ", i)
+        if i < 0:
+            break
+        end = balanced(t, i)
+        blk = t[i:end]
+        m = re.search(r"\(attr ([a-z_ ]*)\)", blk)
+        attr = m.group(1).split() if m else []
+        # KiCad stores the footprint TYPE in the same attr list: smd,
+        # through_hole, or neither -- and "neither" is what the GUI and
+        # --no-unspecified both call Unspecified.
+        unspecified = not ({"smd", "through_hole"} & set(attr))
+        if (drop_dnp and "dnp" in attr) or (drop_unspecified and unspecified):
+            nb, k = blk, 0
+            while True:
+                k = nb.find("(model ", k)
+                if k < 0:
+                    break
+                nb = nb[:k] + nb[balanced(nb, k):]
+            if nb != blk:
+                ref = re.search(r'"Reference" "([^"]*)"', blk)
+                stripped.append(ref.group(1) if ref else "?")
+                out.append(t[last:i]); out.append(nb); last = end
+        i = end
+    if not stripped:
+        return pcb
+    dst = os.path.join(workdir, "render-" + os.path.basename(pcb))
+    open(dst, "w").write("".join(out) + t[last:])
+    print(f"[release] renders: {len(stripped)} body/bodies hidden to match the STEP "
+          f"({', '.join(sorted(stripped)[:8])}{', ...' if len(stripped) > 8 else ''})")
+    return dst
+
+
 def generate_customer(pcb, sch, cdir, stem, exclude_dnp=True, preset="follow_pcb_editor",
-                      layers=None):
+                      layers=None, exclude_unspecified=True):
     """CUSTOMER deliverables (NOT the fab zip): STEP, schematic PDF, top/bottom 3D
     renders, and -- if $KICAD_IBOM_DIR points at InteractiveHtmlBom -- an
     interactive HTML BOM.
@@ -261,10 +328,17 @@ def generate_customer(pcb, sch, cdir, stem, exclude_dnp=True, preset="follow_pcb
     optional (heavier deps, not a deliverable anyone dimensions against).
 
     exclude_dnp puts `--no-dnp` on the STEP so it shows the board AS ASSEMBLED,
-    consistent with the pick&place and BOM which already drop DNP parts. NOTE the
-    asymmetry: `pcb render` has no DNP filter at all, so DNP bodies always appear
-    in the PNGs. The STEP is the dimensional deliverable, so that is where this
-    matters; the renders stay illustrative.
+    consistent with the pick&place and BOM which already drop DNP parts.
+    exclude_unspecified adds `--no-unspecified`, which drops the bodies of parts
+    whose footprint type is neither SMD nor through-hole -- mechanical mock-ups,
+    mating connectors, enclosure stand-ins. Those are not fitted and not optional
+    either, so DNP is the wrong word for them and this is the switch that means
+    what it says.
+
+    `pcb render` has no component filters of its own (measured on kicad-cli
+    10.0.5: only --preset and --variant), so render_copy() applies the same two
+    exclusions to a throwaway copy of the board. Without that the PNGs and the
+    STEP in one customer zip would show different assemblies.
 
     preset picks the render's layer visibility. The kicad-cli default,
     'follow_plot_settings', shows every layer we PLOT -- which includes the
@@ -277,9 +351,11 @@ def generate_customer(pcb, sch, cdir, stem, exclude_dnp=True, preset="follow_pcb
     if os.path.isdir(cdir):
         shutil.rmtree(cdir)
     os.makedirs(cdir)
-    step = ["pcb", "export", "step", "--subst-models"] + (["--no-dnp"] if exclude_dnp else [])
+    step = (["pcb", "export", "step", "--subst-models"]
+            + (["--no-dnp"] if exclude_dnp else [])
+            + (["--no-unspecified"] if exclude_unspecified else []))
     print(f"[release] STEP: DNP parts {'excluded (as assembled)' if exclude_dnp else 'INCLUDED'}"
-          f" -- renders always include them (kicad-cli has no render DNP filter)")
+          f", Unspecified-type parts {'excluded' if exclude_unspecified else 'INCLUDED'}")
     out = cli(*step, "-o", f"{cdir}/{stem}.step", pcb)
     bad = model_failures(out)
     for line in bad:
@@ -297,9 +373,12 @@ def generate_customer(pcb, sch, cdir, stem, exclude_dnp=True, preset="follow_pcb
         "--common-layers", "Edge.Cuts", "--layers", ",".join(layers),
         "-o", f"{cdir}/{stem}-layout.pdf", pcb)
     print(f"[release] renders: layer preset '{preset}'")
+    rpcb = render_copy(pcb, exclude_dnp, exclude_unspecified, cdir)
     for side in ("top", "bottom"):
         cli("pcb", "render", "--side", side, "--quality", "high", "--background", "opaque",
-            "--preset", preset, "-o", f"{cdir}/{stem}-render-{side}.png", pcb)
+            "--preset", preset, "-o", f"{cdir}/{stem}-render-{side}.png", rpcb)
+    if rpcb != pcb:
+        os.remove(rpcb)                                  # never ship the filtered copy
     generate_ibom(pcb, cdir)
 
 
@@ -1127,7 +1206,8 @@ def main():
         cus = cfg.get("customer", {})
         generate_customer(export_pcb, sch, os.path.join(pd, "customer"), name,
                           cus.get("step_exclude_dnp", True),
-                          cus.get("render_preset", "follow_pcb_editor"), layers)
+                          cus.get("render_preset", "follow_pcb_editor"), layers,
+                          cus.get("step_exclude_unspecified", True))
         cdir = os.path.join(pd, "customer")
         zpath = shutil.make_archive(os.path.join(pd, package_stem("customer", name)), "zip", cdir)
         print(f"[release] packaged {os.path.basename(zpath)}  ({len(os.listdir(cdir))} files in customer/)")
