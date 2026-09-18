@@ -47,9 +47,12 @@ cannot contradict the gerbers it ships with.
 | `<board>-render-top.png`, `-render-bottom.png` | photo-realistic renders |
 | `*.html` | interactive HTML BOM, an assembly aid. The name comes from InteractiveHtmlBom, and a project's own `ibom.config.ini` can change it |
 
-The STEP leaves DNP parts out by default, so it shows the board as actually assembled.
-Renders always include them, because kicad-cli has no DNP filter for rendering. Both are
-configurable under `[customer]`, see the
+The STEP and the renders show the board as delivered: DNP parts and virtual parts
+(footprint type neither SMD nor through-hole, such as a fit-check module or a mating
+connector) are left out. The renders show only physical layers (copper, mask,
+silkscreen, paste, outline), so user drawings, coating or impedance layers never
+appear. They are slightly tilted by default, because a dead top-down view looks flat.
+All of this is configurable under `[customer]`, see the
 [`release.toml` reference](release-toml.md).
 
 The interactive BOM is best-effort. It shells out to InteractiveHtmlBom, which builds a

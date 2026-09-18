@@ -27,8 +27,8 @@ Categories (errors gate, notes don't):
                A note unless --require-model. --skip-no-model is a refdes-glob
                escape hatch for the odd part with genuinely no model available.
   hidden       model present but (hide yes): absent from STEP *and* renders
-  dnp          model on a do-not-populate part -- informational (STEP is
-               exported with --subst-models, DNP parts are still included)
+  dnp          model on a do-not-populate part -- informational (left out of
+               the STEP and the renders when [customer] step_exclude_dnp is set)
 
 Usage:
   model3d_lint.py BOARD.kicad_pcb [-D NAME=PATH]... [--require-model]
@@ -294,8 +294,8 @@ def main():
     # they land in depends on the release config, not on this board.
     if dnp_refs:
         note.append(("dnp", f"{len(dnp_refs)} DNP part(s) ({', '.join(sorted(dnp_refs))}) -- kept out "
-                            f"of the STEP when release.toml [customer] step_exclude_dnp is true; "
-                            f"always present in renders (kicad-cli has no render DNP filter)"))
+                            f"of the STEP and renders when release.toml [customer] "
+                            f"step_exclude_dnp is true"))
 
     # Undefined variables last, as one error each: a wall of per-refdes lines for
     # a single unset variable buries the one thing you have to fix.

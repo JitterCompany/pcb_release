@@ -89,5 +89,6 @@ a board whose design genuinely has not moved in years.
 |---|---|---|
 | `customer.step_exclude_dnp` | `true` | STEP shows the board as assembled (DNP parts left out). The renders are filtered to match. |
 | `customer.step_exclude_unspecified` | `true` | Leave out bodies whose footprint type is neither SMD nor through-hole: mechanical mock-ups, mating connectors, enclosure stand-ins. They are not fitted and not optional either, so DNP does not describe them. The renders are filtered to match. |
-| `customer.render_preset` | `"follow_pcb_editor"` | physical layers only. `"follow_plot_settings"` also paints fab-intent layers (impedance, coating) over the board. |
+| `customer.render_preset` | `"follow_pcb_editor"` | physical layers only (copper, mask, silkscreen, paste, outline), whatever the designer's own `.kicad_prl` shows. `"follow_plot_settings"` also paints fab-intent layers (impedance, coating) over the board. |
+| `customer.render_rotate` | `"-15,0,-5"` | kicad-cli `--rotate` for both renders, in degrees X,Y,Z. A slight tilt looks more natural than straight top-down. `""` renders flat. |
 | `bom.readable_footprints` | `true` | shorten footprints (`C 0603`) instead of raw KiCad names |

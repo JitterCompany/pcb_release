@@ -97,10 +97,10 @@ MODEL_FAIL = re.compile(r"Could not add 3D model for \S+|"
                         r"^Cannot identify actual file type for|"
                         r"^No model for filename")
 
-def cli(*args):
+def cli(*args, env=None):
     """Run kicad-cli -> combined stdout+stderr. Raises on non-zero, printing the
     captured output first so CI shows WHY the export failed."""
-    p = subprocess.run(["kicad-cli", *args], capture_output=True, text=True)
+    p = subprocess.run(["kicad-cli", *args], capture_output=True, text=True, env=env)
     out = (p.stdout or "") + (p.stderr or "")
     if p.returncode != 0:
         print(f"::error::[release] kicad-cli {' '.join(args[:3])} failed (exit {p.returncode})")
@@ -243,75 +243,101 @@ def package_stem(kind, stem):
     return f"{kind}__{stem}__{datetime.date.today().isoformat()}" + (f"_{build}" if build else "")
 
 
-def render_copy(pcb, drop_dnp, drop_unspecified, workdir):
-    """-> a board to render that shows the same assembly as the STEP.
+# Default render view: tilted 15 deg away and turned 5 deg, which looks like a
+# photo of a board on a desk; straight top-down lighting reads flat and synthetic.
+RENDER_ROTATE = "-15,0,-5"
 
-    `kicad-cli pcb render` has NO component filters -- measured on 10.0.5, it
-    offers only --preset and --variant -- while `pcb export step` has --no-dnp
-    and --no-unspecified. Left alone, the PNGs beside the STEP in the same
-    customer zip show a different board: bodies the STEP deliberately omits.
+# Layers a finished board physically shows, as KiCad 9+ layer IDs (the numbering
+# kicad-cli uses at runtime; older files are renumbered on load, so the board's own
+# file version does not matter). Copper is every even ID -- F.Cu 0, B.Cu 2, In1.Cu 4
+# ... In30.Cu 62 -- so 2-layer, 4-layer and 6-layer boards need no special casing.
+# The rest: F/B.Mask 1/3, F/B.SilkS 5/7, F/B.Paste 13/15, Edge.Cuts 25. Everything
+# else stays hidden -- Dwgs/Cmts/Eco, Fab, CrtYd, Adhesive, Margin, and every User.N
+# (odd IDs from 39), which is where Coating, Impedance, enclosure outlines and the
+# like live under whatever name the designer gave them.
+PHYSICAL_LAYER_IDS = set(range(0, 64, 2)) | {1, 3, 5, 7, 13, 15, 25}
 
-    So do the filtering here: copy the board and strip the 3D models of exactly
-    the components the STEP leaves out. MODELS are stripped rather than
-    footprints removed, because --no-dnp/--no-unspecified exclude 3D models and
-    not the parts -- pads, courtyards and silkscreen stay identical in both
-    deliverables, and only the bodies differ.
 
-    Returns the original path when nothing is excluded, so the common case does
-    no copying and renders the real file.
-    """
-    if not (drop_dnp or drop_unspecified):
-        return pcb
+def visible_layers_mask(ids):
+    """-> a .kicad_prl "visible_layers" value: 128 bits, most significant first, in
+    8-hex-digit groups -- the exact form KiCad 10 writes."""
+    h = f"{sum(1 << i for i in ids):032x}"
+    return "_".join(h[i:i + 8] for i in range(0, 32, 8))
 
-    def balanced(t, i):
-        d = 0
-        for j in range(i, len(t)):
-            if t[j] == "(":
-                d += 1
-            elif t[j] == ")":
-                d -= 1
-                if d == 0:
-                    return j + 1
-        return len(t)
 
-    t = open(pcb, errors="replace").read()
-    out, last, stripped = [], 0, []
-    i = 0
-    while True:
-        i = t.find("(footprint ", i)
-        if i < 0:
-            break
-        end = balanced(t, i)
-        blk = t[i:end]
-        m = re.search(r"\(attr ([a-z_ ]*)\)", blk)
-        attr = m.group(1).split() if m else []
-        # KiCad stores the footprint TYPE in the same attr list: smd,
-        # through_hole, or neither -- and "neither" is what the GUI and
-        # --no-unspecified both call Unspecified.
-        unspecified = not ({"smd", "through_hole"} & set(attr))
-        if (drop_dnp and "dnp" in attr) or (drop_unspecified and unspecified):
-            nb, k = blk, 0
-            while True:
-                k = nb.find("(model ", k)
-                if k < 0:
-                    break
-                nb = nb[:k] + nb[balanced(nb, k):]
-            if nb != blk:
-                ref = re.search(r'"Reference" "([^"]*)"', blk)
-                stripped.append(ref.group(1) if ref else "?")
-                out.append(t[last:i]); out.append(nb); last = end
-        i = end
-    if not stripped:
-        return pcb
-    dst = os.path.join(workdir, "render-" + os.path.basename(pcb))
-    open(dst, "w").write("".join(out) + t[last:])
-    print(f"[release] renders: {len(stripped)} body/bodies hidden to match the STEP "
-          f"({', '.join(sorted(stripped)[:8])}{', ...' if len(stripped) > 8 else ''})")
-    return dst
+def kicad_config_version():
+    """-> (major, "10.0"): the version and the $KICAD_CONFIG_HOME subdirectory it reads."""
+    p = subprocess.run(["kicad-cli", "version"], capture_output=True, text=True)
+    m = re.match(r"\s*(\d+)\.(\d+)", p.stdout or "")
+    if not m:
+        sys.exit(f"release: cannot parse `kicad-cli version`: {p.stdout!r}")
+    return int(m.group(1)), f"{m.group(1)}.{m.group(2)}"
+
+
+def render_board(pcb, cdir, stem, preset, rotate, hide_dnp, hide_virtual):
+    """Top and bottom 3D renders of the board AS DELIVERED: physical layers only,
+    and without the bodies the STEP leaves out.
+
+    `pcb render` has no filter flags (measured on 10.0.5: only --preset and
+    --variant), but it does obey the two settings files the 3D viewer uses:
+
+      * 3d_viewer.json, read from $KICAD_CONFIG_HOME/<version>/, holds
+        show_footprints_dnp and show_footprints_virtual. "Virtual" is the same
+        group --no-unspecified drops from the STEP: footprint type neither SMD nor
+        through-hole. A private config dir makes both explicit instead of
+        inheriting whatever the machine's user last clicked.
+      * <board>.kicad_prl holds the board editor's visible_layers, which the
+        follow_pcb_editor preset uses as its layer set. Absent, every layer is on
+        -- that is how a design-only Dwgs.User fill ended up painted over a board.
+        (3d_viewer.json's show_drawings does NOT override it; measured.)
+
+    The .kicad_prl belongs to the designer, so the render runs from an alias of
+    the board BESIDE the original (make_board_alias): ${KIPRJMOD} and relative
+    model paths resolve exactly as for the STEP, and cleanup removes the alias,
+    our .kicad_prl and whatever sidecars kicad-cli wrote next to it."""
+    major, ver = kicad_config_version()
+    pd, fn = os.path.split(os.path.abspath(pcb))
+    board = os.path.splitext(fn)[0]
+    rpcb, cleanup = make_board_alias(pd, board, board + "-customer-render")
+    cfg = tempfile.mkdtemp(prefix="kicad-render-cfg-")
+    try:
+        if preset == "follow_pcb_editor":
+            if major < 9:                     # layer IDs were renumbered in KiCad 9
+                print(f"::warning::[release] kicad-cli {ver}: layer IDs predate KiCad 9, "
+                      f"renders may show non-physical layers")
+            else:
+                with open(os.path.splitext(rpcb)[0] + ".kicad_prl", "w") as f:
+                    json.dump({"board": {"visible_layers":
+                                         visible_layers_mask(PHYSICAL_LAYER_IDS)}}, f)
+        os.makedirs(os.path.join(cfg, ver))
+        with open(os.path.join(cfg, ver, "3d_viewer.json"), "w") as f:
+            json.dump({"render": {"show_footprints_dnp": not hide_dnp,
+                                  "show_footprints_virtual": not hide_virtual}}, f)
+        # Keep the user's path variables (KICAD*_3DMODEL_DIR, custom libraries) when
+        # they are defined in KiCad's GUI rather than the environment.
+        home = os.environ.get("KICAD_CONFIG_HOME") or os.path.join(
+            os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "kicad")
+        common = os.path.join(home, ver, "kicad_common.json")
+        if os.path.isfile(common):
+            shutil.copyfile(common, os.path.join(cfg, ver, "kicad_common.json"))
+        env = dict(os.environ, KICAD_CONFIG_HOME=cfg)
+        view = ["--rotate", rotate, "--zoom", "0.9"] if rotate else []
+        print(f"[release] renders: layer preset '{preset}'"
+              + (", physical layers only" if preset == "follow_pcb_editor" else "")
+              + f", DNP {'hidden' if hide_dnp else 'shown'}"
+              + f", virtual {'hidden' if hide_virtual else 'shown'}"
+              + (f", rotated {rotate}" if rotate else ""))
+        for side in ("top", "bottom"):
+            cli("pcb", "render", "--side", side, "--quality", "high", "--background", "opaque",
+                "--preset", preset, *view, "-o", f"{cdir}/{stem}-render-{side}.png", rpcb,
+                env=env)
+    finally:
+        cleanup()
+        shutil.rmtree(cfg, ignore_errors=True)
 
 
 def generate_customer(pcb, sch, cdir, stem, exclude_dnp=True, preset="follow_pcb_editor",
-                      layers=None, exclude_unspecified=True):
+                      layers=None, exclude_unspecified=True, rotate=RENDER_ROTATE):
     """CUSTOMER deliverables (NOT the fab zip): STEP, schematic PDF, top/bottom 3D
     renders, and -- if $KICAD_IBOM_DIR points at InteractiveHtmlBom -- an
     interactive HTML BOM.
@@ -335,19 +361,19 @@ def generate_customer(pcb, sch, cdir, stem, exclude_dnp=True, preset="follow_pcb
     either, so DNP is the wrong word for them and this is the switch that means
     what it says.
 
-    `pcb render` has no component filters of its own (measured on kicad-cli
-    10.0.5: only --preset and --variant), so render_copy() applies the same two
-    exclusions to a throwaway copy of the board. Without that the PNGs and the
-    STEP in one customer zip would show different assemblies.
+    render_board() applies the same two exclusions to the renders, so the PNGs
+    and the STEP in one customer zip show the same assembly.
 
     preset picks the render's layer visibility. The kicad-cli default,
     'follow_plot_settings', shows every layer we PLOT -- which includes the
     non-physical fab-intent layers (Impedance, Coating.top/bottom), so they paint
     coloured films over the board and hide the silkscreen. 'follow_pcb_editor'
-    uses the 3D viewer's own defaults, which show only physical layers. Verified
-    deterministic in CI: byte-identical with and without a .kicad_prl (the 3D view
-    does not read the 2D visible_layers, which were all-on in that test), so it
-    does not depend on that gitignored local file."""
+    follows the board editor's visible layers, which render_board() pins to the
+    physical ones -- so the designer's own gitignored .kicad_prl never leaks in.
+
+    rotate is kicad-cli's --rotate 'X,Y,Z' in degrees: a slight tilt reads more
+    naturally than a dead top-down view, whose lighting flattens everything. ""
+    renders straight on."""
     if os.path.isdir(cdir):
         shutil.rmtree(cdir)
     os.makedirs(cdir)
@@ -372,13 +398,7 @@ def generate_customer(pcb, sch, cdir, stem, exclude_dnp=True, preset="follow_pcb
     cli("pcb", "export", "pdf", "--mode-multipage", "--include-border-title",
         "--common-layers", "Edge.Cuts", "--layers", ",".join(layers),
         "-o", f"{cdir}/{stem}-layout.pdf", pcb)
-    print(f"[release] renders: layer preset '{preset}'")
-    rpcb = render_copy(pcb, exclude_dnp, exclude_unspecified, cdir)
-    for side in ("top", "bottom"):
-        cli("pcb", "render", "--side", side, "--quality", "high", "--background", "opaque",
-            "--preset", preset, "-o", f"{cdir}/{stem}-render-{side}.png", rpcb)
-    if rpcb != pcb:
-        os.remove(rpcb)                                  # never ship the filtered copy
+    render_board(pcb, cdir, stem, preset, rotate, exclude_dnp, exclude_unspecified)
     generate_ibom(pcb, cdir)
 
 
@@ -1207,7 +1227,8 @@ def main():
         generate_customer(export_pcb, sch, os.path.join(pd, "customer"), name,
                           cus.get("step_exclude_dnp", True),
                           cus.get("render_preset", "follow_pcb_editor"), layers,
-                          cus.get("step_exclude_unspecified", True))
+                          cus.get("step_exclude_unspecified", True),
+                          cus.get("render_rotate", RENDER_ROTATE))
         cdir = os.path.join(pd, "customer")
         zpath = shutil.make_archive(os.path.join(pd, package_stem("customer", name)), "zip", cdir)
         print(f"[release] packaged {os.path.basename(zpath)}  ({len(os.listdir(cdir))} files in customer/)")
