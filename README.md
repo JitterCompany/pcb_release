@@ -126,11 +126,13 @@ Set `extra-checks: path/to/my-checks.sh` to run your own script once per board, 
 
 1. Push a `hw-v*` tag, or start the release workflow from the Actions tab. A first
    release needs no `release_spec.toml`, it writes one.
-2. Download the artifacts. Per board there are three: `production__<board>__<date>` for
-   the PCBA partner, `customer__<board>__<date>` with the STEP, PDFs, renders and
-   interactive BOM, and `release-spec__<board>`.
-3. Commit that `release_spec.toml`. It records the board as built, and the `drift` gate
-   fails later if the board stops matching it. Until a board has one, `drift` fails with
+2. Download the artifacts. Per board there are two: `production__<board>__<date>` for
+   the PCBA partner, and `customer__<board>__<date>` with the STEP, PDFs, renders and
+   interactive BOM. One more, `release-specs`, holds every board's `release_spec.toml`
+   at its repo path.
+3. Extract `release-specs` at the repo root and commit the specs. Each one records the
+   board as built, and the `drift` gate fails later if the board stops matching it.
+   Until a board has one, `drift` fails with
    "does not exist yet", so a brand new board only goes fully green after its first
    release.
 

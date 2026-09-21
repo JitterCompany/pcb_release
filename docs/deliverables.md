@@ -75,5 +75,6 @@ artifact therefore yields one archive named the same as the local build's.
 
 Written into the project directory, not into either deliverable set, and meant to be
 committed. It records the board as built so the [`drift` gate](gates.md#drift) can tell
-you later when the board no longer matches. CI uploads it as its own artifact,
-`release-spec__<board>`.
+you later when the board no longer matches. CI collects every board's spec into one
+artifact, `release-specs`, with each file at its path in the repo: extract it at the repo
+root and the specs land in their project directories, ready to commit.
