@@ -221,11 +221,94 @@ def _translate_bom_footprints(csv_path):
     with open(csv_path, "w", newline="") as f:
         csv.writer(f).writerows(rows)
 
+def parse_alt(text):
+    """Symbol field `alt` -> [(mpn, note)]. Commas inside a note's parentheses
+    belong to the note, so split only at depth 0.
+
+    >>> parse_alt("SN74LVC1G123DCUR (TI, same footprint)")
+    [('SN74LVC1G123DCUR', 'TI, same footprint')]
+    >>> parse_alt("A1, B2 (tube vs reel),C3")
+    [('A1', ''), ('B2', 'tube vs reel'), ('C3', '')]
+    >>> parse_alt("  ")
+    []
+    """
+    items, depth, cur = [], 0, ""
+    for ch in text or "":
+        depth += (ch == "(") - (ch == ")")
+        if ch == "," and depth <= 0:
+            items.append(cur)
+            cur = ""
+        else:
+            cur += ch
+    items.append(cur)
+    out = []
+    for item in items:
+        m = re.match(r"\s*([^(]*?)\s*(?:\((.*)\))?\s*$", item, re.S)
+        mpn, note = (m.group(1), (m.group(2) or "").strip()) if m else (item.strip(), "")
+        if mpn or note:
+            out.append((mpn, note))
+    return out
+
+def _expand_refs(cell):
+    """'C1,C3-C5' -> ['C1', 'C3', 'C4', 'C5'], undoing kicad-cli's ref ranges."""
+    refs = []
+    for part in filter(None, (p.strip() for p in cell.split(","))):
+        m = re.fullmatch(r"([A-Za-z_#]+)(\d+)-\1(\d+)", part)
+        if m:
+            refs += [f"{m.group(1)}{n}" for n in range(int(m.group(2)), int(m.group(3)) + 1)]
+        else:
+            refs.append(part)
+    return refs
+
+def _alt_by_ref(sch):
+    """-> {ref: raw alt}, read ungrouped: a grouped export comma-joins differing
+    values and drops empty ones, which is indistinguishable from a real list.
+    kicad-cli matches field names case-sensitively, hence the three spellings."""
+    fd, tmp = tempfile.mkstemp(suffix=".csv")
+    os.close(fd)
+    try:
+        cli("sch", "export", "bom", "--exclude-dnp", "--fields", "Reference,alt,Alt,ALT",
+            "--ref-range-delimiter", "", "-o", tmp, sch)
+        with open(tmp, newline="") as f:
+            rows = list(csv.reader(f))[1:]
+        return {r[0]: next((v.strip() for v in r[1:] if v.strip()), "") for r in rows if r}
+    finally:
+        os.remove(tmp)
+
+def _add_alt_columns(csv_path, sch):
+    """Append 'Alt MPN' and 'Alt note' from the symbols' `alt` field. MPNs get
+    their own column so an assembler can read them as-is; notes are kept, not
+    dropped, because some say what else must change ("verify other passives")."""
+    alts = _alt_by_ref(sch)
+    with open(csv_path, newline="") as f:
+        rows = list(csv.reader(f))
+    if not rows:
+        return
+    rows[0] += ["Alt MPN", "Alt note"]
+    for r in rows[1:]:
+        refs = _expand_refs(r[0])
+        values = {alts.get(ref, "") for ref in refs}
+        if len(values) > 1:
+            # Merge rather than pick one: the reader then sees every option.
+            detail = "; ".join(f"{ref}={alts.get(ref, '') or '(none)'}" for ref in refs)
+            print(f"::warning::[bom] {r[0]}: grouped parts have different `alt` fields, "
+                  f"the BOM lists them all. {detail}")
+        parsed = []
+        for v in sorted(values):
+            parsed += [p for p in parse_alt(v) if p not in parsed]
+        mpns = [m for m, _ in parsed if m]
+        notes = [(f"{m}: {n}" if len(parsed) > 1 and m else n) for m, n in parsed if n]
+        r += [", ".join(mpns), "; ".join(notes)]
+    with open(csv_path, "w", newline="") as f:
+        csv.writer(f).writerows(rows)
+
 def generate_bom(sch, out_csv, readable_footprints=True):
-    """Grouped assembly BOM (CSV) via kicad-cli, DNP excluded. Same columns/order
-    as Kicad_bom_sync's xlsx (BOM.py header_names) minus its 'Sync' column, so the
-    CSV diffs cleanly against the sync BOM. readable_footprints post-processes the
-    Footprint column like Kicad_bom_sync (readable + minimal v1/v2 diff)."""
+    """Grouped assembly BOM (CSV) via kicad-cli, DNP excluded. The first columns
+    match Kicad_bom_sync's xlsx (BOM.py header_names) minus its 'Sync' column, so
+    the CSV diffs cleanly against the sync BOM. 'Alt MPN' and 'Alt note' (second
+    sources from the `alt` field) come last to keep that alignment.
+    readable_footprints post-processes the Footprint column like Kicad_bom_sync
+    (readable + minimal v1/v2 diff)."""
     cli("sch", "export", "bom", "--exclude-dnp",
         "--group-by", "Value,Footprint",
         "--fields", "Reference,Footprint,Value,rating,QUANTITY,Manufacturer,MPN,Farnell,Mouser,Digikey",
@@ -233,6 +316,7 @@ def generate_bom(sch, out_csv, readable_footprints=True):
         "-o", out_csv, sch)
     if readable_footprints:
         _translate_bom_footprints(out_csv)
+    _add_alt_columns(out_csv, sch)
 
 def package_stem(kind, stem):
     """<kind>__<board>__<date>[_<build>] -- the shared naming for both deliverable

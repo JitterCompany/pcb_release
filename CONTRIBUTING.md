@@ -85,3 +85,11 @@ grep -nE 'mktemp[[:space:]]*(-d)?[[:space:]]*\)|readlink -f|grep -P|sed -i |stat
 
 If you have Homebrew bash (5.x) on a Mac, `/bin/bash script.sh` still uses 3.2, so test with
 that path explicitly.
+
+## Python checks
+
+The BOM `alt` parser carries doctests. Run them after touching it:
+
+```bash
+python3 -m doctest scripts/release_ci.py
+```
