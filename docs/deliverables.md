@@ -22,11 +22,32 @@ matches too, rather than still naming the KiCad project.
 | `<board>-PTH.drl`, `<board>-NPTH.drl` | plated and non-plated drill files |
 | `<board>-job.gbrjob` | Gerber X2 job file, the machine-readable stackup and finish |
 | `all-pos.csv`, `smd-pos.csv` | pick&place, everything and SMD-only |
-| `BOM_<board>.csv` | the assembly BOM, grouped by value and footprint, DNP excluded |
+| `BOM_<board>.csv` | the assembly BOM, grouped by value and footprint, DNP excluded, see below |
 | `README-manufacturing.txt` | the fab-spec checklist, see below |
 
 Special layers named in `release.toml` under `[fab] special_layers`, conformal coating
 for example, are exported alongside these.
+
+### `BOM_<board>.csv`
+
+Columns: Ref, Footprint, Value, Rating, Qty, Manufacturer, MPN, Farnell, Mouser,
+Digikey, Alt MPN, Alt note. The first ten match the Kicad_bom_sync spreadsheet, so the
+two diff cleanly.
+
+The last two list second sources from a symbol field named `alt` (also `Alt` or `ALT`).
+Its value is one or more MPNs, comma-separated, each with an optional note in
+parentheses:
+
+    SN74LVC1G123DCUR (TI, same footprint), AT30TS74-XM8M-B (tube vs reel)
+
+`Alt MPN` gets just the MPNs, so an assembler can copy them as-is. `Alt note` keeps the
+notes, prefixed with their MPN when there is more than one. A note such as "verify other
+passives" says the swap is not free, so it is never dropped. A comma inside the
+parentheses belongs to the note.
+
+If the parts in one group have different `alt` values, the BOM lists all of them and
+warns, naming each reference and its value. Fix the schematic so they agree, or give
+the differing part its own value.
 
 ### `README-manufacturing.txt`
 

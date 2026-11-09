@@ -55,7 +55,9 @@ the same version of this tool ([which version runs](docs/install.md#which-versio
     pcb-release.sh hardware/my-board bom       # -> hardware/my-board/BOM_my-board.csv
 
 The same BOM the release ships, for reading the parts over beforehand: grouped by value
-and footprint, DNP excluded, footprints shortened per `bom.readable_footprints`. Not a
+and footprint, DNP excluded, footprints shortened per `bom.readable_footprints`, second
+sources from the `alt` field in their own columns (see
+[deliverables](docs/deliverables.md#bom_boardcsv)). Not a
 gate, so `skip=` and `todo=` do not apply, and it needs no `release.toml`.
 
 ### Manual workflow (legacy, interactive, no config)
