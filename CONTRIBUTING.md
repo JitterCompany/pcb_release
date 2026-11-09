@@ -88,7 +88,7 @@ that path explicitly.
 
 ## Python checks
 
-The BOM `alt` parser carries doctests. Run them after touching it:
+The BOM `alt` parser and field merge rule carry doctests. Run them after touching it:
 
 ```bash
 python3 -m doctest scripts/release_ci.py

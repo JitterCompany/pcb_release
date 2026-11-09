@@ -260,47 +260,93 @@ def _expand_refs(cell):
             refs.append(part)
     return refs
 
-def _alt_by_ref(sch):
-    """-> {ref: raw alt}, read ungrouped: a grouped export comma-joins differing
-    values and drops empty ones, which is indistinguishable from a real list.
-    kicad-cli matches field names case-sensitively, hence the three spellings."""
+# Part fields that must agree within a BOM group. A disagreement is almost always
+# a copied symbol whose fields were only half updated.
+PART_FIELDS = ("Manufacturer", "MPN", "Farnell", "Mouser", "Digikey")
+
+def merge_field(values):
+    """Group cell from the parts' values: the one non-empty value, '' if none,
+    None when non-empty values differ.
+
+    >>> merge_field(["X1", "", " X1 "])
+    'X1'
+    >>> merge_field(["", ""])
+    ''
+    >>> merge_field(["X1", "X2", ""]) is None
+    True
+    """
+    distinct = {v.strip() for v in values} - {""}
+    if len(distinct) > 1:
+        return None
+    return distinct.pop() if distinct else ""
+
+def _fields_by_ref(sch):
+    """-> {ref: {field: value}}, read ungrouped: a grouped export comma-joins
+    differing values and drops empty ones, so a conflict looks like a list.
+    kicad-cli matches field names case-sensitively, hence three spellings of alt."""
+    alt_names = ("alt", "Alt", "ALT")
+    names = alt_names + PART_FIELDS
     fd, tmp = tempfile.mkstemp(suffix=".csv")
     os.close(fd)
     try:
-        cli("sch", "export", "bom", "--exclude-dnp", "--fields", "Reference,alt,Alt,ALT",
+        cli("sch", "export", "bom", "--exclude-dnp", "--fields", ",".join(("Reference",) + names),
             "--ref-range-delimiter", "", "-o", tmp, sch)
         with open(tmp, newline="") as f:
             rows = list(csv.reader(f))[1:]
-        return {r[0]: next((v.strip() for v in r[1:] if v.strip()), "") for r in rows if r}
     finally:
         os.remove(tmp)
+    out = {}
+    for r in rows:
+        if not r:
+            continue
+        vals = dict(zip(names, (v.strip() for v in r[1:])))
+        d = {f: vals.get(f, "") for f in PART_FIELDS}
+        d["alt"] = next((vals[n] for n in alt_names if vals.get(n)), "")
+        out[r[0]] = d
+    return out
 
-def _add_alt_columns(csv_path, sch):
-    """Append 'Alt MPN' and 'Alt note' from the symbols' `alt` field. MPNs get
-    their own column so an assembler can read them as-is; notes are kept, not
-    dropped, because some say what else must change ("verify other passives")."""
-    alts = _alt_by_ref(sch)
+def _alt_cells(group, refs, by_ref):
+    """-> [Alt MPN, Alt note] for one group. MPNs get their own column so an
+    assembler can read them as-is; notes are kept, not dropped, because some say
+    what else must change ("verify other passives")."""
+    alts = {ref: by_ref.get(ref, {}).get("alt", "") for ref in refs}
+    values = set(alts.values())
+    if len(values) > 1:
+        # Merge rather than pick one: the reader then sees every option.
+        detail = "; ".join(f"{ref}={v or '(none)'}" for ref, v in alts.items())
+        print(f"::warning::[bom] {group}: grouped parts have different `alt` fields, "
+              f"the BOM lists them all. {detail}")
+    parsed = []
+    for v in sorted(values):
+        parsed += [p for p in parse_alt(v) if p not in parsed]
+    mpns = [m for m, _ in parsed if m]
+    notes = [(f"{m}: {n}" if len(parsed) > 1 and m else n) for m, n in parsed if n]
+    return [", ".join(mpns), "; ".join(notes)]
+
+def _postprocess_bom(csv_path, sch):
+    """Check PART_FIELDS per group and append the alt columns. -> [error]."""
+    by_ref = _fields_by_ref(sch)
     with open(csv_path, newline="") as f:
         rows = list(csv.reader(f))
     if not rows:
-        return
+        return []
+    cols = {h: i for i, h in enumerate(rows[0])}
     rows[0] += ["Alt MPN", "Alt note"]
+    errors = []
     for r in rows[1:]:
         refs = _expand_refs(r[0])
-        values = {alts.get(ref, "") for ref in refs}
-        if len(values) > 1:
-            # Merge rather than pick one: the reader then sees every option.
-            detail = "; ".join(f"{ref}={alts.get(ref, '') or '(none)'}" for ref in refs)
-            print(f"::warning::[bom] {r[0]}: grouped parts have different `alt` fields, "
-                  f"the BOM lists them all. {detail}")
-        parsed = []
-        for v in sorted(values):
-            parsed += [p for p in parse_alt(v) if p not in parsed]
-        mpns = [m for m, _ in parsed if m]
-        notes = [(f"{m}: {n}" if len(parsed) > 1 and m else n) for m, n in parsed if n]
-        r += [", ".join(mpns), "; ".join(notes)]
+        for field in PART_FIELDS:
+            values = {ref: by_ref.get(ref, {}).get(field, "") for ref in refs}
+            merged = merge_field(values.values())
+            if merged is None:
+                detail = "; ".join(f"{ref}={v or '(none)'}" for ref, v in values.items())
+                errors.append(f"{r[0]}: grouped parts have different {field} values. {detail}")
+            elif field in cols:
+                r[cols[field]] = merged
+        r += _alt_cells(r[0], refs, by_ref)
     with open(csv_path, "w", newline="") as f:
         csv.writer(f).writerows(rows)
+    return errors
 
 def generate_bom(sch, out_csv, readable_footprints=True):
     """Grouped assembly BOM (CSV) via kicad-cli, DNP excluded. The first columns
@@ -308,7 +354,8 @@ def generate_bom(sch, out_csv, readable_footprints=True):
     the CSV diffs cleanly against the sync BOM. 'Alt MPN' and 'Alt note' (second
     sources from the `alt` field) come last to keep that alignment.
     readable_footprints post-processes the Footprint column like Kicad_bom_sync
-    (readable + minimal v1/v2 diff)."""
+    (readable + minimal v1/v2 diff). -> [error] for PART_FIELDS that disagree
+    within a group; the CSV is still written, so the conflict can be read."""
     cli("sch", "export", "bom", "--exclude-dnp",
         "--group-by", "Value,Footprint",
         "--fields", "Reference,Footprint,Value,rating,QUANTITY,Manufacturer,MPN,Farnell,Mouser,Digikey",
@@ -316,7 +363,7 @@ def generate_bom(sch, out_csv, readable_footprints=True):
         "-o", out_csv, sch)
     if readable_footprints:
         _translate_bom_footprints(out_csv)
-    _add_alt_columns(out_csv, sch)
+    return _postprocess_bom(out_csv, sch)
 
 def package_stem(kind, stem):
     """<kind>__<board>__<date>[_<build>] -- the shared naming for both deliverable
@@ -1161,7 +1208,9 @@ def main():
         cfg = load_toml(cfg_path) if os.path.isfile(cfg_path) else {}
         name = str(cfg.get("board", {}).get("name", "")).strip() or stem
         dest = a.out or os.path.join(pd, f"BOM_{name}.csv")
-        generate_bom(sch, dest, cfg.get("bom", {}).get("readable_footprints", True))
+        errors = generate_bom(sch, dest, cfg.get("bom", {}).get("readable_footprints", True))
+        for e in errors:
+            print(f"::error::[bom] {e}")
         with open(dest) as f:
             rows = max(0, sum(1 for _ in f) - 1)          # minus the header
         # Absolute: this is usually reached through a project wrapper that runs from
@@ -1169,7 +1218,7 @@ def main():
         # reader is not standing.
         print(f"[bom] {rows} line(s), DNP excluded, grouped by Value+Footprint "
               f"-> {os.path.abspath(dest)}")
-        return 0
+        return 1 if errors else 0
 
     if not os.path.isfile(cfg_path):
         # This used to die on a bare FileNotFoundError traceback. release.toml holds
@@ -1293,10 +1342,12 @@ def main():
     if a.mode == "build":
         open(os.path.join(pd, a.spec), "w").write(spec)
         open(os.path.join(outdir, "README-manufacturing.txt"), "w").write(readme)  # .txt: opens everywhere
-        generate_bom(sch, os.path.join(outdir, f"BOM_{name}.csv"),
-                     cfg.get("bom", {}).get("readable_footprints", True))
+        bom_errors = generate_bom(sch, os.path.join(outdir, f"BOM_{name}.csv"),
+                                  cfg.get("bom", {}).get("readable_footprints", True))
+    else:
+        bom_errors = []
 
-    problems = run_checks(outdir, res, pos_all, bom)
+    problems = run_checks(outdir, res, pos_all, bom) + [f"BOM {e}" for e in bom_errors]
     for p in problems:
         print(f"::error::[release] {p}")
 
