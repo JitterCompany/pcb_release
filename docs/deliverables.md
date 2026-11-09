@@ -34,6 +34,12 @@ Columns: Ref, Footprint, Value, Rating, Qty, Manufacturer, MPN, Farnell, Mouser,
 Digikey, Alt MPN, Alt note. The first ten match the Kicad_bom_sync spreadsheet, so the
 two diff cleanly.
 
+Within one group, the non-empty values of Manufacturer, MPN, Farnell, Mouser and Digikey
+must agree. An empty value does not count, so one part carrying the MPN fills the cell
+for the whole group. Two different non-empty values are an error that names each
+reference and its value, and the BOM step fails. That is nearly always a copied symbol
+with its fields only half updated. The CSV is still written, so the conflict can be read.
+
 The last two list second sources from a symbol field named `alt` (also `Alt` or `ALT`).
 Its value is one or more MPNs, comma-separated, each with an optional note in
 parentheses:
