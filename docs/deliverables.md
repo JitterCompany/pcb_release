@@ -30,30 +30,14 @@ for example, are exported alongside these.
 
 ### `BOM_<board>.csv`
 
-Columns: Ref, Footprint, Value, Rating, Qty, Manufacturer, MPN, Farnell, Mouser,
-Digikey, Alt MPN, Alt note. The first ten match the Kicad_bom_sync spreadsheet, so the
-two diff cleanly.
+- grouped by Value + Footprint, DNP excluded
+- no duplicate or conflicting MPN, manufacturer or distributor fields within a group.
+  An empty field is filled from the rest of the group
+- `Alt MPN` and `Alt note` columns from the symbol field `alt`, e.g.
+  `SN74LVC1G123DCUR (TI, same footprint)`
 
-Within one group, the non-empty values of Manufacturer, MPN, Farnell, Mouser and Digikey
-must agree. An empty value does not count, so one part carrying the MPN fills the cell
-for the whole group. Two different non-empty values are an error that names each
-reference and its value, and the BOM step fails. That is nearly always a copied symbol
-with its fields only half updated. The CSV is still written, so the conflict can be read.
-
-The last two list second sources from a symbol field named `alt` (also `Alt` or `ALT`).
-Its value is one or more MPNs, comma-separated, each with an optional note in
-parentheses:
-
-    SN74LVC1G123DCUR (TI, same footprint), AT30TS74-XM8M-B (tube vs reel)
-
-`Alt MPN` gets just the MPNs, so an assembler can copy them as-is. `Alt note` keeps the
-notes, prefixed with their MPN when there is more than one. A note such as "verify other
-passives" says the swap is not free, so it is never dropped. A comma inside the
-parentheses belongs to the note.
-
-If the parts in one group have different `alt` values, the BOM lists all of them and
-warns, naming each reference and its value. Fix the schematic so they agree, or give
-the differing part its own value.
+Strict validation (symbols, datasheets, BOM fields) belongs to the CI checks (work in
+progress).
 
 ### `README-manufacturing.txt`
 
