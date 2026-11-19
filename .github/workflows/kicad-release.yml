@@ -205,6 +205,7 @@ jobs:
           name: release-spec-part__${{ matrix.name }}
           path: .release-spec/
           if-no-files-found: error
+          include-hidden-files: true    # upload-artifact v4.4+ skips dot paths by default
 
   # One artifact holding every board's release_spec.toml at its path in the repo, so
   # the maintainer extracts it on top of the checkout and commits. Runs when some
