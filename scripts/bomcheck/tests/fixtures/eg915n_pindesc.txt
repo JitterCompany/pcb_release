@@ -1,0 +1,79 @@
+Table 6: Pin Description
+
+
+ Power Supply Input
+
+                   Pin
+ Pin Name                   I/O       Description            DC Characteristics   Comment
+                   No.
+                                                                                  External power
+                                                                                  supply must be
+                                                                                  provided with
+                                                                                  sufficient current of
+                                      Power supply for the   Vmax = 4.5 V
+                                                                                  at least 0.8 A. It is
+ VBAT_BB           32, 33   PI        module’s baseband      Vmin = 3.4 V
+                                                                                  recommended to add
+                                      part                   Vnom = 3.8 V
+                                                                                  external TVS diode.
+                                                                                  Test points are
+                                                                                  recommended to be
+                                                                                  reserved.
+
+
+
+EG915N_Series_Hardware_Design                                                                  21 / 99
+                                                                           LTE Standard Products
+
+
+                                                                               External power
+                                                                               supply must be
+                                                                               provided with
+                                                                               sufficient current of
+                                Power supply for the                           at least 2.2 A. It is
+VBAT_RF         52, 53   PI
+                                module’s RF part                               recommended to add
+                                                                               external TVS diode.
+                                                                               Test points are
+                                                                               recommended to be
+                                                                               reserved.
+
+GND             3, 31, 48, 50, 54, 55, 58, 59, 61, 62, 67–74, 79–82, 89–91, 100–102
+
+Power Supply Output
+
+                Pin
+Pin Name                 I/O    Description              DC Characteristics    Comment
+                No.
+                                                                               Power supply for
+                                                                               external GPIO’s
+                                Provide 1.8 V for        IOmax = 50 mA         pull-up circuits.
+VDD_EXT         29       PO
+                                external circuit         Vnom = 1.8 V          A test point is
+                                                                               recommended to be
+                                                                               reserved.
+
+Turn On/Off
+
+                Pin
+Pin Name                 I/O    Description              DC Characteristics    Comment
+                No.
+                                                                               VBAT power domain.
+                                                         VILmax = 0.5 V        A test point is
+PWRKEY          15       DI     Turn on/off the module
+                                                         Vnom = VBAT           recommended to be
+                                                                               reserved.
+                                                                               Active low.
+                                                                               1.8 V power domain.
+                                                         VILmax = 0.5 V
+RESET_N         17       DI     Reset the module                               A test point is
+ Reserved Pins
+
+ Pin Name         Pin No.                                                       Comment
+
+                  11–14, 16, 56, 57, 63–66, 78, 88, 92–95, 97–99, 103–118,
+ RESERVED                                                                       Keep them open.
+                  123–125
+
+
+

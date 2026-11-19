@@ -1,0 +1,86 @@
+Connection diagrams
+
+
+2             Connection diagrams
+2.1           SOIC 16-lead
+
+                               IO3 / RESET#     1                        16      SCK
+
+
+                                      VCC       2                        15      SI / IO0
+
+
+                                   RESET#       3                        14      RFU
+
+                                        NC      4                        13      DNU
+                                                        SOIC 16
+                                        NC      5                        12      DNU
+
+
+                                      RFU       6                        11      DNU
+
+
+                                       CS#      7                        10      VSS
+
+                                   SO / IO1     8                         9      WP# / IO2
+
+
+Figure 1      16-lead SOIC package (SO3016), top view
+
+
+2.2           8- Connector packages
+
+                                       CS#      1                    8     VCC
+
+                                   SO / IO1     2                    7     IO3 / RESET#
+                                                        SOIC 8
+                                  WP# / IO2     3                    6    SCK
+
+                                       VSS      4                    5    SI / IO0
+
+
+Figure 2      8-pin plastic small outline package (SOIC8)
+
+
+
+
+                                         CS#        1            8       VCC
+
+
+                                     SO / IO1       2            7       IO3 / RESET#
+                                                        USON
+                                   WP# / IO2        3            6       SCK
+
+
+                                         VSS        4            5       SI / IO0
+
+
+Figure 3      8-connector package (USON 4 x 4), top view
+
+
+
+
+Datasheet                                                 8                                  002-12878 Rev. *H
+                                                                                                   2023-04-17
+64 Mb (8 MB) FL-L flash
+
+
+Table 7           Status Register 1 Non-volatile (SR1NV)
+                                                               Default
+ Bits       Field name      Function          Type              state                     Description
+
+   7         SRP0_NV     Status Register   Non-volatile          0       Provides the default state for SRP0.
+                         Protect 0
+                         Default
+   6         SEC_NV      Sector / Block    Non-volatile          0       Provides the defaults state for SEC
+                         Protect
+   5      TBPROT_NV TBPROT Default Non-volatile                  0       Provides the default state for TBPROT
+   4         BP_NV2      Legacy Block      Non-volatile         000b     Provides the default state for BP bits.
+   3         BP_NV1      Protection
+                         Default
+   2         BP_NV0
+   1         WEL_D       WEL Default       Non-volatile          0       Provides the default state for the WEL status.
+                                            read only                    Not user programmable.
+   0          WIP_D      WIP Default       Non-volatile          0       Provides the default state for the WIP status.
+                                            read only                    Not user programmable.
+

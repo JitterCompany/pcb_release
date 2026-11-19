@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bomcheck wizard</title>
+<link rel="icon" href="data:,">
+<style>
+:root {
+  --bg: #f6f6f4; --panel: #ffffff; --ink: #1d1d1b; --dim: #6b6b66;
+  --line: #d9d9d4; --accent: #1f5fbf; --accent-ink: #ffffff; --answer: #2e6b34;
+  --mono: ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #1b1b1a; --panel: #242423; --ink: #e8e8e4; --dim: #9a9a94;
+          --line: #3a3a38; --accent: #5b9bff; --accent-ink: #0d1626; --answer: #8fcf95; }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--ink);
+       font: 17px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+       display: grid; grid-template-rows: auto 1fr; }
+header { padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--panel);
+         display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
+header .proj { font-weight: 600; color: var(--ink); }
+header .n { color: var(--dim); font-variant-numeric: tabular-nums; }
+header .mpn { font-weight: 600; font-size: 20px; }
+header .refs { font-family: var(--mono); }
+header .about { color: var(--dim); font-size: 15px; flex-basis: 100%; }
+header small { font: 13px system-ui, sans-serif; color: var(--dim); font-weight: 400;
+               text-transform: uppercase; letter-spacing: .04em; margin-right: 2px; }
+header .maker { font-weight: 600; }
+header .none { color: var(--dim); font-weight: 400; }
+main { display: grid; grid-template-columns: var(--leftw, minmax(360px, 34%)) 6px 1fr; min-height: 0; }
+/* Grips: drag to give the footprint picture more room. */
+.grip { background: var(--line); }
+#colgrip { cursor: col-resize; }
+#fpgrip { cursor: row-resize; height: 6px; flex: none; }
+#fpgrip.off { display: none; }
+body.resizing iframe { pointer-events: none; }
+body.resizing { user-select: none; }
+#left { display: flex; flex-direction: column; min-height: 0; overflow: hidden; border-right: 1px solid var(--line); }
+#log { flex: 1 1 auto; min-height: 40px; overflow: auto; padding: 10px 14px; font-family: var(--mono);
+       font-size: 15px; white-space: pre-wrap; overflow-wrap: anywhere; }
+#log .answer { color: var(--answer); }
+#log details { color: var(--dim); margin-bottom: 6px; }
+#log summary { cursor: pointer; font-family: system-ui, sans-serif; }
+#ask { padding: 12px 14px; border-top: 1px solid var(--line); background: var(--panel); }
+#ask .prompt { font-weight: 600; margin-bottom: 8px; }
+#ask input { width: 100%; font: 17px var(--mono); padding: 7px 9px; margin-bottom: 8px;
+             border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--ink); }
+#ask .row { display: flex; flex-wrap: wrap; gap: 6px; }
+#ask .row + .row { margin-top: 8px; }
+button { font: inherit; padding: 5px 12px; border-radius: 4px; cursor: pointer;
+         border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+button.answer { border-color: var(--accent); }
+button.default { background: var(--accent); color: var(--accent-ink); }
+button.action { color: var(--dim); font-size: 15px; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* The filled button is the one Enter picks: the default, until Tab moves on. */
+#ask button:focus { background: var(--accent); color: var(--accent-ink);
+                    outline: 2px solid var(--accent); outline-offset: 2px; }
+#ask:has(button:focus) button.default:not(:focus) { background: var(--bg); color: var(--ink); }
+kbd { font: 13px var(--mono); color: var(--dim); margin-left: 4px; }
+#waiting { color: var(--dim); }
+#fp { padding: 8px 14px; background: var(--panel); flex: none;
+      height: var(--fph, 45%); overflow: auto; }
+#fp:empty { display: none; }
+#fp figure { margin: 0 0 6px; }
+#fp figcaption { font-size: 14px; color: var(--dim); }
+#fp img { display: block; width: 100%; height: auto; max-height: calc(var(--fphpx, 400px) - 40px);
+          object-fit: contain; object-position: left top; background: #fff; border-radius: 4px; }
+#right { display: flex; flex-direction: column; min-height: 0; }
+#pdfbar { padding: 6px 12px; border-bottom: 1px solid var(--line); background: var(--panel);
+          display: flex; gap: 12px; align-items: center; font-size: 15px; color: var(--dim); }
+#pdfbar a { color: var(--accent); }
+#pdfbar .grow { flex: 1; }
+#pdfwrap { flex: 1; min-height: 0; overflow: auto; }
+#pdfwrap iframe { width: 100%; height: 100%; border: 0; display: block; }
+#pdfwrap [hidden] { display: none; }
+#pdfwrap img { display: block; max-width: 100%; margin: 0 auto; background: #fff; }
+#nopdf { padding: 40px; color: var(--dim); text-align: center; }
+#droptip { padding: 6px 12px; font-size: 15px; color: var(--dim); border-bottom: 1px solid var(--line); }
+#droptip a { color: var(--accent); cursor: pointer; }
+#dropmsg { margin-left: 8px; }
+#finish { display: none; padding: 48px 32px; max-width: 760px; margin: 0 auto; font-size: 19px; }
+#finish h1 { font-size: 34px; margin: 0 0 6px; }
+#finish h1.ok { color: var(--answer); }
+#finish .sub { color: var(--dim); margin-bottom: 26px; }
+#finish ul { padding-left: 22px; }
+#finish code { font: 17px var(--mono); background: var(--panel); padding: 2px 6px; border-radius: 4px; }
+body.done main, body.done #dropzone { display: none; }
+body.done #finish { display: block; }
+#dropzone { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+  background: rgba(40, 90, 200, .18); border: 4px dashed var(--accent); font-size: 22px; z-index: 9; pointer-events: none; }
+body.dragging #dropzone { display: flex; }
+@media (max-width: 800px) { main { grid-template-columns: 1fr; grid-template-rows: auto 70vh; }
+  #colgrip { display: none; }
+  #left { border-right: 0; border-bottom: 1px solid var(--line); } }
+</style>
+</head>
+<body>
+<header id="head"><span class="mpn">bomcheck wizard</span><span class="about">connecting...</span></header>
+<main>
+  <section id="left">
+    <div id="log"></div>
+    <div id="ask"><div id="waiting">Working...</div></div>
+    <div id="fpgrip" class="grip off" title="drag to resize the picture"></div>
+    <div id="fp"></div>
+  </section>
+  <div id="colgrip" class="grip" title="drag to resize"></div>
+  <section id="right">
+    <div id="pdfbar"><span id="pdfname">No datasheet for this step</span><span class="grow"></span>
+      <label id="imgtoggle" hidden><input type="checkbox" id="asimage"> page as image</label>
+      <a id="pdfopen" target="_blank" rel="noreferrer" hidden>open in new tab</a></div>
+    <div id="droptip"><span id="droplead">Drop a PDF or a URL here</span>, paste a URL (file:// too), or <a id="choose">choose a file</a>.<span id="dropmsg"></span>
+      <input type="file" id="filepick" accept="application/pdf,.pdf" hidden></div>
+    <div id="pdfwrap"><div id="nopdf">The datasheet shows here when a question needs it.</div>
+      <iframe id="pdfframe" title="datasheet" hidden></iframe><img id="pdfimg" alt="datasheet page" hidden></div>
+  </section>
+</main>
+<div id="finish"></div>
+<div id="dropzone">Drop the PDF or URL for this part</div>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+// Viewer options after #page=N; #pdf=... in the address overrides them.
+const pdfOpts = new URLSearchParams(location.hash.slice(1)).get("pdf") || "navpanes=0&view=FitH";
+let version = -1, shownQ = null, shownPdf = "", shownImgs = "", done = false;
+const esc = s => s.replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+
+function renderHead(s) {
+  if (s.project) document.title = (s.done ? "Finished · " : "") + `${s.project} · bomcheck`;
+  const proj = s.project ? `<span class="proj"><small>board</small> ${esc(s.project)}</span>` : "";
+  if (s.done) { $("head").innerHTML = proj + `<span class="n">wizard finished</span>`; return; }
+  const p = s.parts[s.parts.length - 1];
+  if (!p) { if (proj) $("head").innerHTML = proj; return; }
+  const field = (label, value, cls) => `<span class="${cls}"><small>${label}</small> ${esc(value)}</span>`;
+  $("head").innerHTML = proj + `<span class="n">part ${p.n} of ${p.total}</span>` +
+    field("MPN", p.mpn, "mpn") +
+    field("manufacturer", p.maker || "unknown", "maker" + (p.maker ? "" : " none")) +
+    field("refs", p.refs, "refs") +
+    `<span class="about">${esc(p.about)}</span>`;
+}
+
+// The end: the whole page says so, and what is left to do.
+function renderFinish(s) {
+  document.body.classList.add("done");
+  const sum = s.summary || {open: [], fields: 0, stopped: false};
+  const open = sum.open || [];
+  let h;
+  if (sum.stopped) h = `<h1>Stopped</h1><div class="sub">Your answers so far are saved. Start the wizard again to continue.</div>`;
+  else if (!open.length) h = `<h1 class="ok">Finished: nothing needs you</h1><div class="sub">Every part of this board is checked or settled.</div>`;
+  else h = `<h1>Finished this round</h1><div class="sub">Your answers are saved.</div>`;
+  if (open.length) h += `<p><b>${open.length} part(s) still open</b> (skipped, or left for later):</p><ul>` +
+    open.map(o => `<li><b>${esc(o.mpn)}</b> ${esc(o.refs)}: ${esc(o.what)}</li>`).join("") +
+    `</ul><p>Start the wizard again to answer them.</p>`;
+  if (sum.fields) h += `<p>${sum.fields} BOM field value(s) wait to go into the schematic. Run <code>bomcheck apply</code>.</p>`;
+  h += `<p class="sub">You can close this tab.</p>`;
+  $("finish").innerHTML = h;
+}
+
+function renderLog(s) {
+  // Earlier parts fold away; the current one is shown in full.
+  const cur = s.parts.length ? s.parts[s.parts.length - 1].n : 0;
+  const byPart = new Map();
+  for (const e of s.log) {
+    if (!byPart.has(e.part)) byPart.set(e.part, []);
+    byPart.get(e.part).push(e);
+  }
+  // A wrapped line hangs under its own indent, as the terminal's wrap does.
+  const line = (cls, text) => {
+    const n = text.length - text.trimStart().length;
+    return `<div class="${cls}" style="padding-left:${n + 2}ch;text-indent:-2ch">${esc(text.trimStart()) || " "}</div>`;
+  };
+  const lines = es => es.map(e => e.kind === "answer" ? line("answer", "    > " + e.text)
+                                                     : line("", e.text)).join("");
+  let html = "";
+  for (const [n, es] of byPart) {
+    if (n === cur && !s.done) { html += lines(es); continue; }
+    const p = s.parts.find(x => x.n === n);
+    const title = p ? `${p.n}/${p.total} ${p.mpn} ${p.refs}` : "start";
+    html += `<details><summary>${esc(title)}</summary>${lines(es)}</details>`;
+  }
+  const log = $("log");
+  const atEnd = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
+  log.innerHTML = html;
+  if (atEnd || shownQ === null) log.scrollTop = log.scrollHeight;
+}
+
+function answer(value) {
+  const q = shownQ;
+  if (!q) return;
+  $("ask").innerHTML = `<div id="waiting">Saving...</div>`;
+  fetch("answer", {method: "POST", headers: {"Content-Type": "application/json"},
+                   body: JSON.stringify({id: q.id, value})});
+}
+
+function renderAsk(s) {
+  const q = s.question;
+  if (s.done) { renderFinish(s); shownQ = null; return; }
+  if (!q) { if (shownQ) $("ask").innerHTML = `<div id="waiting">Working...</div>`; shownQ = null; return; }
+  if (shownQ && shownQ.id === q.id) return;     // keep what is being typed
+  shownQ = q;
+  const btn = ([v, label], cls) => `<button class="${cls}${v === q.default ? " default" : ""}" data-v="${esc(v)}">` +
+      `${esc(label)}${cls === "answer" && v.length === 1 && !q.text ? `<kbd>${esc(v)}</kbd>` : ""}</button>`;
+  let html = `<div class="prompt">${esc(q.prompt)}</div>`;
+  if (q.text) html += `<input id="field" autocomplete="off" spellcheck="false" placeholder="${esc(q.default)}">`;
+  if (q.buttons.length) html += `<div class="row">${q.buttons.map(b => btn(b, "answer")).join("")}</div>`;
+  else if (q.text) html += `<div class="row"><button class="answer default" data-v="">OK</button></div>`;
+  html += `<div class="row">${q.actions.map(b => btn(b, "action")).join("")}</div>`;
+  $("ask").innerHTML = html;
+  for (const b of $("ask").querySelectorAll("button"))
+    b.onclick = () => answer(b.dataset.v === "" && q.text ? $("field").value.trim() : b.dataset.v);
+  const field = $("field");
+  if (field) {
+    field.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); answer(field.value.trim()); } };
+    field.focus();
+  } else {
+    (($("ask").querySelector("button.default")) || $("ask").querySelector("button")).focus();
+  }
+}
+
+function pdfSrc(s) {
+  const p = s.pdf;
+  return $("asimage").checked && s.page_images ? `page/${p.id}/${p.page}.png`
+                                              : `${p.url}?v=${s.version}#page=${p.page}&${pdfOpts}`;
+}
+
+function renderPdf(s, force) {
+  if (s.pdf && s.pdf.remote !== undefined) return renderRemote(s.pdf, force);
+  $("imgtoggle").hidden = !(s.pdf && s.page_images);
+  const key = s.pdf ? `${s.pdf.id}#${s.pdf.page}#${$("asimage").checked}` : "";
+  if (key === shownPdf && !force) return;
+  shownPdf = key;
+  // One frame for the whole session, only its address changes: a frame
+  // made anew each time sometimes started the viewer at the wrong width.
+  const frame = $("pdfframe"), img = $("pdfimg");
+  const asImage = !!s.pdf && $("asimage").checked;
+  $("nopdf").hidden = !!s.pdf;
+  $("droplead").textContent = s.pdf ? "Wrong or old datasheet? Drop a better PDF or URL here"
+                                    : "Drop a PDF or a URL here";
+  frame.hidden = !s.pdf || asImage;
+  img.hidden = !asImage;
+  $("pdfopen").hidden = !s.pdf;
+  if (!s.pdf) {
+    $("pdfname").textContent = "No datasheet for this step";
+    $("nopdf").textContent = "The datasheet shows here when a question needs it.";
+    frame.src = "about:blank";
+    return;
+  }
+  $("pdfname").textContent = `${s.pdf.name}, page ${s.pdf.page}`;
+  $("pdfopen").href = `${s.pdf.url}#page=${s.pdf.page}`;
+  if (asImage) img.src = pdfSrc(s);
+  else frame.contentWindow.location.replace(new URL(pdfSrc(s), location.href).href);
+}
+
+// Not downloaded: the browser opens the URL itself, with your cookies. Many
+// vendor sites refuse to be shown in a frame; "open in new tab" always works.
+function renderRemote(p, force) {
+  const key = "remote#" + p.remote;
+  if (key === shownPdf && !force) return;
+  shownPdf = key;
+  const frame = $("pdfframe");
+  $("droplead").textContent = "Drop the PDF or its URL here";
+  $("imgtoggle").hidden = true;
+  $("pdfimg").hidden = true;
+  $("pdfopen").hidden = !p.remote;
+  if (!p.remote) {
+    $("pdfname").textContent = "No datasheet found";
+    $("nopdf").textContent = "No datasheet found for this part" +
+      (p.maker ? ` (manufacturer: ${p.maker})` : "") + ". Drop its PDF or URL here.";
+    $("nopdf").hidden = false;
+    frame.hidden = true;
+    frame.src = "about:blank";
+    return;
+  }
+  $("pdfname").textContent = (p.maker ? p.maker + " datasheet, n" : "N") +
+    "ot downloaded: the site blocked bomcheck. If the frame is empty or says the " +
+    "site refuses to be shown here, open it in a new tab, save the PDF and drop it here.";
+  $("pdfopen").href = p.remote;
+  $("nopdf").hidden = true;
+  frame.hidden = false;
+  frame.src = p.remote;
+}
+
+async function sendDrop(body, type, name) {
+  const msg = $("dropmsg");
+  if (!shownQ) { msg.textContent = "Wait for the next question, then drop it again."; return; }
+  msg.textContent = "Reading...";
+  const headers = {"Content-Type": type};
+  if (name) headers["X-Name"] = encodeURIComponent(name);
+  try {
+    const r = await (await fetch("drop", {method: "POST", headers, body})).json();
+    msg.textContent = r.ok ? "" : r.why;
+  } catch (err) { msg.textContent = "Could not send it."; }
+}
+const sendFile = f => /\.pdf$/i.test(f.name) || f.type === "application/pdf"
+  ? sendDrop(f, "application/pdf", f.name) : ($("dropmsg").textContent = `${f.name} is not a PDF.`);
+const sendUrl = u => /^(https?|file):\/\/\S+$/.test(u.trim()) ? sendDrop(u.trim(), "text/plain")
+  : ($("dropmsg").textContent = "That is not a URL.");
+
+let dragDepth = 0;
+document.addEventListener("dragenter", e => { e.preventDefault(); dragDepth++; document.body.classList.add("dragging"); });
+document.addEventListener("dragleave", () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove("dragging"); } });
+document.addEventListener("dragover", e => e.preventDefault());
+// Nothing on this page is a thing to drop: a picture dragged by accident
+// must not end up as the datasheet.
+document.addEventListener("dragstart", e => e.preventDefault());
+document.addEventListener("drop", e => {
+  e.preventDefault();
+  dragDepth = 0; document.body.classList.remove("dragging");
+  const dt = e.dataTransfer;
+  if (dt.files.length) return sendFile(dt.files[0]);
+  const url = (dt.getData("text/uri-list") || dt.getData("text/plain") || "").split("\n")
+    .map(l => l.trim()).find(l => l && !l.startsWith("#"));
+  if (url) sendUrl(url);
+});
+// A URL pasted anywhere but in a text field.
+document.addEventListener("paste", e => {
+  if (document.activeElement && document.activeElement.id === "field") return;
+  const t = e.clipboardData.getData("text/plain");
+  if (t) { e.preventDefault(); sendUrl(t); }
+});
+// Grips. The sizes are kept per browser; without storage the defaults apply.
+const store = {get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } },
+               set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} }};
+function setLeft(px) { document.documentElement.style.setProperty("--leftw", px + "px"); }
+function setFp(px) {
+  $("fp").style.setProperty("--fph", px + "px");
+  document.documentElement.style.setProperty("--fphpx", px + "px");
+}
+if (store.get("leftw")) setLeft(+store.get("leftw"));
+if (store.get("fph")) setFp(+store.get("fph"));
+function grip(el, onMove, key) {
+  el.addEventListener("pointerdown", e => {
+    e.preventDefault(); el.setPointerCapture(e.pointerId); document.body.classList.add("resizing");
+    let v = null;
+    const move = ev => { v = onMove(ev); };
+    const up = () => { el.removeEventListener("pointermove", move); el.removeEventListener("pointerup", up);
+                       document.body.classList.remove("resizing"); if (v) store.set(key, v); };
+    el.addEventListener("pointermove", move); el.addEventListener("pointerup", up);
+  });
+}
+grip($("colgrip"), e => { const w = Math.max(300, Math.min(e.clientX, innerWidth - 300)); setLeft(w); return w; }, "leftw");
+grip($("fpgrip"), e => {
+  const r = $("left").getBoundingClientRect();
+  const room = r.height - $("ask").offsetHeight - 60;
+  const h = Math.max(120, Math.min(r.bottom - e.clientY, room)); setFp(h); return h; }, "fph");
+$("choose").onclick = () => $("filepick").click();
+$("filepick").onchange = () => { const f = $("filepick").files[0]; if (f) sendFile(f); $("filepick").value = ""; };
+
+function renderImages(s) {
+  const key = s.images.map(i => i.id).join(",");
+  if (key === shownImgs) return;
+  shownImgs = key;
+  $("fp").innerHTML = s.images.map(i =>
+    `<figure><figcaption>Footprint ${esc(i.name)}, seen from its top side</figcaption><img draggable="false" alt="footprint ${esc(i.name)}" src="${i.url}"></figure>`).join("");
+  $("fpgrip").classList.toggle("off", !s.images.length);
+}
+
+let last = null;
+function render(s) {
+  last = s;
+  renderHead(s); renderLog(s); renderAsk(s); renderPdf(s); renderImages(s);
+}
+$("asimage").onchange = () => last && renderPdf(last, true);
+// Safari's PDF view ignores #page=N, so start it on the page image there.
+const safari = /Safari\//.test(navigator.userAgent) && !/Chrom(e|ium)|Edg\//.test(navigator.userAgent);
+$("asimage").checked = safari;
+
+// Letter keys pick an answer, as on the terminal; o b s q for datasheet, back, skip, stop.
+document.addEventListener("keydown", e => {
+  const q = shownQ;
+  if (!q || e.ctrlKey || e.metaKey || e.altKey || document.activeElement.id === "field") return;
+  const hit = q.buttons.find(([v]) => v === e.key) ||
+              ({o: ":o", s: ":s", q: ":q", b: ":b"}[e.key] && q.actions.find(([v]) => v === ":" + e.key));
+  if (hit) { e.preventDefault(); answer(hit[0]); }
+});
+
+// Enter and Tab work wherever the focus is on this page (not inside the PDF,
+// which keeps its keys): Enter takes the highlighted button, Tab goes to the
+// question first.
+document.addEventListener("keydown", e => {
+  const q = shownQ, ask = $("ask");
+  if (!q || e.ctrlKey || e.metaKey || e.altKey || ask.contains(document.activeElement)) return;
+  if (e.key === "Enter" && document.activeElement.tagName !== "INPUT") {
+    // A question to type into gets the cursor, never an empty answer.
+    const b = $("field") || ask.querySelector("button.default") || ask.querySelector("button");
+    if (b) { e.preventDefault(); b.tagName === "INPUT" ? b.focus() : b.click(); }
+  } else if (e.key === "Tab") {
+    const first = $("field") || ask.querySelector("button.default") || ask.querySelector("button");
+    if (first) { e.preventDefault(); first.focus(); }
+  }
+});
+// A PDF that loads takes the focus; give it back to the question.
+$("pdfframe").addEventListener("load", () => {
+  if (shownQ && document.activeElement === $("pdfframe"))
+    ($("field") || $("ask").querySelector("button.default") || $("ask").querySelector("button") || document.body).focus();
+});
+
+async function loop() {
+  while (!done) {
+    try {
+      const r = await fetch(`state?v=${version}`);
+      const s = await r.json();
+      version = s.version;
+      render(s);
+      done = s.done;
+    } catch (err) {
+      $("ask").innerHTML = `<div id="waiting">The wizard has stopped (or the connection is lost).</div>`;
+      shownQ = null;
+      break;
+    }
+  }
+  watchForRestart();
+}
+// The same address serves the next wizard run. When one starts, show it,
+// so an old tab never shows an old ending.
+async function watchForRestart() {
+  for (;;) {
+    await new Promise(r => setTimeout(r, 3000));
+    try {
+      const s = await (await fetch("state?v=-2")).json();
+      if (!s.done) { location.reload(); return; }
+    } catch (err) { /* not running yet */ }
+  }
+}
+loop();
+</script>
+</body>
+</html>

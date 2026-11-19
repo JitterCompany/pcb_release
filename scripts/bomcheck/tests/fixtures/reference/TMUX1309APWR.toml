@@ -1,0 +1,35 @@
+# DRAFT — machine-proposed. Review every line against the datasheet.
+# provenance: confirmed — TMUX1309APWR appears as a whole token on page(s) 37, 39, 40
+# source: tmux1309a.pdf
+#
+doc_id       = "SCDS477A"
+manufacturer = ""
+origin       = "datasheet"
+extracted_by = "bomcheck-extract"
+
+  [[variant]]
+  part         = "TMUX1309APWR"
+  package      = "TSSOP-16_4.4x5mm_P0.65mm"
+  mpns         = ["TMUX1309APWR"]
+  source       = "provenance confirmed; shapes row_per_pin"
+  confidence   = "draft"
+  pin_count    = 16   # from the order code or the package size, never the symbol
+
+    [variant.pins]
+    1 = "S0B"
+    2 = "S2B"
+    3 = "DB"
+    4 = "S3B"
+    5 = "S1B"
+    6 = "EN"
+    7 = "N.C"
+    8 = "GND"
+    9 = "A1"
+    10 = "A0"
+    11 = "S3A"
+    12 = "S0A"
+    13 = "DA"
+    14 = "S1A"
+    15 = "S2A"
+    16 = "VDD"
+

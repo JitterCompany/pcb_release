@@ -1,0 +1,39 @@
+                                                                                                                              TMUX1308A, TMUX1309A
+www.ti.com                                                                                                     SCDS477A – JUNE 2024 – REVISED JUNE 2025
+
+                                                  Table 5-2. Pin Functions TMUX1309A
+             PIN
+                                     TYPE(1)                                                      DESCRIPTION(2)
+ NAME              NO.
+ S0B                 1                 I/O           Source pin 0 of mux B. Can be an input or output.
+ S2B                 2                 I/O           Source pin 2 of mux B. Can be an input or output.
+ DB                  3                 I/O           Drain pin (Common) of mux B. Can be an input or output.
+ S3B                 4                 I/O           Source pin 3 of mux B. Can be an input or output.
+ S1B                 5                 I/O           Source pin 1 of mux B. Can be an input or output.
+                                                     Active low logic input. When this pin is high, all switches are turned off. When this pin is low, the A[1:0]
+ EN                  6                  I
+                                                     address inputs determine which switch is turned on.
+ N.C.                7           Not Connected       Not internally connected.
+ GND                 8                  P            Ground (0V) reference
+ A1                  9                  I            Address line 1. Controls the switch configuration as listed in Section 8.5.
+ A0                 10                  I            Address line 0. Controls the switch configuration as listed in Section 8.5.
+ S3A                11                 I/O           Source pin 3 of mux A. Can be an input or output.
+ S0A                12                 I/O           Source pin 0 of mux A. Can be an input or output.
+ DA                 13                 I/O           Drain pin (Common) of mux A. Can be an input or output.
+ S1A                14                 I/O           Source pin 1 of mux A. Can be an input or output.
+ S2A                15                 I/O           Source pin 2 of mux A. Can be an input or output.
+                                                     Positive power supply. This pin is the most positive power-supply potential. For reliable operation,
+ VDD                16                  P
+                                                     connect a decoupling capacitor ranging from 0.1µF to 10µF between VDD and GND.
+                                                     Exposed thermal pad with conductive die attached. No requirement to solder this pad. If connected,
+ Thermal pad                           —
+                                                     then it should be left floating or tied to GND.
+
+(1)     I = input, O = output, I/O = input and output, P = power.
+(2)     For what to do with unused pins, refer to Section 8.4.
+
+
+
+
+Copyright © 2025 Texas Instruments Incorporated                                                                          Submit Document Feedback                   7
+                                                  Product Folder Links: TMUX1308A TMUX1309A

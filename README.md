@@ -61,6 +61,16 @@ sources from the `alt` field in their own columns (see
 [deliverables](docs/deliverables.md#bom_boardcsv)). Not a
 gate, so `skip=` and `todo=` do not apply, and it needs no `release.toml`.
 
+### Checking parts against their datasheets
+
+    python3 scripts/bomcheck/cli.py wizard hardware/my-board --gui
+
+The `bomfields` gate checks that the parts of a BOM line agree with each other.
+[bomcheck](scripts/bomcheck/README.md) checks that each part agrees with its datasheet:
+pin names per symbol unit, polarity marks against the footprint, and the windings of
+numbered-only parts. A person confirms each pin table once, and later runs check the
+board against the signed tables. Not a gate yet.
+
 ### Manual workflow (legacy, interactive, no config)
 
     pcb-release.sh <project> manual     # guided step-by-step export + zip

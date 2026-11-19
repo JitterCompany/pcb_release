@@ -36,8 +36,9 @@ for example, are exported alongside these.
 - `Alt MPN` and `Alt note` columns from the symbol field `alt`, e.g.
   `SN74LVC1G123DCUR (TI, same footprint)`
 
-Strict validation (symbols, datasheets, BOM fields) belongs to this repo's CI checks,
-[`kicad-checks.yml`](../.github/workflows/kicad-checks.yml) (work in progress).
+Conflicting part fields fail the [`bomfields` gate](gates.md#bomfields), so a release
+with them is not built. Whether each symbol matches its part's datasheet is checked by
+[bomcheck](../scripts/bomcheck/README.md), which is not a gate yet.
 
 ### `README-manufacturing.txt`
 

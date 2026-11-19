@@ -1,0 +1,335 @@
+                                                                                                                  Table 15. STM32L4Rxxx pin definitions (continued)
+
+
+
+
+                                                                                                                                                                                                                                                                                                           STM32L4R5xx, STM32L4R7xx and STM32L4R9xx
+                                                                                      Pin number
+
+                          STM32L4R5xxx, STM32L4R7xxx                                                                               STM32L4R9xxx
+
+
+
+
+                                                                                                                                                                                        (function after reset)
+
+
+
+
+                                                                                                                                                                                                                                                                                    Additional functions
+                                                                                                                                                                                                                                                            Alternate functions
+                                                                                                                                                                                                                             I/O structure
+                                                                                                                                                                                              Pin name
+                                                                                                                                                  WLCSP144_SMPS
+                                                                                       UFBGA169_SMPS
+
+
+
+
+                                                                                                                                                                                                                 Pin type
+                          UBGA132_SMPS
+
+
+
+
+                                                  LQFP144_SMPS
+
+
+
+
+                                                                                                                                                                                                                                             Notes
+                                                                           WLCSP144
+
+
+
+
+                                                                                                                                                                  WLCSP144
+                                                                                                       UFBGA169
+
+
+
+
+                                                                                                                                       UFBGA144
+
+
+
+
+                                                                                                                                                                             UFBGA169
+                LQFP100
+
+
+
+
+                                                                 LQFP144
+
+
+
+
+                                                                                                                   LQFP100
+
+                                                                                                                             LQFP144
+                                         BGA132
+
+
+
+
+                                                                                                                                                                                                                                                     OCTOSPIM_P1_CLK,
+                                                                                                                                                                                                                                                      DFSDM1_CKOUT,
+                  -           -            -      22             22        H10         H4              H4            -       20        G3         H10 H10                    H4         PF10                     I/O         FT               -      DCMI_D11, SAI1_D3,                     -
+                                                                                                                                                                                                                                                        TIM15_CH2,
+DS12023 Rev 5
+
+
+
+
+                                                                                                                                                                                                                                                        EVENTOUT
+                                                                                                                                                                                         PH0-
+                12        F1             F1       23             23        H12         H1              H1          12        21        H1         H12 H12                    H1         OSC_I I/O                            FT               -          EVENTOUT                 OSC_IN
+                                                                                                                                                                                        N (PH0)
+                                                                                                                                                                                          PH1-
+                                                                                                                                                                                        OSC_O
+                13        G1             G1       24             24        J12          J1             J1          13        22        H2         J12             J12        J1                I/O                           FT               -          EVENTOUT                 OSC_OUT
+                                                                                                                                                                                           UT
+                                                                                                                                                                                         (PH1)
+                14        H2             H2       25             25        H11         H3              H3          14        23        J1         H11 H11                    H3         NRST                     I-O        RST               -                    -                        -
+                                                                                                                                                                                                                                                        LPTIM1_IN1,
+
+
+
+
+                                                                                                                                                                                                                                                                                                           Pinouts and pin description
+                                                                                                                                                                                                                                                         I2C3_SCL,
+                                                                                                                                                                                                                                                      DFSDM1_DATIN4,
+                15        H1             H1       26             26        J11          J2             J2          15        24        H3         J11             J11        J2           PC0                    I/O        FT_fla            -        LPUART1_RX,                ADC1_IN1
+                                                                                                                                                                                                                                                        SAI2_FS_A,
+                                                                                                                                                                                                                                                        LPTIM2_IN1,
+                                                                                                                                                                                                                                                        EVENTOUT
+81/307
+                                                                                                                  Table 15. STM32L4Rxxx pin definitions (continued)
+92/307
+
+
+
+
+                                                                                                                                                                                                                                                                                                          Pinouts and pin description
+                                                                                      Pin number
+
+                          STM32L4R5xxx, STM32L4R7xxx                                                                               STM32L4R9xxx
+
+
+
+
+                                                                                                                                                                                        (function after reset)
+
+
+
+
+                                                                                                                                                                                                                                                                                   Additional functions
+                                                                                                                                                                                                                                                             Alternate functions
+                                                                                                                                                                                                                             I/O structure
+                                                                                                                                                                                              Pin name
+                                                                                                                                                  WLCSP144_SMPS
+                                                                                       UFBGA169_SMPS
+
+
+
+
+                                                                                                                                                                                                                 Pin type
+                          UBGA132_SMPS
+
+
+
+
+                                                  LQFP144_SMPS
+
+
+
+
+                                                                                                                                                                                                                                             Notes
+                                                                           WLCSP144
+
+
+
+
+                                                                                                                                                                  WLCSP144
+                                                                                                       UFBGA169
+
+
+
+
+                                                                                                                                       UFBGA144
+
+
+
+
+                                                                                                                                                                             UFBGA169
+                LQFP100
+
+
+
+
+                                                                 LQFP144
+
+
+
+
+                                                                                                                   LQFP100
+
+                                                                                                                             LQFP144
+                                         BGA132
+
+
+
+
+                                                                                                                                                                                                                                                          TIM2_CH4,
+                                                                                                                                                                                                                                                     I2C4_SDA, I2C2_SDA,
+                                                                                                                                                                                                                                                       DFSDM1_CKIN7,
+                                                                                                                                                                                                                                                         USART3_RX,
+DS12023 Rev 5
+
+
+
+
+                48        NC             L11      NC             70        M4          H8              H8          45        66        K9         NC              M4         H7         PB11                     I/O        FT_fl             -         LPUART1_TX,                        -
+                                                                                                                                                                                                                                                     OCTOSPIM_P1_NCS,
+                                                                                                                                                                                                                                                           DSI_TE,
+
+
+
+
+                                                                                                                                                                                                                                                                                                          STM32L4R5xx, STM32L4R7xx and STM32L4R9xx
+                                                                                                                                                                                                                                                         COMP2_OUT,
+                                                                                                                                                                                                                                                          EVENTOUT
+                                                                                                                                                                                                                                                         I2C2_SCL,
+                  -           -            -          -            -          -        K9              K9            -         -          -            -             -       K8           PH4                    I/O        FT_f              -      OCTOSPIM_P2_DQS,                      -
+                                                                                                                                                                                                                                                        EVENTOUT
+                                                                                                                                                                                                                                                         I2C2_SDA,
+                  -           -            -          -            -          -        L9              L9            -         -          -            -             -       L9           PH5                    I/O        FT_f              -         DCMI_PIXCLK,                       -
+                                                                                                                                                                                                                                                         EVENTOUT
+                                                                                                                                                                                                                                                        I2C3_SDA,
+                                                                                                                                                                                                                                                     OCTOSPIM_P2_IO3,
+                  -           -            -          -            -          -       N10 N10                        -         -          -            -             -       N10          PH8                    I/O        FT_f              -                                            -
+                                                                                                                                                                                                                                                       DCMI_HSYNC,
+                                                                                                                                                                                                                                                        EVENTOUT
+                                                                                                                                                                                                                                                        TIM5_CH1,
+                                                                                                                                                                                                                                                     OCTOSPIM_P2_IO5,
+                  -           -            -          -            -          -        M9              M9            -         -          -            -             -       M9         PH10                     I/O         FT               -                                            -
+                                                                                                                                                                                                                                                         DCMI_D1,
+                                                                                                                                                                                                                                                        EVENTOUT
+                                                                                                                  Table 15. STM32L4Rxxx pin definitions (continued)
+106/307
+
+
+
+
+                                                                                                                                                                                                                                                                                                         Pinouts and pin description
+                                                                                      Pin number
+
+                          STM32L4R5xxx, STM32L4R7xxx                                                                               STM32L4R9xxx
+
+
+
+
+                                                                                                                                                                                        (function after reset)
+
+
+
+
+                                                                                                                                                                                                                                                                                  Additional functions
+                                                                                                                                                                                                                                                            Alternate functions
+                                                                                                                                                                                                                            I/O structure
+                                                                                                                                                                                              Pin name
+                                                                                                                                                  WLCSP144_SMPS
+                                                                                       UFBGA169_SMPS
+
+
+
+
+                                                                                                                                                                                                                 Pin type
+                          UBGA132_SMPS
+
+
+
+
+                                                  LQFP144_SMPS
+
+
+
+
+                                                                                                                                                                                                                                            Notes
+                                                                           WLCSP144
+
+
+
+
+                                                                                                                                                                  WLCSP144
+                                                                                                       UFBGA169
+
+
+
+
+                                                                                                                                       UFBGA144
+
+
+
+
+                                                                                                                                                                             UFBGA169
+                LQFP100
+
+
+
+
+                                                                 LQFP144
+
+
+
+
+                                                                                                                   LQFP100
+
+                                                                                                                             LQFP144
+                                         BGA132
+
+
+
+
+                                                                                                                                                                                                                                                       JTCK/SWCLK,
+                                                                                                                                                                                                                                                       LPTIM1_OUT,
+                                                                                                                                                                                  PA14
+                                                                                                                                                                                                                                                        I2C1_SMBA,
+                                                                                                                                                                                 (JTCK/                                                     (4)
+                76        A10 A10                 109            109       A2         A10 A10                      78        111       A10        A2              A2         A10        I/O                                 FT                          I2C4_SMBA,                        -
+                                                                                                                                                                                 SWCLK
+DS12023 Rev 5
+
+
+
+
+                                                                                                                                                                                                                                                       OTG_FS_SOF,
+                                                                                                                                                                                    )
+                                                                                                                                                                                                                                                         SAI1_FS_B,
+                                                                                                                                                                                                                                                         EVENTOUT
+
+
+
+
+                                                                                                                                                                                                                                                                                                         STM32L4R5xx, STM32L4R7xx and STM32L4R9xx
+                                                                                                                                                                                                                                                      JTDI, TIM2_CH1,
+                                                                                                                                                                                                                                                         TIM2_ETR,
+                                                                                                                                                                                                                                                        USART2_RX,
+                                                                                                                                                                                                                                                         SPI1_NSS,
+                                                                                                                                                                                         PA15                                               (4)          SPI3_NSS,
+                77        A9             A9       110            110       A3          A9              A9          79        112       B9         A3              A3         A9                                  I/O        FT                                                            -
+                                                                                                                                                                                        (JTDI)                                                       USART3_RTS_DE,
+                                                                                                                                                                                                                                                     UART4_RTS_DE,
+                                                                                                                                                                                                                                                       TSC_G3_IO1,
+                                                                                                                                                                                                                                                        SAI2_FS_B,
+                                                                                                                                                                                                                                                        EVENTOUT
+                                                                                                                                                                                                                                                    TRACED1, SPI3_SCK,
+                                                                                                                                                                                                                                                       USART3_TX,
+                                                                                                                                                                                                                                                        UART4_TX,
+                                                                                                                                                                                                                                                       TSC_G3_IO2,
+                78        B11            B11      111            111       C3          D9              D9          80        113       C9         C3              C3         D9         PC10                     I/O        FT               -                                            -
+                                                                                                                                                                                                                                                         DCMI_D8,
+                                                                                                                                                                                                                                                       SDMMC1_D2,
+                                                                                                                                                                                                                                                       SAI2_SCK_B,
+                                                                                                                                                                                                                                                        EVENTOUT

@@ -1,0 +1,170 @@
+# The bomcheck database
+
+Plain TOML, one file per datasheet, meant to be read and edited by hand. The
+tool changes these files line by line and never regenerates them, so your
+comments stay.
+
+    hardware/attestations/
+      exemptions.toml        parts excused from the datasheet rule
+      footprints.toml        footprint polarity marks a person confirmed
+      waivers.toml           design findings accepted, or known issues of a rev
+      reference/datasheet/   THE DATABASE. Only these files are checked against.
+      reference/draft/       work in progress: machine-read DRAFT-*, blank STUB-*
+      review/                working files; regenerated, safe to delete
+
+## A reference file
+
+```toml
+doc_id       = "SCDS477A"          # the manufacturer's document number
+manufacturer = "Texas Instruments"
+origin       = "datasheet"         # "datasheet" = machine-read, "manual" = typed
+extracted_by = "bomcheck-extract"  # or the person who typed it
+reviewed_by  = "A. Person"         # who checked it against the PDF
+reviewed_on  = "2026-09-30"
+
+  [[variant]]                      # one per package in the document
+  part         = "TMUX1309APWR"
+  package      = "TSSOP-16_4.4x5mm_P0.65mm"
+  mpns         = ["TMUX1309APWR"]  # exact order codes this variant covers
+  pin_count    = 16                # from the package, never from the symbol
+  active_low   = ["6"]             # optional: marked active-low in prose only
+
+    [variant.pins]                 # pin number = name AS THE DATASHEET PRINTS IT
+    1 = "S0B"
+    6 = "EN"
+    7 = "NC"
+
+    [variant.symbol_alias]         # optional: pin = the symbol's name, accepted
+    6 = "~{EN}"   # datasheet: EN
+```
+
+Rules the checker applies:
+
+- **Only signed files count.** A file in `reference/datasheet/` without
+  `reviewed_by` is an error. Sign by adding the two lines, or through the wizard.
+- **Names are the datasheet's**, never copied from the symbol. A copy of the
+  symbol would agree with the thing it is there to check.
+- **`symbol_alias` is per pin and per exact name.** `1 = "S"` accepts the
+  symbol calling pin 1 `S`. If the symbol later puts `G` on pin 1, or `S` on a
+  different pin, that is reported again.
+- **`pin_count` above the number of listed pins** marks the table as partial.
+  The listed pins are still compared, and the line stays open until the rest
+  are typed in.
+
+## Numbers-only parts
+
+A connector or a choke datasheet numbers its pins and names none of them. Its
+table claims only the numbering:
+
+```toml
+  [[variant]]
+  part         = "691322310003"
+  mpns         = ["691322310003"]
+  pin_count    = 3
+  pin_numbers  = ["1", "2", "3"]
+```
+
+The check is then that the symbol has exactly these pin numbers.
+
+## Polarity-only parts
+
+Diodes, LEDs, TVS diodes and polarized caps have two pins that no datasheet
+numbers. Their table records the mark the datasheet shows on the part, and
+the pin that mark is on:
+
+```toml
+  [[variant]]
+  part   = "SMF5.0A"
+  mpns   = ["SMF5.0A"]
+  mark   = "band"           # plus sign | band | dot | other: <text>; optional
+  marked = "cathode"        # cathode | anode | plus | minus | none | other: <text>
+```
+
+Which parts these are comes from the symbol: pins named `K`/`A`, a
+description saying unidirectional, bidirectional or polarized capacitor.
+
+bomcheck then checks, for every placement:
+
+- the pad the placed footprint marks on silk or fab is the right symbol pin.
+  A `+` sign on the footprint must be the symbol's `+` pin (pin 1 on KiCad's
+  capacitor symbols). A band or bar on the footprint must be the pin that
+  `marked` names, because the assembler puts the part's own mark there. A
+  capacitor with `marked = "minus"` needs its band on the `-` pin. Without an
+  answer: the cathode, or the `+` pin;
+- a bidirectional symbol does not sit on a marked footprint, and a polar one
+  not on an unmarked footprint;
+- the datasheet's `marked` agrees with the symbol: `none` for a bidirectional
+  symbol, not `none` for a polar one.
+
+The footprint's mark is read from the footprint as placed in the `.kicad_pcb`.
+For through-hole footprints, or when silk and fab disagree, a person confirms
+it once per footprint:
+
+```toml
+[[footprint]]
+name       = "Diode_SMD:D_SMA"
+marked_pad = "1"            # "" = no marking
+by         = "A. Person"
+on         = "2026-09-30"
+```
+
+## Waivers
+
+A design finding that is not fixed now is waived, with a reason:
+
+```toml
+[[waiver]]
+code    = "polarity.bidirectional_on_marked"
+refs    = ["D19"]
+pins    = ["7"]         # optional, pin differences only
+for_rev = "2.0"         # optional, see below
+about   = "SMA6J13CA-TR; Device:D_TVS; Diode_SMD:D_SMA; bidirectional symbol on ..."
+note    = "harmless; unmarked footprint in rev 3"
+by      = "A. Person"
+on      = "2026-09-30"
+```
+
+- `code` is the finding's stable name; `bomcheck` prints it. Waivers match on
+  `code`, `refs` and `pins` only, never on a message.
+- `for_rev`: the waiver holds only while the schematic's title-block revision
+  is exactly this value. Any other revision fails the finding again, with a
+  note that it was a known issue of the old revision: fix it, or carry it over
+  on purpose (the wizard offers both). Without `for_rev`: accepted for good.
+- `about` is written by the tool when you waive: what the finding was about,
+  for whoever reads the file after a symbol or part number changed. Context
+  only, never matched.
+- `note` and `by` are required.
+- Only design findings can be waived: `pin_difference`, `mixed_symbols`,
+  `polarity.*`. Missing work (a stub, a signature) cannot.
+- A waiver that matches no finding any more fails as stale. `bomcheck prune`
+  removes all of those and lists them.
+
+## The datasheet rule and exemptions
+
+Every BOM line needs a datasheet in its symbol's Datasheet field: a URL, a file
+in the project (`${KIPRJMOD}/datasheets/x.pdf`), or a KiCad embedded file
+(`kicad-embed://x.pdf`). A path to a file that does not exist does not count.
+
+When a part cannot have one, a person records why:
+
+```toml
+[[datasheet_exempt]]
+mpn    = "SIM8051-6-0-14-01-A"
+reason = "none_exists"      # confidential | too_large | none_exists | other
+note   = "card holder, drawing only"   # optional
+by     = "A. Person"        # required; an unsigned exemption does not count
+on     = "2026-09-30"
+```
+
+An exemption excuses the Datasheet field only. The part's pin table is still
+required and checked. If a PDF exists but must stay out of the repo, keep it in
+your cache with `bomcheck add-pdf MPN FILE`, and the table can still be read
+from it. Embedded files are the same for now: bomcheck cannot unpack them from
+the schematic yet, so give it a copy the same way.
+
+## Hand-editing
+
+Anything the wizard does can be done in an editor: fill a stub, add a
+`symbol_alias` line, sign. Move a finished draft to `reference/datasheet/`
+(drop the `DRAFT-`/`STUB-` prefix), or run `bomcheck promote`, which refuses
+unsigned or unfinished tables. `bomcheck` shows the result.

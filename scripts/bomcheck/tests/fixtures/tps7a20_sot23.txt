@@ -1,0 +1,90 @@
+                                                     Pin Functions: X2SON, SOT-23
+                        PIN
+                                                      I/O                                           DESCRIPTION
+          NAME          X2SON           SOT-23
+                                                               Input voltage supply. For best transient response and to minimize input
+                                                               impedance, use the nominal value or larger capacitor from IN to ground as listed
+    IN                    4                 1          I
+                                                               in the Recommended Operating Conditions table. Place the input capacitor as
+                                                               close to the IN and GND pins of the device as possible.
+                                                               Regulated output voltage. A low equivalent series resistance (ESR) capacitor
+                                                               is required from OUT to ground for stability. For best transient response, use
+                                                               the nominal recommended value or larger capacitor listed in the Recommended
+    OUT                   1                 5         O        Operating Conditions table. Place the output capacitor as close to the OUT and
+                                                               GND pins of the device as possible. An internal 150Ω (typical) pulldown resistor
+                                                               prevents a charge from remaining on VOUT when the regulator is in shutdown
+                                                               mode (VEN< VEN(LOW)).
+                                                               Enable input. A low voltage (< VEN(LOW)) on this pin turns the regulator off and
+                                                               discharges the output pin to GND. A high voltage (> VEN(HI)) on this pin enables
+    EN                    3                 3          I       the regulator output. This pin has an internal 500kΩ pulldown resistor to hold the
+                                                               regulator off by default. When VEN > VEN(HI), the 500kΩ pulldown is disconnected
+                                                               to reduce input current.
+    GND                   2                 2         —        Common ground.
+    N/C                  —                  4         —        No internal electrical connection.
+                                                               Thermal pad for the X2SON package. Connect this pad to GND or leave floating.
+    Thermal Pad           5                 —         —        Do not connect to any potential other than GND. Connect the thermal pad to a
+                                                               large-area ground plane for best thermal performance.
+
+
+
+
+4         Submit Document Feedback                                                                         Copyright © 2024 Texas Instruments Incorporated
+
+                                                           Product Folder Links: TPS7A20
+                                                                                                                                                       TPS7A20
+www.ti.com                                                                                                    SBVS338H – MARCH 2020 – REVISED JULY 2024
+
+
+5 Specifications
+5.1 Absolute Maximum Ratings
+over operating free-air temperature range (unless otherwise noted)(1) (3)
+                                                                                                                  MIN                         MAX      UNIT
+                       VIN                                                                                        –0.3                           6.5
+ Voltage               VOUT                                                                                       –0.3          6.5 or VIN + 0.3 (2)     V
+                       VEN                                                                                        –0.3                           6.5
+ Current               Maximum output(4)                                                                          Internally limited                     A
+                       Operating junction, TJ                                                                     –40                           150     °C
+ Temperature
+                       Storage, Tstg                                                                              –65                           150     °C
+
+(1)       Stresses beyond those listed under Absolute Maximum Ratings may cause permanent damage to the device. These are stress ratings
+          only, and functional operation of the device at these or any other conditions beyond those indicated under Recommended Operating
+          Conditions is not implied. Exposure to absolute-maximum-rated conditions for extended periods may affect device reliability.
+(2)       The maximum value of VOUT is the lesser of 6.5 V or (VIN + 0.3 V).
+(3)       All voltages are with respect to the GND pin.
+(4)       Internal thermal shutdown circuitry protects the device from permanent damage.
+
+
+5.2 ESD Ratings
+                                                                                                                                       VALUE           UNIT
+                                                Human-body model (HBM), per ANSI/ESDA/JEDEC JS-001(1)                                   ±2000
+ V(ESD)        Electrostatic discharge                                                                                                                   V
+                                                Charged-device model (CDM), per JEDEC specification JESD22-C101(2)                       ±750
+
+(1)       JEDEC document JEP155 states that 500-V HBM allows safemanufacturing with a standard ESD control process.
+(2)       JEDEC document JEP157 states that 250-V CDM allows safemanufacturing with a standard ESD control process.
+
+
+5.3 Recommended Operating Conditions
+over operating free-air temperature range (unless otherwise noted)(1)
+                                                                                                       MIN               NOM                MAX        UNIT
+ VIN            Input supply voltage                                                                    1.6                                     6.0     V
+ VEN            Enable input voltage                                                                     0                                      6.0     V
+ VOUT           Nominal output voltage range                                                            0.8                                     5.5     V
+ IOUT           Output current                                                                           0                                    300      mA
+ CIN            Input capacitor(2)                                                                                          1                           µF
+ COUT           Output capacitor(3)                                                                      1                                    200       µF
+ ESR            Output capacitor effective series resistance                                                                                  100      mΩ
+ TJ             Operating junction temperature                                                         –40                                    125       °C
+
+(1)       All voltages are with respect to GND.
+(2)       An input capacitor is not required for LDO stability. However, an input capacitor with an effective value of 0.47 μF minimum is
+          recommended to counteract the effect of source resistance and inductance, which may in some cases cause symptoms of system-
+          level instability such as ringing or oscillation, especially in the presence of load transients.
+(3)       Effective output capacitance of 0.47 μF minimum and 200 μF maximum is required for stability.
+
+
+
+
+Copyright © 2024 Texas Instruments Incorporated                                                                          Submit Document Feedback             5
+                                                                Product Folder Links: TPS7A20

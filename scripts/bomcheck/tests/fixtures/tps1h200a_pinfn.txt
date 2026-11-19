@@ -1,0 +1,22 @@
+             Figure 4-1. DGN PowerPAD™ Package 8-Pin HVSSOP With Exposed Thermal Pad Top View
+
+                                                              Table 4-1. Pin Functions
+                PIN
+                                      TYPE(1)                                                 DESCRIPTION
+       NAME             NO.
+        CL               4               O           Adjustable current limit. Connect to device GND if external current limit is not used.
+      DELAY              5               I/O         Function configuration when current limit; internal pullup
+      DIAG_EN            2                I          Enable the diagnostic function
+       FAULT             3               O           Open-drain diagnostic status output. Leave floating if not used.
+       GND               6               —           Ground
+        IN               1                I          Input control for output activation; internal pulldown
+       OUT               7               O           Output, source of the high-side switch, connected to the load
+  Thermal pad            —               —           Thermal pad. Connect to device GND or leave floating.
+        VS               8                I          Power supply, drain for the high-side switch
+
+(1)    I = input, O = output, I/O = bidirectional
+
+                                                                                                                                            (4)                      (5)
+
+       TPS1H200AQDGNRQ1               Active      Production      HVSSOP (DGN) | 8       2500 | LARGE T&R             Yes              NIPDAUAG           Level-2-260C-1 YEAR              -40 to 125               1EWX
+      TPS1H200AQDGNRQ1.A              Active      Production      HVSSOP (DGN) | 8       2500 | LARGE T&R             Yes              NIPDAUAG           Level-2-260C-1 YEAR              -40 to 125               1EWX

@@ -1,0 +1,936 @@
+<?xml version='1.0' encoding='utf-8'?>
+<export version="E">
+  <!-- FIXTURE: the three spike parts — U1 STM32L4R5VIT6 (official-lib symbol, circular reference), U6 EG915N (no datasheet URL, no Mouser number, 126 pins), U9/U10 TMUX1309APWR (fixed). -->
+  <design>
+    <source>board.kicad_sch</source>
+    <date>FIXTURE</date>
+    <tool>Eeschema 10.0.5</tool>
+    <sheet number="1" name="/" tstamps="/">
+      <title_block>
+        <title />
+        <company />
+        <rev>2.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="2" name="/Microcontroller/" tstamps="/40c64ba9-6dc5-4175-a9b2-64736230881e/">
+      <title_block>
+        <title>Microcontroller + debug &amp; LED</title>
+        <company />
+        <rev>2.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="3" name="/LTE Modem/" tstamps="/57ea1d4e-59af-4c62-8b12-5ef11dbf321b/">
+      <title_block>
+        <title>modem</title>
+        <company />
+        <rev>2.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="4" name="/DC-DC 3.8V/" tstamps="/940116c2-0552-4592-b39b-cd4f10568132/">
+      <title_block>
+        <title>DC-DC step down to 3.8V</title>
+        <company />
+        <rev>2.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="5" name="/Pump control/" tstamps="/effdd170-e386-4cdc-808e-4391d270ae5a/">
+      <title_block>
+        <title>Pump control</title>
+        <company />
+        <rev>2.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="6" name="/External temperature sensors/" tstamps="/d122060d-a0d2-4bfc-8694-3bd4f44bf4c0/">
+      <title_block>
+        <title>Temperature ADC</title>
+        <company />
+        <rev>2.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="7" name="/External temperature sensors/Temp input 1/" tstamps="/d122060d-a0d2-4bfc-8694-3bd4f44bf4c0/75c0a679-abc4-439a-be1f-e5059ab3e926/">
+      <title_block>
+        <title>PT100 input</title>
+        <company />
+        <rev>2.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="8" name="/External temperature sensors/Temp input 2/" tstamps="/d122060d-a0d2-4bfc-8694-3bd4f44bf4c0/77409181-dcba-4967-9897-6754b4a5ee0c/">
+      <title_block>
+        <title>PT100 input</title>
+        <company />
+        <rev>2.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="9" name="/External temperature sensors/Temp input 3/" tstamps="/d122060d-a0d2-4bfc-8694-3bd4f44bf4c0/951bb3f6-e588-47e7-affa-8329bcacbbfa/">
+      <title_block>
+        <title>PT100 input</title>
+        <company />
+        <rev>2.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="10" name="/External temperature sensors/Temp input 4/" tstamps="/d122060d-a0d2-4bfc-8694-3bd4f44bf4c0/5350d4ad-5fe7-47b1-b944-4af91fff6fa4/">
+      <title_block>
+        <title>PT100 input</title>
+        <company />
+        <rev>2.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="11" name="/LDOs/" tstamps="/d6f61536-5507-4390-8644-9d1b8ab1d6d2/">
+      <title_block>
+        <title>LDO regulators</title>
+        <company />
+        <rev>2.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="12" name="/Valve control/" tstamps="/127aa169-a72f-455c-9b63-d5631290fad8/">
+      <title_block>
+        <title>Valve</title>
+        <company />
+        <rev>2.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="13" name="/Power input/" tstamps="/5e4b9bea-cdb4-4946-9671-a9644accf372/">
+      <title_block>
+        <title>Power Input</title>
+        <company />
+        <rev>2.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="14" name="/PCB temperature/" tstamps="/4e82b9ce-cdf5-49fa-9b04-4d3ee7768e03/">
+      <title_block>
+        <title>PCB temperature sensor</title>
+        <company />
+        <rev>2.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+  </design>
+  <components>
+    <comp ref="U1">
+      <value>STM32L4R5VIT6</value>
+      <footprint>Package_QFP:LQFP-100_14x14mm_P0.5mm</footprint>
+      <datasheet>https://www.st.com/resource/en/datasheet/stm32l4r5vi.pdf</datasheet>
+      <description>STMicroelectronics Arm Cortex-M4 MCU, 2048KB flash, 640KB RAM, 120 MHz, 1.71-3.6V, 83 GPIO, LQFP100</description>
+      <fields>
+        <field name="MPN">STM32L4R5VIT6</field>
+        <field name="Mouser">511-STM32L4R5VIT6</field>
+        <field name="Farnell" />
+        <field name="rating" />
+        <field name="Footprint">Package_QFP:LQFP-100_14x14mm_P0.5mm</field>
+        <field name="Datasheet">https://www.st.com/resource/en/datasheet/stm32l4r5vi.pdf</field>
+        <field name="Description">STMicroelectronics Arm Cortex-M4 MCU, 2048KB flash, 640KB RAM, 120 MHz, 1.71-3.6V, 83 GPIO, LQFP100</field>
+      </fields>
+      <libsource lib="MCU_ST_STM32L4" part="STM32L4R5VITx" description="STMicroelectronics Arm Cortex-M4 MCU, 2048KB flash, 640KB RAM, 120 MHz, 1.71-3.6V, 83 GPIO, LQFP100" />
+      <property name="MPN" value="STM32L4R5VIT6" />
+      <property name="Mouser" value="511-STM32L4R5VIT6" />
+      <property name="Farnell" value="" />
+      <property name="rating" value="" />
+      <property name="Sheetname" value="Microcontroller" />
+      <property name="Sheetfile" value="mcu.kicad_sch" />
+      <property name="ki_keywords" value="Arm Cortex-M4 STM32L4+ STM32L4R5/S5" />
+      <property name="ki_fp_filters" value="LQFP*14x14mm*P0.5mm*" />
+      <sheetpath names="/Microcontroller/" tstamps="/40c64ba9-6dc5-4175-a9b2-64736230881e/" />
+      <tstamps>dd672e10-4601-45cf-8f15-1afef4385bba</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="14" />
+            <pin num="21" />
+            <pin num="20" />
+            <pin num="12" />
+            <pin num="13" />
+            <pin num="94" />
+            <pin num="97" />
+            <pin num="98" />
+            <pin num="1" />
+            <pin num="2" />
+            <pin num="3" />
+            <pin num="4" />
+            <pin num="5" />
+            <pin num="38" />
+            <pin num="39" />
+            <pin num="40" />
+            <pin num="41" />
+            <pin num="42" />
+            <pin num="43" />
+            <pin num="44" />
+            <pin num="45" />
+            <pin num="46" />
+            <pin num="81" />
+            <pin num="82" />
+            <pin num="83" />
+            <pin num="84" />
+            <pin num="85" />
+            <pin num="86" />
+            <pin num="87" />
+            <pin num="88" />
+            <pin num="55" />
+            <pin num="56" />
+            <pin num="57" />
+            <pin num="58" />
+            <pin num="59" />
+            <pin num="60" />
+            <pin num="61" />
+            <pin num="62" />
+            <pin num="6" />
+            <pin num="11" />
+            <pin num="28" />
+            <pin num="50" />
+            <pin num="10" />
+            <pin num="99" />
+            <pin num="74" />
+            <pin num="27" />
+            <pin num="49" />
+            <pin num="75" />
+            <pin num="19" />
+            <pin num="100" />
+            <pin num="22" />
+            <pin num="73" />
+            <pin num="23" />
+            <pin num="24" />
+            <pin num="25" />
+            <pin num="26" />
+            <pin num="29" />
+            <pin num="30" />
+            <pin num="31" />
+            <pin num="32" />
+            <pin num="67" />
+            <pin num="68" />
+            <pin num="69" />
+            <pin num="70" />
+            <pin num="71" />
+            <pin num="72" />
+            <pin num="76" />
+            <pin num="77" />
+            <pin num="35" />
+            <pin num="36" />
+            <pin num="37" />
+            <pin num="89" />
+            <pin num="90" />
+            <pin num="91" />
+            <pin num="92" />
+            <pin num="93" />
+            <pin num="95" />
+            <pin num="96" />
+            <pin num="47" />
+            <pin num="48" />
+            <pin num="51" />
+            <pin num="52" />
+            <pin num="53" />
+            <pin num="54" />
+            <pin num="15" />
+            <pin num="16" />
+            <pin num="17" />
+            <pin num="18" />
+            <pin num="33" />
+            <pin num="34" />
+            <pin num="63" />
+            <pin num="64" />
+            <pin num="65" />
+            <pin num="66" />
+            <pin num="78" />
+            <pin num="79" />
+            <pin num="80" />
+            <pin num="7" />
+            <pin num="8" />
+            <pin num="9" />
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U6">
+      <value>EG915NEAAC-N05-SNNSA</value>
+      <footprint>Jitter_IC:Quectel_LGA126_23.6x19.9x2.4</footprint>
+      <fields>
+        <field name="MPN">EG915NEAAC-N05-SNNSA</field>
+        <field name="Mouser" />
+        <field name="Farnell" />
+        <field name="rating" />
+        <field name="Footprint">Jitter_IC:Quectel_LGA126_23.6x19.9x2.4</field>
+        <field name="Datasheet" />
+        <field name="Description" />
+      </fields>
+      <libsource lib="Jitter_Components" part="EG915N" description="" />
+      <property name="MPN" value="EG915NEAAC-N05-SNNSA" />
+      <property name="Mouser" value="" />
+      <property name="Farnell" value="" />
+      <property name="rating" value="" />
+      <property name="Sheetname" value="LTE Modem" />
+      <property name="Sheetfile" value="modem.kicad_sch" />
+      <property name="ki_keywords" value="Quectel, EG915, EG91, EG95, BG95, BG96,4g,LTE,wireless,GPRS,modem" />
+      <sheetpath names="/LTE Modem/" tstamps="/57ea1d4e-59af-4c62-8b12-5ef11dbf321b/" />
+      <tstamps>1be3e4f3-a79e-41b7-92dc-e5bd192820dd</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1" />
+            <pin num="20" />
+            <pin num="21" />
+            <pin num="8" />
+            <pin num="9" />
+            <pin num="10" />
+            <pin num="34" />
+            <pin num="35" />
+            <pin num="30" />
+            <pin num="36" />
+            <pin num="37" />
+            <pin num="38" />
+            <pin num="39" />
+            <pin num="28" />
+            <pin num="27" />
+            <pin num="22" />
+            <pin num="23" />
+            <pin num="15" />
+            <pin num="17" />
+            <pin num="96" />
+            <pin num="75" />
+            <pin num="19" />
+            <pin num="18" />
+            <pin num="32" />
+            <pin num="69" />
+            <pin num="3" />
+            <pin num="82" />
+            <pin num="73" />
+            <pin num="72" />
+            <pin num="48" />
+            <pin num="71" />
+            <pin num="50" />
+            <pin num="70" />
+            <pin num="74" />
+            <pin num="68" />
+            <pin num="54" />
+            <pin num="55" />
+            <pin num="67" />
+            <pin num="58" />
+            <pin num="59" />
+            <pin num="61" />
+            <pin num="62" />
+            <pin num="81" />
+            <pin num="79" />
+            <pin num="102" />
+            <pin num="101" />
+            <pin num="80" />
+            <pin num="91" />
+            <pin num="100" />
+            <pin num="90" />
+            <pin num="89" />
+            <pin num="31" />
+            <pin num="33" />
+            <pin num="47" />
+            <pin num="103" />
+            <pin num="11" />
+            <pin num="104" />
+            <pin num="98" />
+            <pin num="105" />
+            <pin num="97" />
+            <pin num="106" />
+            <pin num="99" />
+            <pin num="52" />
+            <pin num="107" />
+            <pin num="95" />
+            <pin num="108" />
+            <pin num="94" />
+            <pin num="53" />
+            <pin num="109" />
+            <pin num="93" />
+            <pin num="110" />
+            <pin num="92" />
+            <pin num="111" />
+            <pin num="78" />
+            <pin num="112" />
+            <pin num="117" />
+            <pin num="64" />
+            <pin num="118" />
+            <pin num="113" />
+            <pin num="63" />
+            <pin num="65" />
+            <pin num="57" />
+            <pin num="114" />
+            <pin num="51" />
+            <pin num="66" />
+            <pin num="16" />
+            <pin num="115" />
+            <pin num="14" />
+            <pin num="88" />
+            <pin num="13" />
+            <pin num="116" />
+            <pin num="12" />
+            <pin num="124" />
+            <pin num="123" />
+            <pin num="125" />
+            <pin num="29" />
+            <pin num="60" />
+            <pin num="49" />
+            <pin num="56" />
+            <pin num="76" />
+            <pin num="77" />
+            <pin num="43" />
+            <pin num="45" />
+            <pin num="44" />
+            <pin num="46" />
+            <pin num="42" />
+            <pin num="87" />
+            <pin num="86" />
+            <pin num="85" />
+            <pin num="84" />
+            <pin num="83" />
+            <pin num="4" />
+            <pin num="5" />
+            <pin num="6" />
+            <pin num="7" />
+            <pin num="121" />
+            <pin num="122" />
+            <pin num="120" />
+            <pin num="126" />
+            <pin num="119" />
+            <pin num="40" />
+            <pin num="41" />
+            <pin num="25" />
+            <pin num="26" />
+            <pin num="2" />
+            <pin num="24" />
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U9">
+      <value>TMUX1309APWR</value>
+      <footprint>Package_SO:TSSOP-16_4.4x5mm_P0.65mm</footprint>
+      <datasheet>https://www.ti.com/lit/ds/symlink/tmux1309a.pdf</datasheet>
+      <description>2-channel 4:1 precision multiplexer with injection current control</description>
+      <fields>
+        <field name="MPN">TMUX1309APWR</field>
+        <field name="Mouser">595-TMUX1309APWR</field>
+        <field name="Farnell" />
+        <field name="rating" />
+        <field name="Footprint">Package_SO:TSSOP-16_4.4x5mm_P0.65mm</field>
+        <field name="Datasheet">https://www.ti.com/lit/ds/symlink/tmux1309a.pdf</field>
+        <field name="Description">2-channel 4:1 precision multiplexer with injection current control</field>
+      </fields>
+      <libsource lib="Jitter_IC" part="TMUX1309A" description="2-channel 4:1 precision multiplexer with injection current control" />
+      <property name="MPN" value="TMUX1309APWR" />
+      <property name="Mouser" value="595-TMUX1309APWR" />
+      <property name="Farnell" value="" />
+      <property name="rating" value="" />
+      <property name="Sheetname" value="External temperature sensors" />
+      <property name="Sheetfile" value="temp_inputs.kicad_sch" />
+      <property name="ki_keywords" value="analog switch selector multiplexer 4-to-1" />
+      <property name="ki_fp_filters" value="TSSOP*4.4x5mm*P0.65mm*" />
+      <sheetpath names="/External temperature sensors/" tstamps="/d122060d-a0d2-4bfc-8694-3bd4f44bf4c0/" />
+      <tstamps>6825b4a2-0c2a-4c1c-9c98-554f11ab3112</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="10" />
+            <pin num="9" />
+            <pin num="6" />
+            <pin num="12" />
+            <pin num="14" />
+            <pin num="15" />
+            <pin num="11" />
+            <pin num="1" />
+            <pin num="5" />
+            <pin num="2" />
+            <pin num="4" />
+            <pin num="8" />
+            <pin num="16" />
+            <pin num="7" />
+            <pin num="13" />
+            <pin num="3" />
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U10">
+      <value>TMUX1309APWR</value>
+      <footprint>Package_SO:TSSOP-16_4.4x5mm_P0.65mm</footprint>
+      <datasheet>https://www.ti.com/lit/ds/symlink/tmux1309a.pdf</datasheet>
+      <description>2-channel 4:1 precision multiplexer with injection current control</description>
+      <fields>
+        <field name="MPN">TMUX1309APWR</field>
+        <field name="Mouser">595-TMUX1309APWR</field>
+        <field name="Farnell" />
+        <field name="rating" />
+        <field name="Footprint">Package_SO:TSSOP-16_4.4x5mm_P0.65mm</field>
+        <field name="Datasheet">https://www.ti.com/lit/ds/symlink/tmux1309a.pdf</field>
+        <field name="Description">2-channel 4:1 precision multiplexer with injection current control</field>
+      </fields>
+      <libsource lib="Jitter_IC" part="TMUX1309A" description="2-channel 4:1 precision multiplexer with injection current control" />
+      <property name="MPN" value="TMUX1309APWR" />
+      <property name="Mouser" value="595-TMUX1309APWR" />
+      <property name="Farnell" value="" />
+      <property name="rating" value="" />
+      <property name="Sheetname" value="External temperature sensors" />
+      <property name="Sheetfile" value="temp_inputs.kicad_sch" />
+      <property name="ki_keywords" value="analog switch selector multiplexer 4-to-1" />
+      <property name="ki_fp_filters" value="TSSOP*4.4x5mm*P0.65mm*" />
+      <sheetpath names="/External temperature sensors/" tstamps="/d122060d-a0d2-4bfc-8694-3bd4f44bf4c0/" />
+      <tstamps>9e2131d1-d549-4c5c-b509-625a88b825ad</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="10" />
+            <pin num="9" />
+            <pin num="6" />
+            <pin num="12" />
+            <pin num="14" />
+            <pin num="15" />
+            <pin num="11" />
+            <pin num="1" />
+            <pin num="5" />
+            <pin num="2" />
+            <pin num="4" />
+            <pin num="8" />
+            <pin num="16" />
+            <pin num="7" />
+            <pin num="13" />
+            <pin num="3" />
+          </pins>
+        </unit>
+      </units>
+    </comp>
+  </components>
+  <libparts>
+    <libpart lib="Jitter_Components" part="EG915N">
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">EG915N</field>
+        <field name="Footprint">Jitter_Footprints:XCVR_BG95</field>
+        <field name="Datasheet" />
+        <field name="Description" />
+        <field name="height">2.4 mm</field>
+        <field name="manufacturer">Quectel</field>
+      </fields>
+      <pins>
+        <pin num="1" name="PSM_IND" type="output" />
+        <pin num="2" name="ADC1" type="passive" />
+        <pin num="3" name="GND" type="power_in" />
+        <pin num="4" name="PCM_CLK" type="output" />
+        <pin num="5" name="PCM_SYNC" type="output" />
+        <pin num="6" name="PCM_DIN" type="input" />
+        <pin num="7" name="PCM_DOUT" type="output" />
+        <pin num="8" name="USB_VBUS" type="input" />
+        <pin num="9" name="USB_DP" type="bidirectional" />
+        <pin num="10" name="USB_DM" type="bidirectional" />
+        <pin num="11" name="RESERVED" type="no_connect" />
+        <pin num="12" name="RESERVED" type="no_connect" />
+        <pin num="13" name="RESERVED" type="no_connect" />
+        <pin num="14" name="RESERVED" type="no_connect" />
+        <pin num="15" name="PWRKEY" type="input" />
+        <pin num="16" name="RESERVED" type="no_connect" />
+        <pin num="17" name="~{RESET}" type="input" />
+        <pin num="18" name="W_DISABLE#" type="input" />
+        <pin num="19" name="AP_READY" type="input" />
+        <pin num="20" name="STATUS" type="output" />
+        <pin num="21" name="NET_STATUS" type="output" />
+        <pin num="22" name="DBG_RXD" type="input" />
+        <pin num="23" name="DBG_TXD" type="output" />
+        <pin num="24" name="ADC0" type="passive" />
+        <pin num="25" name="GPIO1" type="bidirectional" />
+        <pin num="26" name="GPIO2" type="bidirectional" />
+        <pin num="27" name="AUX_TXD" type="output" />
+        <pin num="28" name="AUX_RXD" type="input" />
+        <pin num="29" name="VDD_EXT" type="power_out" />
+        <pin num="30" name="MAIN_DTR" type="input" />
+        <pin num="31" name="GND" type="power_in" />
+        <pin num="32" name="VBAT_BB" type="power_in" />
+        <pin num="33" name="VBAT_BB" type="power_in" />
+        <pin num="34" name="MAIN_RXD" type="input" />
+        <pin num="35" name="MAIN_TXD" type="output" />
+        <pin num="36" name="MAIN_CTS" type="output" />
+        <pin num="37" name="MAIN_RTS" type="input" />
+        <pin num="38" name="MAIN_DCD" type="output" />
+        <pin num="39" name="MAIN_RI" type="output" />
+        <pin num="40" name="I2C_SCL" type="output" />
+        <pin num="41" name="I2C_SDA" type="bidirectional" />
+        <pin num="42" name="USIM_DET" type="input" />
+        <pin num="43" name="USIM_VDD" type="power_out" />
+        <pin num="44" name="USIM_RST" type="output" />
+        <pin num="45" name="USIM_DATA" type="bidirectional" />
+        <pin num="46" name="USIM_CLK" type="output" />
+        <pin num="47" name="USIM_GND" type="power_in" />
+        <pin num="48" name="GND" type="power_in" />
+        <pin num="49" name="ANT_GNSS" type="passive" />
+        <pin num="50" name="GND" type="power_in" />
+        <pin num="51" name="RESERVED" type="no_connect" />
+        <pin num="52" name="VBAT_RF" type="power_in" />
+        <pin num="53" name="VBAT_RF" type="power_in" />
+        <pin num="54" name="GND" type="power_in" />
+        <pin num="55" name="GND" type="power_in" />
+        <pin num="56" name="RESERVED" type="no_connect" />
+        <pin num="57" name="RESERVED" type="no_connect" />
+        <pin num="58" name="GND" type="power_in" />
+        <pin num="59" name="GND" type="power_in" />
+        <pin num="60" name="ANT_MAIN" type="passive" />
+        <pin num="61" name="GND" type="power_in" />
+        <pin num="62" name="GND" type="power_in" />
+        <pin num="63" name="RESERVED" type="no_connect" />
+        <pin num="64" name="RESERVED" type="no_connect" />
+        <pin num="65" name="RESERVED" type="no_connect" />
+        <pin num="66" name="RESERVED" type="no_connect" />
+        <pin num="67" name="GND" type="power_in" />
+        <pin num="68" name="GND" type="power_in" />
+        <pin num="69" name="GND" type="power_in" />
+        <pin num="70" name="GND" type="power_in" />
+        <pin num="71" name="GND" type="power_in" />
+        <pin num="72" name="GND" type="power_in" />
+        <pin num="73" name="GND" type="power_in" />
+        <pin num="74" name="GND" type="power_in" />
+        <pin num="75" name="USB_BOOT" type="input" />
+        <pin num="76" name="GRFC1" type="output" />
+        <pin num="77" name="GRFC2" type="output" />
+        <pin num="78" name="RESERVED" type="no_connect" />
+        <pin num="79" name="GND" type="power_in" />
+        <pin num="80" name="GND" type="power_in" />
+        <pin num="81" name="GND" type="power_in" />
+        <pin num="82" name="GND" type="power_in" />
+        <pin num="83" name="USIM2_DET" type="input" />
+        <pin num="84" name="USIM2_CLK" type="output" />
+        <pin num="85" name="USIM2_RST" type="output" />
+        <pin num="86" name="USIM2_DATA" type="bidirectional" />
+        <pin num="87" name="USIM2_VDD" type="power_out" />
+        <pin num="88" name="RESERVED" type="no_connect" />
+        <pin num="89" name="GND" type="power_in" />
+        <pin num="90" name="GND" type="power_in" />
+        <pin num="91" name="GND" type="power_in" />
+        <pin num="92" name="RESERVED" type="no_connect" />
+        <pin num="93" name="RESERVED" type="no_connect" />
+        <pin num="94" name="RESERVED" type="no_connect" />
+        <pin num="95" name="RESERVED" type="no_connect" />
+        <pin num="96" name="WAKEUP_IN" type="input" />
+        <pin num="97" name="RESERVED" type="no_connect" />
+        <pin num="98" name="RESERVED" type="no_connect" />
+        <pin num="99" name="RESERVED" type="no_connect" />
+        <pin num="100" name="GND" type="power_in" />
+        <pin num="101" name="GND" type="power_in" />
+        <pin num="102" name="GND" type="power_in" />
+        <pin num="103" name="RESERVED" type="no_connect" />
+        <pin num="104" name="RESERVED" type="no_connect" />
+        <pin num="105" name="RESERVED" type="no_connect" />
+        <pin num="106" name="RESERVED" type="no_connect" />
+        <pin num="107" name="RESERVED" type="no_connect" />
+        <pin num="108" name="RESERVED" type="no_connect" />
+        <pin num="109" name="RESERVED" type="no_connect" />
+        <pin num="110" name="RESERVED" type="no_connect" />
+        <pin num="111" name="RESERVED" type="no_connect" />
+        <pin num="112" name="RESERVED" type="no_connect" />
+        <pin num="113" name="RESERVED" type="no_connect" />
+        <pin num="114" name="RESERVED" type="no_connect" />
+        <pin num="115" name="RESERVED" type="no_connect" />
+        <pin num="116" name="RESERVED" type="no_connect" />
+        <pin num="117" name="RESERVED" type="no_connect" />
+        <pin num="118" name="RESERVED" type="no_connect" />
+        <pin num="119" name="MC_N" type="passive" />
+        <pin num="120" name="MICBIAS" type="power_out" />
+        <pin num="121" name="SPK_P" type="output" />
+        <pin num="122" name="SPK_N" type="output" />
+        <pin num="123" name="RESERVED" type="no_connect" />
+        <pin num="124" name="RESERVED" type="no_connect" />
+        <pin num="125" name="RESERVED" type="no_connect" />
+        <pin num="126" name="MC_P" type="passive" />
+      </pins>
+    </libpart>
+    <libpart lib="Jitter_IC" part="TMUX1309A">
+      <description>2-channel 4:1 precision multiplexer with injection current control</description>
+      <docs>https://www.ti.com/lit/ds/symlink/tmux1309a.pdf</docs>
+      <footprints>
+        <fp>TSSOP*4.4x5mm*P0.65mm*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">TMUX1309APWR</field>
+        <field name="Footprint">Package_SO:TSSOP-16_4.4x5mm_P0.65mm</field>
+        <field name="Datasheet">https://www.ti.com/lit/ds/symlink/tmux1309a.pdf</field>
+        <field name="Description">2-channel 4:1 precision multiplexer with injection current control</field>
+        <field name="MPN">TMUX1309APWR</field>
+      </fields>
+      <pins>
+        <pin num="1" name="S0B" type="passive" />
+        <pin num="2" name="S2B" type="passive" />
+        <pin num="3" name="DB" type="passive" />
+        <pin num="4" name="S3B" type="passive" />
+        <pin num="5" name="S1B" type="passive" />
+        <pin num="6" name="~{EN}" type="input" />
+        <pin num="7" name="NC" type="no_connect" />
+        <pin num="8" name="GND" type="power_in" />
+        <pin num="9" name="A1" type="input" />
+        <pin num="10" name="A0" type="input" />
+        <pin num="11" name="S3A" type="passive" />
+        <pin num="12" name="S0A" type="passive" />
+        <pin num="13" name="DA" type="passive" />
+        <pin num="14" name="S1A" type="passive" />
+        <pin num="15" name="S2A" type="passive" />
+        <pin num="16" name="VDD" type="power_in" />
+      </pins>
+    </libpart>
+    <libpart lib="MCU_ST_STM32L4" part="STM32L4R5VITx">
+      <description>STMicroelectronics Arm Cortex-M4 MCU, 2048KB flash, 640KB RAM, 120 MHz, 1.71-3.6V, 83 GPIO, LQFP100</description>
+      <docs>https://www.st.com/resource/en/datasheet/stm32l4r5vi.pdf</docs>
+      <footprints>
+        <fp>LQFP*14x14mm*P0.5mm*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">STM32L4R5VITx</field>
+        <field name="Footprint">Package_QFP:LQFP-100_14x14mm_P0.5mm</field>
+        <field name="Datasheet">https://www.st.com/resource/en/datasheet/stm32l4r5vi.pdf</field>
+        <field name="Description">STMicroelectronics Arm Cortex-M4 MCU, 2048KB flash, 640KB RAM, 120 MHz, 1.71-3.6V, 83 GPIO, LQFP100</field>
+      </fields>
+      <pins>
+        <pin num="1" name="PE2" type="bidirectional" />
+        <pin num="2" name="PE3" type="bidirectional" />
+        <pin num="3" name="PE4" type="bidirectional" />
+        <pin num="4" name="PE5" type="bidirectional" />
+        <pin num="5" name="PE6" type="bidirectional" />
+        <pin num="6" name="VBAT" type="power_in" />
+        <pin num="7" name="PC13" type="bidirectional" />
+        <pin num="8" name="PC14" type="bidirectional" />
+        <pin num="9" name="PC15" type="bidirectional" />
+        <pin num="10" name="VSS" type="power_in" />
+        <pin num="11" name="VDD" type="power_in" />
+        <pin num="12" name="PH0" type="bidirectional" />
+        <pin num="13" name="PH1" type="bidirectional" />
+        <pin num="14" name="NRST" type="input" />
+        <pin num="15" name="PC0" type="bidirectional" />
+        <pin num="16" name="PC1" type="bidirectional" />
+        <pin num="17" name="PC2" type="bidirectional" />
+        <pin num="18" name="PC3" type="bidirectional" />
+        <pin num="19" name="VSSA" type="power_in" />
+        <pin num="20" name="VREF-" type="input" />
+        <pin num="21" name="VREF+" type="input" />
+        <pin num="22" name="VDDA" type="power_in" />
+        <pin num="23" name="PA0" type="bidirectional" />
+        <pin num="24" name="PA1" type="bidirectional" />
+        <pin num="25" name="PA2" type="bidirectional" />
+        <pin num="26" name="PA3" type="bidirectional" />
+        <pin num="27" name="VSS" type="passive" />
+        <pin num="28" name="VDD" type="power_in" />
+        <pin num="29" name="PA4" type="bidirectional" />
+        <pin num="30" name="PA5" type="bidirectional" />
+        <pin num="31" name="PA6" type="bidirectional" />
+        <pin num="32" name="PA7" type="bidirectional" />
+        <pin num="33" name="PC4" type="bidirectional" />
+        <pin num="34" name="PC5" type="bidirectional" />
+        <pin num="35" name="PB0" type="bidirectional" />
+        <pin num="36" name="PB1" type="bidirectional" />
+        <pin num="37" name="PB2" type="bidirectional" />
+        <pin num="38" name="PE7" type="bidirectional" />
+        <pin num="39" name="PE8" type="bidirectional" />
+        <pin num="40" name="PE9" type="bidirectional" />
+        <pin num="41" name="PE10" type="bidirectional" />
+        <pin num="42" name="PE11" type="bidirectional" />
+        <pin num="43" name="PE12" type="bidirectional" />
+        <pin num="44" name="PE13" type="bidirectional" />
+        <pin num="45" name="PE14" type="bidirectional" />
+        <pin num="46" name="PE15" type="bidirectional" />
+        <pin num="47" name="PB10" type="bidirectional" />
+        <pin num="48" name="PB11" type="bidirectional" />
+        <pin num="49" name="VSS" type="passive" />
+        <pin num="50" name="VDD" type="power_in" />
+        <pin num="51" name="PB12" type="bidirectional" />
+        <pin num="52" name="PB13" type="bidirectional" />
+        <pin num="53" name="PB14" type="bidirectional" />
+        <pin num="54" name="PB15" type="bidirectional" />
+        <pin num="55" name="PD8" type="bidirectional" />
+        <pin num="56" name="PD9" type="bidirectional" />
+        <pin num="57" name="PD10" type="bidirectional" />
+        <pin num="58" name="PD11" type="bidirectional" />
+        <pin num="59" name="PD12" type="bidirectional" />
+        <pin num="60" name="PD13" type="bidirectional" />
+        <pin num="61" name="PD14" type="bidirectional" />
+        <pin num="62" name="PD15" type="bidirectional" />
+        <pin num="63" name="PC6" type="bidirectional" />
+        <pin num="64" name="PC7" type="bidirectional" />
+        <pin num="65" name="PC8" type="bidirectional" />
+        <pin num="66" name="PC9" type="bidirectional" />
+        <pin num="67" name="PA8" type="bidirectional" />
+        <pin num="68" name="PA9" type="bidirectional" />
+        <pin num="69" name="PA10" type="bidirectional" />
+        <pin num="70" name="PA11" type="bidirectional" />
+        <pin num="71" name="PA12" type="bidirectional" />
+        <pin num="72" name="PA13" type="bidirectional" />
+        <pin num="73" name="VDDUSB" type="power_in" />
+        <pin num="74" name="VSS" type="passive" />
+        <pin num="75" name="VDD" type="power_in" />
+        <pin num="76" name="PA14" type="bidirectional" />
+        <pin num="77" name="PA15" type="bidirectional" />
+        <pin num="78" name="PC10" type="bidirectional" />
+        <pin num="79" name="PC11" type="bidirectional" />
+        <pin num="80" name="PC12" type="bidirectional" />
+        <pin num="81" name="PD0" type="bidirectional" />
+        <pin num="82" name="PD1" type="bidirectional" />
+        <pin num="83" name="PD2" type="bidirectional" />
+        <pin num="84" name="PD3" type="bidirectional" />
+        <pin num="85" name="PD4" type="bidirectional" />
+        <pin num="86" name="PD5" type="bidirectional" />
+        <pin num="87" name="PD6" type="bidirectional" />
+        <pin num="88" name="PD7" type="bidirectional" />
+        <pin num="89" name="PB3" type="bidirectional" />
+        <pin num="90" name="PB4" type="bidirectional" />
+        <pin num="91" name="PB5" type="bidirectional" />
+        <pin num="92" name="PB6" type="bidirectional" />
+        <pin num="93" name="PB7" type="bidirectional" />
+        <pin num="94" name="PH3" type="bidirectional" />
+        <pin num="95" name="PB8" type="bidirectional" />
+        <pin num="96" name="PB9" type="bidirectional" />
+        <pin num="97" name="PE0" type="bidirectional" />
+        <pin num="98" name="PE1" type="bidirectional" />
+        <pin num="99" name="VSS" type="passive" />
+        <pin num="100" name="VDD" type="power_in" />
+      </pins>
+    </libpart>
+  </libparts>
+</export>

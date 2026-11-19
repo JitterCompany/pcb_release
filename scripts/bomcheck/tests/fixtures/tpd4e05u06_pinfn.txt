@@ -1,0 +1,67 @@
+5 Pin Configuration and Functions
+
+                                                                     DPY Package
+                                                                     2-Pin X1SON
+                                                                       Top View
+                                                                           I/O
+
+                                                                            1
+
+
+
+
+                                                                            2
+
+
+                                                                          GND
+
+
+
+                                                                     DQA Package
+                                                                     10-Pin USON
+                                                                       Top View
+
+
+                                                              D1+    1            10    N.C.
+
+
+                                                              D1–    2              9   N.C.
+
+
+                                                             GND     3              8   GND
+
+
+                                                              D2+    4              7   N.C.
+
+
+                                                              D2–    5              6   N.C.
+
+
+
+                                                  Pin Functions TPD1E05U06-Q1 DPY
+                 PIN
+                                          TYPE                                                 DESCRIPTION
+       NO.              NAME
+1                        I/O                I/O          ESD Protected Channel (1)
+2                       GND              Ground          Ground; Connect to ground
+
+(1)    Place as close to the connector as possible.
+
+                                                  Pin Functions TPD4E05U06-Q1 DQA
+                 PIN
+                                         TYPE                                                  DESCRIPTION
+       NO.             NAME
+1                      D1+                I/O           ESD Protected Channel (1)
+2                      D1–                I/O           ESD Protected Channel (1)
+4                      D2+                I/O           ESD Protected Channel (1)
+5                      D2–                I/O           ESD Protected Channel (1)
+                                                        Not Connected; Used for optional straight-through routing. Can be left floating or
+6, 7, 9, 10             NC                NC
+                                                        grounded
+3, 8                   GND              Ground          Ground; Connect to ground
+
+(1)    Place as close to the connector as possible.
+      TPD1E05U06QDPYRQ1               Active      Production       X1SON (DPY) | 2       10000 | LARGE T&R            Yes                NIPDAU            Level-1-260C-UNLIM              -40 to 125                 4O
+      TPD1E05U06QDPYRQ1.B             Active      Production       X1SON (DPY) | 2       10000 | LARGE T&R            Yes                NIPDAU            Level-1-260C-UNLIM              -40 to 125                 4O
+      TPD4E05U06QDQARQ1               Active      Production       USON (DQA) | 10       3000 | LARGE T&R             Yes        NIPDAU | NIPDAUAG Level-2-260C-1 YEAR                     -40 to 125            (BRH, CQ1)
+      TPD4E05U06QDQARQ1.B             Active      Production       USON (DQA) | 10       3000 | LARGE T&R             Yes              NIPDAUAG           Level-2-260C-1 YEAR              -40 to 125            (BRH, CQ1)

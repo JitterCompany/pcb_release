@@ -1,0 +1,55 @@
+SLG59M301V                                                                                 
+
+An Ultra-small 3 mm2, 8.5 mΩ, 4 A,
+Internally-protected Load Switch
+
+General Description                                                  Pin Configuration
+The SLG59M301V is a high performance 8.5 mΩ, 4 A
+single-channel nFET load switch which can operate with a
+2.5 V to 5.5 V VDD supply to switch power rails from as low as
+0.85 V up to the supply voltage. The SLG59M301V                                      VDD     1                  8     GND
+
+
+
+
+                                                                                                   SLG59M301V
+incorporates two-level overload current protection, thermal
+shutdown protection, and inrush current control which can                            ON      2                  7     CAP
+easily be adjusted by a small external capacitor.
+                                                                                      D      3                  6     S
+Using a proprietary MOSFET design, the SLG59M301V
+achieves a stable 8.5 mΩ RDSON across a wide input voltage                            D       4                 5     S
+range. In addition, the SLG59M301V’s package also exhibits
+low thermal resistance for high-current operation using
+Renesas’s advanced assembly technology.                                                8-pin FC-TDFN
+Fully specified over the -40 °C to 85 °C temperature range, the                          (Top View)
+SLG59M301V is packaged in a space-efficient, low thermal
+resistance, RoHS-compliant 1.5 mm x 2.0 mm STDFN
+package.                                                             Applications
+Features                                                              • Notebook Power Rail Switching
+                                                                      • Tablet Power Rail Switching
+Internally-protected Load Switch
+
+Pin Description
+  Pin #    Pin Name       Type    Pin Description
+                                  VDD supplies the power for the operation of the load switch and internal control circuitry.
+    1        VDD          PWR
+                                  Bypass the VDD pin to GND with a 0.1 µF (or larger) capacitor.
+                                  A low-to-high transition on this pin initiates the operation of the SLG59M301V’s state
+                                  machine. ON is a CMOS input with ON_VIL < 0.3 V and ON_VIH > 0.85 V thresholds. While
+    2            ON       Input   there is an internal pull-down circuit to GND (~4 MΩ), connect this pin directly to a
+                                  general-purpose output (GPO) of a microcontroller, an application processor, or a system
+                                  controller.
+                                  Drain terminal connection of the n-channel MOSFET (2 pins fused for VD). Connect at least
+  3, 4           D       MOSFET   a low-ESR 0.1 µF capacitor from this pin to ground. Capacitors used at D should be rated
+                                  at 10 V or higher.
+                                  Source terminal connection of the n-channel MOSFET (2 pins fused for VS). Connect a
+  5, 6           S       MOSFET   low-ESR capacitor from this pin to ground and consult the Electrical Characteristics table
+                                  for recommended CLOAD range. Capacitors used at S should be rated at 10 V or higher.
+                                  A low-ESR, stable dielectric, ceramic surface-mount capacitor connected from CAP pin to
+                                  GND sets the VS slew rate and overall turn-on time of the SLG59M301V. For best
+    7        CAP          Input
+                                  performance CSLEW value should be ≥ 1.5 nF and voltage level should be rated at 10 V or
+                                  higher.
+    8        GND          GND     Ground connection. Connect this pin to system analog or power ground plane.
+
