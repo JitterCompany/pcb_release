@@ -211,8 +211,10 @@ class Wizard:
                      f"stop (Ctrl-C works too); where you type a name or URL, "
                      f"use :o :s :q.")
         try:
-            self.by = self.by or (_remembered_name() if self.ask_raw is input
-                                  else "")
+            # The same name as on the commits that carry these tables, so
+            # git history and reviewed_by say the same who.
+            self.by = (self.by or _git_user(self.project)
+                       or (_remembered_name() if self.ask_raw is input else ""))
             if self.by:
                 self.say(f"Checking as {self.by} (bomcheck wizard --by NAME "
                          f"to change).")

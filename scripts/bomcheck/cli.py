@@ -1499,7 +1499,7 @@ def main():
                             "(also BOMCHECK_LIBRARY)")
         p.add_argument("--by", metavar="NAME",
                        help="wizard: your name, recorded with what you "
-                            "check (remembered for next time)")
+                            "check. Default: git user.name of the board's repo")
         p.add_argument("--symbol-pins", type=int, default=0,
                        help="extract: symbol pin count, cross-checked too")
         p.set_defaults(fn=fn)
