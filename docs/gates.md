@@ -4,7 +4,7 @@ A gate is one check a board must pass. Every gate is enforced for every board un
 that board's entry in the CI board list says otherwise with `skip=` or `todo=`, see
 [Configuring CI](../README.md#running-it-in-ci).
 
-Two of them are KiCad's own. The other three exist because KiCad has no opinion on
+Two of them are KiCad's own. The other four exist because KiCad has no opinion on
 them and nothing else would catch the failure before the boards are made.
 
 | gate | fails when |
@@ -14,6 +14,7 @@ them and nothing else would catch the failure before the boards are made.
 | `3d` | a footprint's 3D model does not resolve, so the STEP would ship with that part missing |
 | `drift` | the board no longer matches the `release_spec.toml` committed at its last release |
 | `pinmap` | the MCU pin map is invalid, or no longer matches the schematic |
+| `bomfields` | the parts of one BOM line disagree on Manufacturer, MPN, Farnell, Mouser or Digikey |
 
 ## `erc`
 
@@ -116,3 +117,20 @@ The gate is two checks that are deliberately kept apart, so neither can mask the
   interrupt source. Suffix a net `_IRQ` to declare the intent and have it checked.
 * **drift.** Regenerate and diff against the committed map. Any change fails, because a
   changed pin map is a breaking change for firmware.
+
+## `bomfields`
+
+The BOM groups parts by Value and Footprint. All parts in one line must name the same
+Manufacturer, MPN and distributor numbers (Farnell, Mouser, Digikey). A difference is
+almost always a copied symbol whose fields were only half updated, and the assembler
+gets one line that names two parts.
+
+The error names the group, every value, and the parts that differ from the most common
+value. Make them agree, or give the part that differs its own Value. A second source
+belongs in the `alt` field, see [Deliverables](deliverables.md).
+
+An empty field is not a conflict: the BOM line takes the value from the rest of the
+group. A project without a schematic (a panel) has no BOM and passes.
+
+A release runs this gate too, and like every gate a failure stops the release before
+anything is packaged.

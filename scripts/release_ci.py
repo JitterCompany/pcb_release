@@ -280,6 +280,26 @@ def merge_field(values):
         return None
     return distinct.pop() if distinct else ""
 
+def field_conflict(group, field, values):
+    """The error for one field that differs within a group, with the fix. The
+    refs that differ from the most common value are named, as they are the
+    likely half-updated copies.
+
+    >>> field_conflict("R1-R3", "MPN", {"R1": "A", "R2": "A", "R3": "B"})
+    'R1-R3: grouped parts have different MPN values (R1=A; R2=A; R3=B). Make them agree, or give R3 its own Value. A second source belongs in the alt field.'
+    """
+    detail = "; ".join(f"{ref}={v or '(none)'}" for ref, v in values.items())
+    counts = {}
+    for v in values.values():
+        if v.strip():
+            counts[v.strip()] = counts.get(v.strip(), 0) + 1
+    common = max(counts, key=lambda v: (counts[v], v))
+    odd = [ref for ref, v in values.items() if v.strip() and v.strip() != common]
+    who = ", ".join(odd)
+    return (f"{group}: grouped parts have different {field} values ({detail}). "
+            f"Make them agree, or give {who} {'its' if len(odd) == 1 else 'their'} own Value. "
+            f"A second source belongs in the alt field.")
+
 def _fields_by_ref(sch):
     """-> {ref: {field: value}}, read ungrouped: a grouped export comma-joins
     differing values and drops empty ones, so a conflict looks like a list.
@@ -339,8 +359,7 @@ def _postprocess_bom(csv_path, sch):
             values = {ref: by_ref.get(ref, {}).get(field, "") for ref in refs}
             merged = merge_field(values.values())
             if merged is None:
-                detail = "; ".join(f"{ref}={v or '(none)'}" for ref, v in values.items())
-                errors.append(f"{r[0]}: grouped parts have different {field} values. {detail}")
+                errors.append(field_conflict(r[0], field, values))
             elif field in cols:
                 r[cols[field]] = merged
         r += _alt_cells(r[0], refs, by_ref)
@@ -1177,7 +1196,7 @@ def main():
     ap.add_argument("project_dir", help="dir containing the .kicad_pro / .kicad_pcb / .kicad_sch")
     ap.add_argument("--config", default="release.toml")
     ap.add_argument("--spec", default="release_spec.toml", help="committed resolved-spec path (for drift)")
-    ap.add_argument("--mode", choices=["build", "drift", "check", "pnp", "bom"], default="build")
+    ap.add_argument("--mode", choices=["build", "drift", "check", "pnp", "bom", "bomfields"], default="build")
     ap.add_argument("--out", help="bom mode: where to write the CSV (default: <project>/BOM_<board>.csv)")
     a = ap.parse_args()
 
@@ -1197,6 +1216,27 @@ def main():
     # Written beside the project rather than into production/, which a release build
     # wipes and regenerates. Same BOM_<board>.csv name the release deliverable uses,
     # because it is the same file: a release does not produce a different BOM.
+    if a.mode == "bomfields":
+        # The gate: the same BOM as the export, into a temp file, only for its
+        # field check. A project without a schematic has no BOM, so nothing can
+        # conflict: that passes, rather than making every panel say skip=.
+        if not os.path.isfile(sch):
+            print(f"[bom] no schematic ({os.path.basename(sch)}), so no BOM fields to check")
+            return 0
+        fd, tmp = tempfile.mkstemp(suffix=".csv")
+        os.close(fd)
+        try:
+            errors = generate_bom(sch, tmp, False)
+            with open(tmp) as f:
+                rows = max(0, sum(1 for _ in f) - 1)
+        finally:
+            os.remove(tmp)
+        for e in errors:
+            print(f"::error::[bom] {e}")
+        print(f"[bom] {rows} line(s): " + (f"{len(errors)} field conflict(s)" if errors
+                                          else "every group agrees on its part fields"))
+        return 1 if errors else 0
+
     if a.mode == "bom":
         # A panel or a layout-only project has a .kicad_pro and a .kicad_pcb but no
         # schematic, and a BOM comes from the schematic. Say so, rather than letting
@@ -1350,6 +1390,13 @@ def main():
     problems = run_checks(outdir, res, pos_all, bom) + [f"BOM {e}" for e in bom_errors]
     for p in problems:
         print(f"::error::[release] {p}")
+
+    if a.mode == "build" and problems:
+        # A zip is what gets sent out. With a failed check there must be none, or
+        # the last one made is the one someone sends. production/ stays, to read.
+        print(f"::error::[release] not packaged: {len(problems)} check(s) failed. "
+              f"Fix them and release again; production/ is left to inspect.")
+        return 1
 
     if a.mode == "build":                               # package production/ -> dated zip in the project dir
         zpath = shutil.make_archive(os.path.join(pd, package_stem("production", name)), "zip", outdir)

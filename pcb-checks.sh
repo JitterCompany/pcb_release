@@ -64,7 +64,7 @@ while IFS='|' read -r dir skip todo; do
   # you want to read through.
   if [ -z "$only" ] && [ "$cmd" != bom ]; then
     covered=1
-    for g in erc drc 3d drift pinmap; do
+    for g in erc drc 3d drift pinmap bomfields; do
       case ",$skip,$todo," in *",$g,"*) ;; *) covered=0 ;; esac
     done
     if [ "$covered" -eq 1 ]; then
