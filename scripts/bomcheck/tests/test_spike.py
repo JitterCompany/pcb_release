@@ -2149,6 +2149,71 @@ def test_wizard_back_undoes_the_part():
     check(any("Back:" in x for x in said), "wizard: back says what it undid")
 
 
+def test_tables_in_the_component_library():
+    """Signed tables are read from the board's repo and from a component
+    library: a git repo, other than the board's, that holds a symbol library
+    the project uses. The board's own table for an MPN wins. The wizard saves
+    a library part's table in the library, a project-local one in the board."""
+    import shutil
+    import subprocess
+    import tempfile
+    import library as LIB
+    import todo as TD
+    import wizard as WZ
+    top = tempfile.mkdtemp()
+    board_repo, lib = os.path.join(top, "hw"), os.path.join(top, "hw", "libs", "Comp")
+    proj = os.path.join(board_repo, "board")
+    for d in (proj, lib, os.path.join(board_repo, "local")):
+        os.makedirs(d)
+    for d in (board_repo, lib):
+        subprocess.run(["git", "init", "-q", d], check=True)
+    open(os.path.join(lib, "Comp.kicad_sym"), "w").write("(kicad_symbol_lib)")
+    open(os.path.join(board_repo, "local", "Own.kicad_sym"), "w").write("(kicad_symbol_lib)")
+    open(os.path.join(proj, "sym-lib-table"), "w").write(
+        '(sym_lib_table\n'
+        '  (lib (name "Comp")(type "KiCad")(uri "${KIPRJMOD}/../libs/Comp/Comp.kicad_sym")(options "")(descr ""))\n'
+        '  (lib (name "Own")(type "KiCad")(uri "${KIPRJMOD}/../local/Own.kicad_sym")(options "")(descr ""))\n'
+        '  (lib (name "Sys")(type "KiCad")(uri "${KICAD9_SYMBOL_DIR}/Device.kicad_sym")(options "")(descr ""))\n)')
+    check(LIB.libraries(proj) == [os.path.realpath(lib)],
+          "library: found from the sym-lib-table, the board's own repo is not one",
+          str(LIB.libraries(proj)))
+    check([LIB.scope_of(x, proj) for x in ("Comp:U", "Own:U", "Device:R")]
+          == ["library", "project", "library"],
+          "library: a project-local symbol's table stays in the project")
+
+    def table(dirpath, name, pin1):
+        os.makedirs(dirpath, exist_ok=True)
+        open(os.path.join(dirpath, name + ".toml"), "w").write(
+            f'doc_id = "d"\nreviewed_by = "T"\n\n  [[variant]]\n  mpns = ["{name}"]\n'
+            f'  pin_count = 1\n\n    [variant.pins]\n    1 = "{pin1}"\n')
+    att = os.path.join(board_repo, "attestations")
+    table(LIB.signed_dir(lib), "PART", "LIB")
+    table(LIB.signed_dir(lib), "OTHER", "X")
+    table(os.path.join(att, "reference", "datasheet"), "PART", "OWN")
+    docs = TD.signed_docs(att, proj)
+    pins = {v.mpns[0]: v.pins["1"] for _f, d in docs for v in d.variants}
+    check(pins == {"PART": "OWN", "OTHER": "X"},
+          "library: tables read from both, the board's own wins", str(pins))
+    check(len(LIB.uncommitted(os.path.realpath(lib))) == 2,
+          "library: new tables there are reported as not committed")
+
+    class Comp:
+        libsource = "Comp:U"
+    class Line:
+        mpn, refs, comp = "PART", ["U1"], Comp()
+    w = WZ.Wizard(att, proj, [], [], ask=lambda p: "", say=lambda t: None,
+                  auto_open=False)
+    check(w.save_dir(Line()) == LIB.signed_dir(os.path.realpath(lib)),
+          "wizard: a library part's table is proposed for the library")
+    Line.comp = type("C", (), {"libsource": "Own:U"})()
+    check(w.save_dir(Line()) == os.path.join(att, "reference", "datasheet"),
+          "wizard: a project-local part's table is proposed for the project")
+    w.save_to = "library"
+    check(w.save_dir(Line()) == LIB.signed_dir(os.path.realpath(lib)),
+          "wizard: --save-to library overrides the proposal")
+    shutil.rmtree(top)
+
+
 def test_design_sheets_only():
     """Only the root sheet and the sheets it uses are the design. An old or
     variant schematic in the same folder, with the same designators, is not:
@@ -2633,6 +2698,7 @@ def main():
                test_wizard_exits_cleanly_and_pin_names_are_free,
                test_wizard_back_undoes_the_part,
         test_wizard_asks_again_what_is_still_open, test_design_sheets_only,
+        test_tables_in_the_component_library,
         test_sim_holder_contact_numbers,
                test_symbol_drawing_is_read, test_dual_part_units_must_be_one_device,
                test_choke_connections_against_symbol,

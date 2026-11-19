@@ -54,6 +54,7 @@ import re
 import os
 import subprocess
 import symgraph as SYM
+import library as LIB
 import sys
 import tempfile
 
@@ -162,6 +163,14 @@ def cmd_status(a):
     lines, items = TD.collect(parts, att, a.project, rev, waived)
     done = TD.done_lines(lines, items)
     rel = lambda p: os.path.relpath(p, os.path.dirname(att)) if p else ""
+    library = LIB.component_library(a.project)
+
+    def where(path):
+        """A table's file, said as the reader would look for it."""
+        for root in LIB.read_roots(a.project):
+            if path.startswith(root + os.sep):
+                return f"{os.path.basename(root)}: {os.path.relpath(path, root)}"
+        return os.path.relpath(path, os.path.join(att, "reference"))
 
     print(paint(f"bomcheck: {stem}", BOLD))
     print(f"{len(lines)} part numbers ({len(parts)} placed), design rev "
@@ -222,12 +231,20 @@ def cmd_status(a):
                  "check pins", "confirm"]
         for r, todo in sorted(((r, todo_label(r)) for r in rows),
                               key=lambda rt: (order.index(rt[1]), rt[0].mpn)):
-            sub = os.path.relpath(r.path, os.path.join(att, "reference"))
+            sub = where(r.path)
             label = paint(f"{todo:12s}", RED if todo == "pins differ" else YELLOW)
             differ = paint(f"{r.differ or '-':>6}", *((RED,) if r.differ else ()))
             print(f"  {r.mpn:24s} {short_refs(r.refs, 3):18s} {label} "
                   f"{r.listed:>3d}/{r.pins:<3d} {differ}  {sub}"
                   + (f"  ({r.note})" if r.note else ""))
+
+    new = LIB.uncommitted(library) if library else []
+    if new:
+        heading(f"Signed tables not committed in {os.path.basename(library)} yet "
+                f"({len(new)}):", YELLOW)
+        for n in new:
+            print(f"  {n}")
+        print("  Commit them in that repository (a PR), so other boards get them.")
 
     if not items:
         print("\n" + paint("Nothing open. Every line is checked against a "
@@ -259,6 +276,7 @@ def cmd_wizard(a):
                     auto_open=False if a.no_open else None, rev=rev,
                     by=a.by or "", ui=ui)
     wiz.recollect = lambda: TD.collect(parts, att, a.project, rev)
+    wiz.save_to = a.save_to
     if ui is None:
         return wiz.run()
     return webui.serve(wiz, ui, port=a.port, open_browser=not a.no_browser)
@@ -306,7 +324,7 @@ def cmd_report(a):
             for p in c.pins:
                 p.unit = units.get(p.num, "")
 
-        docs = P.load_dir(os.path.join(att, "reference", "datasheet"))
+        docs = [d for _f, d in TD.signed_docs(att, a.project)]
         exemptions = TD.EX.load(att)
 
         L, n_err, n_warn = [], 0, 0
@@ -1222,16 +1240,23 @@ def cmd_promote(a):
         if unresolved and not a.force:
             blocked.append((name, unresolved))
             continue
-        dst = os.path.join(live_dir, re.sub(r"^(DRAFT|STUB)-", "", name))
-        os.makedirs(live_dir, exist_ok=True)
+        to = live_dir
+        library = LIB.component_library(a.project)
+        if library:
+            first = next((c for m in mpns for c in by_mpn.get(m, [])), None)
+            scope = (a.save_to if a.save_to in ("library", "project") else
+                     LIB.scope_of(first.libsource, a.project) if first else "project")
+            to = LIB.signed_dir(library) if scope == "library" else live_dir
+        dst = os.path.join(to, re.sub(r"^(DRAFT|STUB)-", "", name))
+        os.makedirs(to, exist_ok=True)
         if not a.dry_run:
             shutil.move(f, dst)
-        moved.append((name, os.path.basename(dst), len(unresolved)))
+        moved.append((name, os.path.relpath(dst, os.path.dirname(att)), len(unresolved)))
 
     for src, dst, n in moved:
         note = f" (FORCED over {n} difference(s))" if n else ""
         print(f"[bomcheck] {'would promote' if a.dry_run else 'promoted'} "
-              f"{src} -> reference/datasheet/{dst}{note}")
+              f"{src} -> {dst}{note}")
     for name, un in blocked:
         print(f"::warning::[bomcheck] {name}: not ready ({len(un)} problem(s)); "
               f"`bomcheck wizard` walks through them")
@@ -1464,6 +1489,14 @@ def main():
                             "any free one if taken; 0 = any free one)")
         p.add_argument("--no-browser", action="store_true",
                        help="wizard --gui: only print the address, open nothing")
+        p.add_argument("--save-to", choices=["ask", "library", "project"], default="ask",
+                       help="wizard, promote: where a signed table goes. ask (default "
+                            "for the wizard) proposes the library for parts from a "
+                            "component library or KiCad's own, the project otherwise")
+        p.add_argument("--library", metavar="DIR", default="",
+                       help="the component library repo to save shared tables in, "
+                            "when the project's sym-lib-table names more than one "
+                            "(also BOMCHECK_LIBRARY)")
         p.add_argument("--by", metavar="NAME",
                        help="wizard: your name, recorded with what you "
                             "check (remembered for next time)")
@@ -1482,6 +1515,8 @@ def main():
     if not argv or argv[0] not in sub.choices and not argv[0].startswith("-"):
         argv = ["status"] + argv
     a = ap.parse_args(argv)
+    if getattr(a, "library", ""):   # read by every command that loads tables
+        os.environ["BOMCHECK_LIBRARY"] = a.library
     return a.fn(a)
 
 

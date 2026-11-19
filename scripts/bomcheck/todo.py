@@ -12,6 +12,7 @@ import glob
 import os
 import re
 
+import library as LIB
 import datasheet as D
 import decisions as DC
 import exempt as EX
@@ -112,6 +113,22 @@ def load_docs(att, sub):
     return out
 
 
+def signed_docs(att, project=None):
+    """-> [(path, Document)] of signed tables: the board's own first, then the
+    component libraries'. A board table for an MPN wins over a library one, so
+    a project can override a part for itself."""
+    own = load_docs(att, "datasheet")
+    if not project:
+        return own
+    covered = {m for _f, d in own for v in d.variants for m in v.mpns}
+    out = list(own)
+    for root in LIB.read_roots(project):
+        for f, d in load_docs(os.path.join(root, "attestations"), "datasheet"):
+            if not {m for v in d.variants for m in v.mpns} & covered:
+                out.append((f, d))
+    return out
+
+
 def lines_of(parts):
     """Group placements by MPN. A part with no MPN is its own line."""
     groups = {}
@@ -187,7 +204,7 @@ def collect(parts, att, project=None, rev=None, waived=None):
     """-> (lines, items). `lines` carries the resolved tables for callers.
     Without `project`, file paths in Datasheet fields are not checked.
     Waived findings go to the `waived` list, if one is given, not to items."""
-    promoted = load_docs(att, "datasheet")
+    promoted = signed_docs(att, project)
     drafts = load_docs(att, "draft")
     review = os.path.join(att, "review")
     lines = lines_of(parts)

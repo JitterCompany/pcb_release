@@ -12,6 +12,28 @@ comments stay.
       reference/draft/       work in progress: machine-read DRAFT-*, blank STUB-*
       review/                working files; regenerated, safe to delete
 
+## Two places for signed tables
+
+A signed table holds what a datasheet says about one MPN, so it does not depend
+on the board. It can live in two places:
+
+| place | for | example |
+|---|---|---|
+| the component library: `<library>/attestations/reference/datasheet/` | parts from that library or from KiCad's own libraries | `libraries/KicadComponents/attestations/...` |
+| the board's repo: `attestations/reference/datasheet/` | parts with a project-local symbol, or a board-specific override | `attestations/...` beside the board folder |
+
+- The component library is found from the project's `sym-lib-table`: a symbol
+  library in another git repository than the board (a submodule). With more than
+  one, `--library DIR` or `BOMCHECK_LIBRARY` says which one gets new tables.
+- A board reads both. For the same MPN, the board's own table wins.
+- When the wizard signs a table it asks where to save it, and proposes the
+  library unless the symbol is project-local. `--save-to library|project`
+  answers for every part, for scripted runs.
+- A table saved in the library reaches other boards only after a commit there
+  (a PR in the library repo) and a submodule update in those boards. `bomcheck`
+  lists the library's tables that are not committed yet.
+- Everything else (drafts, waivers, exemptions, review files) stays with the board.
+
 ## A reference file
 
 ```toml

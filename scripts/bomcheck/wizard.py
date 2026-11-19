@@ -20,6 +20,7 @@ import textwrap
 import urllib.parse
 
 import atomic
+import library as LIB
 import datasheet as D
 import decisions as DC
 import exempt as EX
@@ -64,6 +65,9 @@ class Wizard:
         self.lines = {ln.mpn: ln for ln in lines}
         self.items = items
         self.recollect = None   # -> (lines, items) as collect() gives them, fresh
+        self.library = LIB.component_library(project) if project else ""
+        self.save_to = "ask"    # ask | library | project
+        self.saved_in_library = []
         self.stopped = False
         self.ask_raw, self.say = ask, say
         # Another front end (webui.WebUI): it draws the questions as buttons
@@ -237,6 +241,11 @@ class Wizard:
             self.say(f"\n{self.changed_fields} BOM field value(s) are in "
                      f"{self.rel(self.fields_csv)}.")
             self.say("Write them into the schematic with: bomcheck apply")
+        new = LIB.uncommitted(self.library) if self.library else []
+        if new:
+            self.say(f"\n{len(new)} signed table(s) in {self.library} are not committed "
+                     f"there yet. Commit them in that repository (a PR), so other "
+                     f"boards get them.")
         return 0
 
     def reorder(self):
@@ -254,6 +263,8 @@ class Wizard:
                           "what": dict(TD.KINDS).get(its[0].kind, its[0].kind)}
                          for m, its in self.order()],
                 "fields": len(DC.parse_fields(self.fields_csv)),
+                "library": os.path.basename(self.library) if self.library else "",
+                "library_new": len(LIB.uncommitted(self.library)) if self.library else 0,
                 "stopped": self.stopped}
 
     def one_pass(self, lines, skipped):
@@ -1072,16 +1083,38 @@ class Wizard:
         The document is recorded as the datasheet that was shown."""
         doc = P.Document(path, tomlite.load(path))
         field = ln.comp.field("Datasheet").strip()
-        source = (field if D.field_kind(field) != "none" else "") or os.path.basename(
-            self.known_pdf(ln) or "")
+        kind = D.field_kind(field)
+        # A project path means nothing to another board reading this table.
+        source = (field if kind == "url" else os.path.basename(field) if kind == "file"
+                  else "") or os.path.basename(self.known_pdf(ln) or "")
         if not doc.doc_id and source:
             text = R.set_top_key(open(path, encoding="utf-8").read(),
                                  "doc_id", source)
             atomic.write_text(path, text)
         R.sign(path, self.by, self.today)
-        dst = R.promote(path, os.path.join(self.att, "reference", "datasheet"))
+        dst = R.promote(path, self.save_dir(ln))
         self.say(f"    saved, checked by {self.by or '?'}: {self.rel(dst)}")
+        if self.library and dst.startswith(self.library + os.sep):
+            self.saved_in_library.append(dst)
         return dst
+
+    def save_dir(self, ln):
+        """The library for a part from a component library or KiCad's own,
+        the project for a project-local symbol. Asked, with that as the
+        default, unless --save-to says."""
+        own = os.path.join(self.att, "reference", "datasheet")
+        if not self.library:
+            return own
+        default = LIB.scope_of(ln.comp.libsource, self.project)
+        where = self.save_to if self.save_to in ("library", "project") else ""
+        if not where:
+            name = os.path.basename(self.library)
+            ans = self.ask("    Save the signed table in", ["l", "p"],
+                           "l" if default == "library" else "p",
+                           labels={"l": f"library ({name}), for every board",
+                                   "p": "this project only"})
+            where = "library" if ans == "l" else "project"
+        return LIB.signed_dir(self.library) if where == "library" else own
 
     def edit_table(self, path, ln):
         self.say("    Pin number and the datasheet's name, empty line to finish.")

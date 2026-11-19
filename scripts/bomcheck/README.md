@@ -81,7 +81,9 @@ Datasheets are cached in `~/.cache/bomcheck` (`BOMCHECK_CACHE` overrides).
 Failed downloads are remembered for 24 h, so a blocked vendor costs one timeout
 a day, not one per run.
 
-The database format is in [FORMAT.md](FORMAT.md).
+The database format is in [FORMAT.md](FORMAT.md). Signed tables can live in the
+component library, so a part checked once is checked for every board that uses
+it; see [Two places for signed tables](FORMAT.md#two-places-for-signed-tables).
 
     python3 test_tomlite.py && python3 tests/test_spike.py
 

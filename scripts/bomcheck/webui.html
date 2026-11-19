@@ -156,6 +156,7 @@ function renderFinish(s) {
     open.map(o => `<li><b>${esc(o.mpn)}</b> ${esc(o.refs)}: ${esc(o.what)}</li>`).join("") +
     `</ul><p>Start the wizard again to answer them.</p>`;
   if (sum.fields) h += `<p>${sum.fields} BOM field value(s) wait to go into the schematic. Run <code>bomcheck apply</code>.</p>`;
+  if (sum.library_new) h += `<p>${sum.library_new} signed table(s) are new in the component library <b>${esc(sum.library)}</b>. Commit them there (a PR), so other boards get them.</p>`;
   h += `<p class="sub">You can close this tab.</p>`;
   $("finish").innerHTML = h;
 }
