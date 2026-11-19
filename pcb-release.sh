@@ -8,6 +8,8 @@
 #                                          (STEP/PDF/layout PDF/renders/iBOM -> customer/)
 #   pcb-release.sh PROJECT_DIR erc|drc|3d|all  just that check gate (used by CI jobs)
 #   pcb-release.sh PROJECT_DIR drift       is the committed release_spec.toml still true?
+#   pcb-release.sh PROJECT_DIR bomfields   do the parts of each BOM line agree on
+#                                          Manufacturer, MPN and distributor numbers?
 #   pcb-release.sh PROJECT_DIR bom         BOM_<board>.csv beside the project, for a
 #                                          pre-release read-through. Not a gate, and
 #                                          needs no release.toml.
@@ -31,7 +33,7 @@
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"; S="$here/scripts"
 
-proj="${1:?usage: $0 PROJECT_DIR <check|release|erc|drc|3d|all|drift|bom|pinmap[-check|-drift]|manual> [--strict]}"; shift || true
+proj="${1:?usage: $0 PROJECT_DIR <check|release|erc|drc|3d|all|drift|bomfields|bom|pinmap[-check|-drift]|manual> [--strict]}"; shift || true
 cmd="${1:-check}"; shift || true
 # --strict (warnings also fail) is MANUAL-ONLY and deliberately unreachable from CI:
 # no workflow and no pcb.sh path passes it. A release gates EXACTLY like a normal
@@ -178,6 +180,7 @@ gate_drc() { stage DRC kicad_check DRC kicad-cli pcb drc --schematic-parity "$pc
 # reports an unresolvable model on stdout and still exits 0 -- so a STEP with
 # parts silently missing looks exactly like a good one. Customers fit-check
 # against that STEP, so it gates.
+gate_bomfields() { stage "BOM FIELDS" python3 "$S/release_ci.py" "$proj" --mode bomfields; }
 gate_3d()  { stage "3D MODELS" python3 "$S/model3d_lint.py" "$pcb" --require-model $m3d; }
 # The model fetch is part of the 3D gate, not a separate step: skipping the gate
 # must also skip the fetch, or a board with skip=3d still pays for a git clone.
@@ -258,15 +261,24 @@ case "$cmd" in
            stage_result "BOM EXPORT" $k; [ $k -eq 0 ] || rc=1 ;;
   drift)   gate drift stage "RELEASE SPEC DRIFT" \
                 python3 "$S/release_ci.py" "$proj" --mode drift ;;
+  bomfields) gate bomfields gate_bomfields ;;
   # `check` IS the CI gate set: every gate this board is held to, in one pass.
   check)   gate erc gate_erc; gate drc gate_drc; gate 3d run_3d
            gate pinmap run_pinmap
            gate drift stage "RELEASE SPEC DRIFT" \
-                python3 "$S/release_ci.py" "$proj" --mode drift ;;
+                python3 "$S/release_ci.py" "$proj" --mode drift
+           gate bomfields gate_bomfields ;;
   release) gate erc gate_erc; gate drc gate_drc; gate 3d run_3d
            gate pinmap pinmap drift    # release: drift only, the map must be current
-           # one pass: fab zip (PCBA partner) + customer set (STEP/PDF/renders/iBOM)
-           stage "RELEASE BUILD" python3 "$S/release_ci.py" "$proj" --mode build ;;
+           gate bomfields gate_bomfields
+           # A failed gate means no release: the build would package what the
+           # gate just rejected. todo= gates warn and do not count here either.
+           if [ $rc -ne 0 ]; then
+             echo "::error::[release] not built: a gate failed above. Fix it and release again." | annot_render
+           else
+             # one pass: fab zip (PCBA partner) + customer set (STEP/PDF/renders/iBOM)
+             stage "RELEASE BUILD" python3 "$S/release_ci.py" "$proj" --mode build
+           fi ;;
   *) echo "pcb-release: unknown command '$cmd'" >&2; exit 2 ;;
 esac
 [ -n "${PCB_VERBOSE:-}" ] && echo "reports in: $out"

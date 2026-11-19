@@ -6,7 +6,7 @@ release, and as a CI workflow.
 
 ## What it checks
 
-Five gates. Two are KiCad's own, the other three exist because nothing else would catch
+Six gates. Two are KiCad's own, the other four exist because nothing else would catch
 the failure before the boards are made.
 
 | gate | fails when |
@@ -16,6 +16,7 @@ the failure before the boards are made.
 | `3d` | a footprint's 3D model does not resolve, so the STEP would ship with that part missing |
 | `drift` | the board no longer matches the spec committed at its last release |
 | `pinmap` | the MCU pin map is invalid, or no longer matches the schematic |
+| `bomfields` | the parts of one BOM line disagree on Manufacturer, MPN, Farnell, Mouser or Digikey |
 
 Every gate is enforced for every board unless that board says otherwise, so a new board
 cannot go silently unchecked. Details in **[Gates](docs/gates.md)**.
@@ -38,9 +39,9 @@ Add the submodule, add two workflow files, add a `release.toml` per board. See
 
 | command | does |
 |---|---|
-| `check` | every gate: ERC and schema, DRC and pick&place, 3D, pin map, release-spec drift |
-| `release` | the full manufacturing release, see [Deliverables](docs/deliverables.md) |
-| `erc` \| `drc` \| `3d` \| `drift` \| `pinmap` | one gate on its own |
+| `check` | every gate: ERC and schema, DRC and pick&place, 3D, pin map, release-spec drift, BOM fields |
+| `release` | the full manufacturing release, see [Deliverables](docs/deliverables.md). Runs the gates first; nothing is built or packaged when one fails |
+| `erc` \| `drc` \| `3d` \| `drift` \| `pinmap` \| `bomfields` | one gate on its own |
 | `bom` | `BOM_<board>.csv` beside the project, to read the parts over |
 | `manual` | the legacy interactive workflow, see below |
 
@@ -94,7 +95,7 @@ Boards pass all gates unless the board list says otherwise:
 | `skip=` | gate not applicable, e.g. no MCU means no pin map | silent |
 | `todo=` | gate applies but is known to fail for now | warning every run, does not fail |
 
-Gate names are `erc`, `drc`, `3d`, `drift`, `pinmap`, in any order and any combination. A
+Gate names are `erc`, `drc`, `3d`, `drift`, `pinmap`, `bomfields`, in any order and any combination. A
 typo is a hard error rather than a quietly unenforced gate.
 
 Naming one board in a local run enforces that board's `todo=` gates, which is how you
