@@ -155,7 +155,7 @@ function renderFinish(s) {
   if (open.length) h += `<p><b>${open.length} part(s) still open</b> (skipped, or left for later):</p><ul>` +
     open.map(o => `<li><b>${esc(o.mpn)}</b> ${esc(o.refs)}: ${esc(o.what)}</li>`).join("") +
     `</ul><p>Start the wizard again to answer them.</p>`;
-  if (sum.fields) h += `<p>${sum.fields} BOM field value(s) wait to go into the schematic. Run <code>bomcheck apply</code>.</p>`;
+  if (sum.fields) h += `<p>${sum.fields} BOM field value(s) wait to go into the schematic. Run <code>bomcheck apply</code>, then in the PCB editor <b>Update PCB from Schematic (F8)</b> and save, so the layout has them too.</p>`;
   if (sum.library_new) h += `<p>${sum.library_new} signed table(s) are new in the component library <b>${esc(sum.library)}</b>. Commit them there (a PR), so other boards get them.</p>`;
   h += `<p class="sub">You can close this tab.</p>`;
   $("finish").innerHTML = h;

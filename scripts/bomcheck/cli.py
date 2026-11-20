@@ -1355,6 +1355,11 @@ def cmd_apply(a):
         print(f"::warning::[bomcheck] {m}")
     print(f"[bomcheck] {len(applied)} field(s), {n_alias} alias(es)"
           + (" (dry run, nothing written)" if a.dry_run else ""))
+    if applied and not a.dry_run:
+        # KiCad keeps a copy of each symbol field on its footprint. Until the
+        # layout is updated, DRC's schematic parity reports every changed field.
+        print("[bomcheck] The layout still has the old values. In the PCB editor: "
+              "Tools > Update PCB from Schematic (F8), then save the board.")
     return 1 if (problems or missing) else 0
 
 

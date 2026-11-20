@@ -242,7 +242,8 @@ class Wizard:
         if self.changed_fields:
             self.say(f"\n{self.changed_fields} BOM field value(s) are in "
                      f"{self.rel(self.fields_csv)}.")
-            self.say("Write them into the schematic with: bomcheck apply")
+            self.say("Write them into the schematic with: bomcheck apply. Then "
+                     "update the layout too: Update PCB from Schematic (F8).")
         new = LIB.uncommitted(self.library) if self.library else []
         if new:
             self.say(f"\n{len(new)} signed table(s) in {self.library} are not committed "
