@@ -14,8 +14,8 @@ A symbol's Datasheet field is a claim like any other and gets checked the same
 way; when it resolves to the wrong part that is a defect in the SCHEMATIC, worth
 fixing at source.
 
-Fetching is deliberately plain HTTP/1.1 with an explicit `Connection: close` and
-a browser User-Agent. The previous attempt at this failed on st.com HTTP/2
+Fetching is deliberately plain HTTP/1.1 with an explicit `Connection: close`,
+and a User-Agent that names bomcheck. The previous attempt at this failed on st.com HTTP/2
 INTERNAL_ERROR and on 403s from vendor CDNs; measured from this host, TI now
 succeeds and ST still times out, which is why a distributor mirror is a
 first-class fallback rather than an afterthought.
@@ -33,8 +33,9 @@ import urllib.request
 
 import atomic
 
-UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
-      "Chrome/126.0 Safari/537.36")
+# Says what it is. A site that refuses a script gets the person to download
+# the file instead (the wizard asks for it); bomcheck does not pose as a browser.
+UA = "bomcheck (+https://github.com/JitterCompany/pcb_release)"
 
 # Vendor document ids: TI SCDS398C / SBAS815A, ST DS13096, Nexperia, Diodes...
 _DOCID = re.compile(
