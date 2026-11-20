@@ -1517,7 +1517,24 @@ def main():
     a = ap.parse_args(argv)
     if getattr(a, "library", ""):   # read by every command that loads tables
         os.environ["BOMCHECK_LIBRARY"] = a.library
-    return a.fn(a)
+    try:
+        return a.fn(a)
+    finally:
+        ignore_review(a.project)
+
+
+def ignore_review(project):
+    """review/ holds working files that bomcheck regenerates; once applied,
+    their answers are in the schematic and the signed tables. A .gitignore
+    inside it keeps the folder out of git without the board repo having to
+    say so."""
+    review = os.path.abspath(os.path.join(project or ".", "..", "attestations", "review"))
+    marker = os.path.join(review, ".gitignore")
+    if os.path.isdir(review) and not os.path.exists(marker):
+        try:
+            atomic.write_text(marker, "# bomcheck working files, regenerated\n*\n")
+        except OSError:
+            pass
 
 
 if __name__ == "__main__":

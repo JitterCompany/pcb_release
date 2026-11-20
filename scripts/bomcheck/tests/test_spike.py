@@ -2214,6 +2214,23 @@ def test_tables_in_the_component_library():
     shutil.rmtree(top)
 
 
+def test_review_folder_stays_out_of_git():
+    """review/ is regenerated: bomcheck puts a .gitignore in it, so a board
+    repo commits only what matters."""
+    import shutil
+    import tempfile
+    import cli
+    top = tempfile.mkdtemp()
+    proj = os.path.join(top, "board")
+    review = os.path.join(top, "attestations", "review")
+    os.makedirs(proj)
+    os.makedirs(review)
+    cli.ignore_review(proj)
+    text = open(os.path.join(review, ".gitignore")).read()
+    check("*" in text.split(), "review/: ignored by its own .gitignore", text)
+    shutil.rmtree(top)
+
+
 def test_design_sheets_only():
     """Only the root sheet and the sheets it uses are the design. An old or
     variant schematic in the same folder, with the same designators, is not:
@@ -2698,7 +2715,7 @@ def main():
                test_wizard_exits_cleanly_and_pin_names_are_free,
                test_wizard_back_undoes_the_part,
         test_wizard_asks_again_what_is_still_open, test_design_sheets_only,
-        test_tables_in_the_component_library,
+        test_tables_in_the_component_library, test_review_folder_stays_out_of_git,
         test_sim_holder_contact_numbers,
                test_symbol_drawing_is_read, test_dual_part_units_must_be_one_device,
                test_choke_connections_against_symbol,

@@ -10,7 +10,8 @@ comments stay.
       waivers.toml           design findings accepted, or known issues of a rev
       reference/datasheet/   THE DATABASE. Only these files are checked against.
       reference/draft/       work in progress: machine-read DRAFT-*, blank STUB-*
-      review/                working files; regenerated, safe to delete
+      review/                working files; regenerated, safe to delete, never
+                             committed (bomcheck puts a .gitignore in it)
 
 ## Two places for signed tables
 
