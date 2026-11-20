@@ -5,6 +5,27 @@ the manufacturer prints for this MPN? Standalone for now; `pcb-release.sh` and
 CI do not call it yet. The `bomfields` gate is separate: it checks that the parts
 of one BOM line agree with each other, not with a datasheet.
 
+## Requirements
+
+- Python 3, standard library only (tested with 3.10). No pip packages.
+- `kicad-cli` (tested with KiCad 10): netlist export, and the symbol and footprint
+  pictures in the wizard.
+- `pdftotext` and `pdftoppm` (poppler-utils): reading datasheets, and page
+  pictures in the wizard. Only `prepare` and the wizard need them.
+- `git`: finds the component library and the reviewer's name.
+- Network: only `prepare`, `fetch` and a URL given in the wizard download
+  datasheets, one at a time. A site that refuses scripts gets a request to
+  download the PDF yourself and drop it on the wizard.
+- `--gui`: any browser. The server is Python's own and listens on 127.0.0.1 only.
+
+`status` and `report` need only Python, `kicad-cli` and the signed tables: no
+PDFs and no network. That is what a CI gate would run.
+
+It is self-contained in `scripts/bomcheck/` and imports nothing from the rest of
+this repo, so a copy of the folder runs on its own:
+
+    python3 scripts/bomcheck/cli.py wizard path/to/board --gui
+
 ## Using it
 
     bomcheck [PROJECT_DIR]           # status: what is left, and who has to do it
@@ -446,7 +467,7 @@ so a reviewer reads 7 lines instead of 100.
 
 ### 7. Vendor reachability is genuinely mixed. ⚠️
 
-From this host, over forced HTTP/1.1 with a browser UA: **ti.com succeeds**
+From this host, over forced HTTP/1.1: **ti.com succeeds**
 (where the previous attempt failed), **st.com still times out**, Quectel gates
 downloads, and **Mouser bot-blocks direct datasheet URLs** ("Access to this page
 has been denied"). So the Mouser-mirror fallback is not usable as planned, and
