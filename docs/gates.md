@@ -48,6 +48,15 @@ or a mousebite.
 KiCad's own DRC with `--schematic-parity`, so a layout that has drifted from the
 schematic fails here rather than at the assembler.
 
+### Part fields in the layout (release only)
+
+KiCad keeps a copy of each symbol field (MPN, Manufacturer, Datasheet...) on the
+footprint, and reports a difference as the warning `footprint_symbol_field_mismatch`.
+The iBOM and other layout exports read the footprint's copy, so an MPN changed only in
+the schematic would ship as the old one. A release therefore counts this warning as an
+error. The fix is **Update PCB from Schematic (F8)** in the PCB editor, then save the
+board. In CI's `check` it stays a warning.
+
 ### Pick&place covers the BOM
 
 Separately, every part in the BOM must have a position in the pick&place export. A part
