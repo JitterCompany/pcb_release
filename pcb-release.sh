@@ -40,7 +40,7 @@ cmd="${1:-check}"; shift || true
 # push, so that observing a green CI run predicts a green release. Do not wire this
 # into CI -- to make a warning gate, raise its severity in the KiCad GUI, where the
 # decision travels with the project and is reviewed in the diff.
-strict=""; skip_gates=""; todo_gates=""; model_dirs=""
+strict=""; skip_gates=""; todo_gates=""; model_dirs=""; error_types=""
 for a in "$@"; do
   case "$a" in
     --strict)      strict="--strict" ;;
@@ -170,7 +170,8 @@ kicad_check() {
   local label="$1"; shift; local rep="$out/$(printf %s "$label" | tr '[:upper:]' '[:lower:]').json"
   "$@" --severity-all --format json --output "$rep" >/dev/null 2>&1; local k=$?
   [ -s "$rep" ] || { echo "::error::[$label] kicad-cli produced no report (exit $k)"; return 1; }
-  python3 "$S/check_report.py" --label "$label" $strict --ignore-type "$ignore" "$rep"
+  python3 "$S/check_report.py" --label "$label" $strict --ignore-type "$ignore" \
+    --error-type "$error_types" "$rep"
 }
 gate_erc() { stage ERC kicad_check ERC kicad-cli sch erc "$sch"
              stage "SCHEMA (dnp-lint)" python3 "$S/dnp_lint.py" "$sch"; }
@@ -268,7 +269,12 @@ case "$cmd" in
            gate drift stage "RELEASE SPEC DRIFT" \
                 python3 "$S/release_ci.py" "$proj" --mode drift
            gate bomfields gate_bomfields ;;
-  release) gate erc gate_erc; gate drc gate_drc; gate 3d run_3d
+  # A release also needs the layout to carry the schematic's part fields: the iBOM
+  # and other layout exports read them from the footprints. KiCad calls a
+  # difference a warning; here it stops the release. Fix: Update PCB from
+  # Schematic (F8) and save the board.
+  release) error_types="footprint_symbol_field_mismatch"
+           gate erc gate_erc; gate drc gate_drc; gate 3d run_3d
            gate pinmap pinmap drift    # release: drift only, the map must be current
            gate bomfields gate_bomfields
            # A failed gate means no release: the build would package what the
