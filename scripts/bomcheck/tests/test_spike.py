@@ -573,8 +573,9 @@ def test_schematic_property_write():
 
     # quotes in a value must not break the file
     out3 = SCH.set_property(SCH_FIXTURE, i, "MPN", 'a"b\\c')
-    check(SCH._instances_of(out3)[0].prop("MPN") == 'a\\"b\\\\c',
-          "sch: quotes and backslashes are escaped",
+    check(SCH._instances_of(out3)[0].prop("MPN") == 'a"b\\c'
+          and 'a\\"b\\\\c' in out3,
+          "sch: quotes and backslashes are escaped in the file, read back as typed",
           repr(SCH._instances_of(out3)[0].prop("MPN")))
 
 
@@ -2231,6 +2232,38 @@ def test_review_folder_stays_out_of_git():
     shutil.rmtree(top)
 
 
+def test_apply_ignores_other_projects_designators():
+    """A symbol copied from another project keeps that project's (instances)
+    entry. Its old designator must not make apply edit this symbol. A value
+    with a quote must pass the read-back check."""
+    import shutil
+    import tempfile
+    import schematic as SCH
+    d = tempfile.mkdtemp()
+    open(os.path.join(d, "board.kicad_pro"), "w").write("{}")
+
+    def sym(ref, other):
+        return (f'  (symbol (lib_id "L:X")\n'
+                f'    (property "Reference" "{ref}")\n'
+                f'    (property "MPN" "")\n'
+                f'    (instances\n'
+                f'      (project "board" (path "/a" (reference "{ref}") (unit 1)))\n'
+                f'      (project "elsewhere" (path "/b" (reference "{other}") (unit 1)))))\n')
+    sch = os.path.join(d, "board.kicad_sch")
+    open(sch, "w").write("(kicad_sch\n" + sym("U7", "U4") + sym("U4", "U9") + ")\n")
+    insts = {i.ref: i.refs for i in SCH.instances(sch)}
+    check(insts == {"U7": ["U7"], "U4": ["U4"]},
+          "schematic: designators of another project are not this symbol's", str(insts))
+    applied, problems = SCH.apply_edits([("U4", "MPN", 'A"B', SCH.find(d, "U4"))],
+                                        allow_dirty=True)
+    text = open(sch).read()
+    u7 = text[text.index('"U7"'):text.index('"U4"')]
+    check(applied and not problems and 'A\\"B' in text and 'A\\"B' not in u7,
+          "schematic: apply edits U4 itself, and a quote survives the read-back",
+          str(problems))
+    shutil.rmtree(d)
+
+
 def test_design_sheets_only():
     """Only the root sheet and the sheets it uses are the design. An old or
     variant schematic in the same folder, with the same designators, is not:
@@ -2715,7 +2748,7 @@ def main():
                test_wizard_exits_cleanly_and_pin_names_are_free,
                test_wizard_back_undoes_the_part,
         test_wizard_asks_again_what_is_still_open, test_design_sheets_only,
-        test_tables_in_the_component_library, test_review_folder_stays_out_of_git,
+        test_tables_in_the_component_library, test_review_folder_stays_out_of_git, test_apply_ignores_other_projects_designators,
         test_sim_holder_contact_numbers,
                test_symbol_drawing_is_read, test_dual_part_units_must_be_one_device,
                test_choke_connections_against_symbol,

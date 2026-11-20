@@ -91,30 +91,53 @@ class Instance:
         self.refs = refs or [ref]
 
     def prop(self, name):
-        return _prop_span(self.text, name)[0]
+        v = _prop_span(self.text, name)[0]
+        return None if v is None else re.sub(r"\\(.)", r"\1", v)
 
     def __repr__(self):
         extra = f" (+{len(self.refs) - 1} more)" if len(self.refs) > 1 else ""
         return f"Instance({os.path.basename(self.path)}:{self.ref}{extra})"
 
 
-def _refs_of(block, default):
-    """Every designator this symbol block serves, in sheet order."""
-    out = []
+_INST_PROJECT = re.compile(r'\(\s*project\s+"((?:[^"\\]|\\.)*)"')
+
+
+def _refs_of(block, default, project=""):
+    """Every designator this symbol block serves in THIS project. A symbol
+    copied from another project keeps that project's entry in (instances), with
+    its old designator: on one board U7's block also said U4, and an edit for U4
+    landed on U7. Only when no entry names the project are all of them used."""
+    per = {}
     for s, e in _blocks(block, "instances", top_level_only=False):
-        out += [m.group(1) for m in _INST_REF.finditer(block[s:e])]
-    return sorted(set(out)) or [default]
+        inst = block[s:e]
+        for ps, pe in _blocks(inst, "project", top_level_only=False):
+            m = _INST_PROJECT.match(inst, ps)
+            name = m.group(1) if m else ""
+            per.setdefault(name, []).extend(
+                r.group(1) for r in _INST_REF.finditer(inst[ps:pe]))
+        if not per:   # older files: references directly under (instances)
+            per[""] = [r.group(1) for r in _INST_REF.finditer(inst)]
+    refs = per.get(project) if project in per else [r for v in per.values() for r in v]
+    return sorted(set(refs)) or [default]
+
+
+def project_name(path):
+    """The KiCad project a sheet belongs to: the one .kicad_pro beside it."""
+    import glob
+    pros = glob.glob(os.path.join(os.path.dirname(os.path.abspath(path)), "*.kicad_pro"))
+    return os.path.basename(pros[0])[:-len(".kicad_pro")] if len(pros) == 1 else ""
 
 
 def instances(path):
     """-> [Instance] for every placed symbol in one schematic file."""
     text = open(path, encoding="utf-8").read()
+    project = project_name(path)
     out = []
     for s, e in _blocks(text, "symbol"):
         block = text[s:e]
         ref, _, _ = _prop_span(block, "Reference")
         if ref:
-            out.append(Instance(path, ref, s, e, block, _refs_of(block, ref)))
+            out.append(Instance(path, ref, s, e, block, _refs_of(block, ref, project)))
     return out
 
 
@@ -216,13 +239,14 @@ def apply_edits(edits, dry_run=False, allow_dirty=False):
                             f"diff ({len(items)} edit(s) skipped)")
             continue
         text = open(path, encoding="utf-8").read()
+        project = project_name(path)
         for ref, field, value in items:
             inst = next((i for i in instances(path) if ref in i.refs), None)
             if inst is None:
                 problems.append(f"{ref}: no longer in {os.path.basename(path)}")
                 continue
             # Re-locate on the CURRENT text: an earlier splice moved offsets.
-            fresh = next(i for i in _instances_of(text) if ref in i.refs)
+            fresh = next(i for i in _instances_of(text, project) if ref in i.refs)
             try:
                 text = set_property(text, fresh, field, value)
             except ValueError as e:
@@ -236,7 +260,7 @@ def apply_edits(edits, dry_run=False, allow_dirty=False):
                                 f"once) -- the value applies to all of them")
 
         # Read back before writing: a bad splice must fail, not save.
-        check = [i for i in _instances_of(text)]
+        check = [i for i in _instances_of(text, project)]
         for ref, field, value in items:
             got = next((i.prop(field) for i in check if ref in i.refs), None)
             if got != value:
@@ -250,11 +274,11 @@ def apply_edits(edits, dry_run=False, allow_dirty=False):
     return applied, problems
 
 
-def _instances_of(text):
+def _instances_of(text, project=""):
     out = []
     for s, e in _blocks(text, "symbol"):
         block = text[s:e]
         ref, _, _ = _prop_span(block, "Reference")
         if ref:
-            out.append(Instance("", ref, s, e, block, _refs_of(block, ref)))
+            out.append(Instance("", ref, s, e, block, _refs_of(block, ref, project)))
     return out
