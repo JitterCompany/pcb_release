@@ -49,6 +49,9 @@ to happen to it:
 | pin names that differ | you | per pin: same pin (alias), table wrong (retype), symbol wrong (fix now, or waive as a known issue of this revision) |
 | table misses pins | you | type the missing ones |
 | sign a table | you | only a signed table counts |
+| names nothing checks | you | the datasheet only numbers the pins and the symbol names them: give the symbol an `Interface` field |
+| type an interface table | you | wizard shows the interface spec; you type or confirm each pin's name from it, and sign |
+| names that differ from the spec | you | per pin, as for a datasheet |
 
 In a terminal the wizard shows each answer as buttons, with datasheet, skip and
 stop after them. Tab, Shift-Tab and the arrow keys move the highlight, Enter
@@ -79,6 +82,25 @@ sign, a band or bar, a dot, another mark). Second: which pin that mark is on.
 The datasheet and a picture of the footprint are shown side by side. bomcheck then checks symbol,
 footprint and datasheet against each other for every placement, including a
 bidirectional part on a footprint with a polarity mark. See FORMAT.md.
+
+**Connectors that implement an interface** (SL23): the connector's datasheet
+only numbers its contacts, and the symbol names them after the interface spec.
+Two signed tables then check the symbol:
+
+- the part table (per MPN): "only numbers". The wizard asks this for any
+  connector, also one whose symbol names its pins (or type `:n` at a pin).
+  It checks the numbering, the pins joined inside the part and pin 1 against
+  the footprint. It does not take over the symbol's names.
+- the interface table (per symbol): pin number = signal name, from the
+  interface spec. The symbol names its interface in the field
+  `Interface = SL23`. The table lives in the component library, so every
+  board with that symbol reuses it.
+
+The wizard shows the spec (a URL or a file; markdown is fine) and asks each
+pin's name. A pin table in a markdown spec is read as a hint: it is offered
+as the answer, and you still check every name in the spec. The symbol's
+names are never shown while you type. Without an `Interface` field, the
+names stay open in `bomcheck`. See FORMAT.md.
 
 **Waivers**: a design finding you will not fix now is waived in the wizard,
 with a note: `k` = known issue of this revision (`for_rev`, fails again when the
@@ -134,6 +156,7 @@ table, and **10 agree with the symbol on every pin read**.
 | `datasheet.py` | resolve, fetch, and VERIFY that a document is about this part |
 | `ordercode.py` | decode an MPN using the datasheet's own ordering scheme |
 | `pintable.py` | the evidence format, and stage-two comparison |
+| `interface.py` | interface tables: spec hints, stubs |
 | `suggest.py` | propose the Manufacturer / MPN / URL fields a symbol lacks |
 | `netlist.py` | kicadxml reader: libpart pin tables, DNP, MPN-from-Value |
 | `tomlite.py` | the TOML reader (the existing ones corrupt this data) |
@@ -520,6 +543,7 @@ records the per-MPN verdict, which is O(parts we place).
     netlist.py       kicadxml reader carrying <libpart> pin tables + pinmap_hash
     datasheet.py     resolve / fetch / VERIFY provenance
     pintable.py      evidence format + symbol-vs-datasheet comparison
+    interface.py     interface tables: read a spec's pin table as hints
     tables.py        the named pin-table SHAPES + the driver that applies them
     extract.py       the low-level recognisers each shape is built from
     ordercode.py     decode an MPN with the datasheet's own ordering scheme

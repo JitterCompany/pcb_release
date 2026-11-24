@@ -41,7 +41,7 @@ class Variant:
                  "pins", "alias", "source", "confidence", "ordering_check",
                  "active_low", "pin_count", "polarity_known", "bus_role",
                  "numbered", "polarity", "marked", "joined", "dots",
-                 "pad_layout", "symbol_checked", "mark")
+                 "pad_layout", "symbol_checked", "mark", "symbols")
 
     def __init__(self, doc, d):
         self.doc = doc
@@ -53,6 +53,8 @@ class Variant:
         self.package = str(d.get("package", "")).strip()
         self.package_code = str(d.get("package_code", "")).strip()
         self.mpns = [str(m).strip() for m in (d.get("mpns") or [])]
+        # An interface table is keyed to symbols (lib:name), not to MPNs.
+        self.symbols = [str(m).strip() for m in (d.get("symbols") or [])]
         self.mpn_match = str(d.get("mpn_match", "")).strip()
         self.source = str(d.get("source", "")).strip()
         self.confidence = str(d.get("confidence", "")).strip()
@@ -152,11 +154,15 @@ class Document:
     """One datasheet's extracted evidence."""
 
     __slots__ = ("path", "doc_id", "manufacturer", "origin", "extracted_by",
-                 "reviewed_by", "reviewed_on", "variants")
+                 "reviewed_by", "reviewed_on", "variants", "interface", "spec")
 
     def __init__(self, path, d):
         self.path = path
         self.doc_id = str(d.get("doc_id", "")).strip()
+        # An interface table: the interface's name, and the spec document
+        # (a URL, or a path relative to this file) that is its reference.
+        self.interface = str(d.get("interface", "")).strip()
+        self.spec = str(d.get("spec", "")).strip()
         self.manufacturer = str(d.get("manufacturer", "")).strip()
         self.origin = str(d.get("origin", "")).strip()
         self.extracted_by = str(d.get("extracted_by", "")).strip()
@@ -164,7 +170,8 @@ class Document:
         # signed table counts as evidence; a machine cannot sign.
         self.reviewed_by = str(d.get("reviewed_by", "")).strip()
         self.reviewed_on = str(d.get("reviewed_on", "")).strip()
-        self.variants = [Variant(self.doc_id or os.path.basename(path), v)
+        self.variants = [Variant(self.doc_id or self.interface
+                                 or os.path.basename(path), v)
                          for v in (d.get("variant") or [])]
 
 

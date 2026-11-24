@@ -2697,6 +2697,196 @@ def test_web_front_end_asks_the_same_questions():
     check(not t.is_alive(), "web: the server ends with the wizard")
 
 
+# A 2x5 header whose symbol follows a (made-up) interface spec SLX: odd
+# pins are signals, every even pin is GND. Pin 5 is IO_4 on the symbol,
+# IO_3 in the spec: the kind of swap an interface table exists to catch.
+_SLX_NAMES = {"1": "VBAT", "3": "IO_1", "5": "IO_4", "7": "IO_2", "9": "5V5",
+              "2": "GND", "4": "GND", "6": "GND", "8": "GND", "10": "GND"}
+_SLX_SPEC = """# SLX interface
+
+## FFC
+
+| Pin | Signal |
+|---|---|
+| 1 | `GND` |
+| 2 | `VBAT` |
+
+## 2x5 header
+
+Every even pin is `GND`. The odd pins:
+
+| Pin | Signal | Use |
+|---|---|---|
+| 1 | `VBAT` | |
+| 3 | `IO_1` | UART |
+| 5 | `IO_3` | |
+| 7 | `IO_2` | |
+| 9 | `5V5` | |
+"""
+
+
+def _slx_netlist(path, interface="SLX", names=None):
+    names = names or _SLX_NAMES
+    field = (f'<field name="Interface">{interface}</field>' if interface else "")
+    pins = "".join(f'<pin num="{n}" name="{v}" type="passive"/>'
+                   for n, v in names.items())
+    open(path, "w").write(
+        '<?xml version="1.0"?><export version="E"><components>'
+        '<comp ref="J1"><value>SLX</value>'
+        '<footprint>Connector_PinSocket_2.54mm:PinSocket_2x05_P2.54mm_Vertical</footprint>'
+        '<fields><field name="MPN">SSW-105-01-T-D</field>'
+        '<field name="Datasheet">https://example.com/ssw.pdf</field></fields>'
+        '<libsource lib="Jitter_Connectors" part="SLX_Header_2x5"/></comp>'
+        '</components><libparts>'
+        '<libpart lib="Jitter_Connectors" part="SLX_Header_2x5">'
+        f'<fields>{field}</fields><pins>{pins}</pins></libpart>'
+        '</libparts></export>')
+    comps, _ = N.parse(path)
+    return comps
+
+
+def test_interface_tables():
+    """A connector whose datasheet only numbers its contacts, on a symbol
+    that names them after an interface. The part table checks the
+    numbering; a signed interface table, keyed to the symbol, checks the
+    names. Nothing aliases the symbol's names wholesale."""
+    import tempfile
+    import interface as IF
+    import todo as TD
+    import wizard as WZ
+    import cli
+    top = tempfile.mkdtemp()
+    att = os.path.join(top, "attestations")
+    draft = os.path.join(att, "reference", "draft")
+    os.makedirs(draft)
+    xml = os.path.join(top, "n.xml")
+    comps = _slx_netlist(xml)
+    check(TD.interface_of(comps[0]) == "SLX",
+          "interface: the field is read from the library symbol")
+
+    # -- the spec reader: hints only, from the right table ------------------
+    tables = IF.spec_tables(_SLX_SPEC)
+    check([h for h, _t in tables] == ["FFC", "2x5 header"]
+          and tables[1][1]["5"] == "IO_3",
+          "interface: pin tables are read from a markdown spec", str(tables))
+    check(IF.parse_shared("GND = 2-10/2", set("2468") | {"10"})[1:]
+          == (["2", "4", "6", "8", "10"], []),
+          "interface: one name for many pins, with a step")
+    check(IF.parse_shared("GND = 2 12", {"2"})[2] == ["12"],
+          "interface: a pin the part does not have is refused")
+
+    # -- part table: "only numbers" on a symbol that names its pins ---------
+    stub = os.path.join(draft, "STUB-SSW-105-01-T-D.toml")
+    open(stub, "w").write(
+        'doc_id = ""\norigin = "manual"\nextracted_by = ""\n\n'
+        '  [[variant]]\n  mpns = ["SSW-105-01-T-D"]\n  pin_count = 10\n\n'
+        '    [variant.pins]\n' + "".join(f'    {n} = ""\n' for n in _SLX_NAMES))
+    lines, items = TD.collect(comps, att)
+    check([i.kind for i in items] == ["stub_unfilled", "interface_unfilled"],
+          "interface: a stub and the missing interface table are open",
+          str(items))
+    WZ._find_pdf = lambda *a: ""
+    answers = iter(["u", "", "y"])   # only numbers; nothing joined; same pin 1
+    said = []
+    w = WZ.Wizard(att, top, lines, items, ask=lambda p: next(answers),
+                  say=said.append, auto_open=False, by="T")
+    w.do_stub_unfilled(items[0], lines[0])
+    path = os.path.join(att, "reference", "datasheet", "SSW-105-01-T-D.toml")
+    var = P.Document(path, tomlite.load(path)).variants[0]
+    check(var.numbered and not var.alias and var.pad_layout == "same"
+          and var.joined == [],
+          "interface: the part table claims the numbering, no aliases",
+          open(path).read())
+    check("does not check the symbol's pin names" in " ".join(
+              x.strip() for x in said),
+          "interface: the wizard says the names are not checked by it")
+
+    # -- without the field, the names stay open and status says what to do -
+    bare = _slx_netlist(os.path.join(top, "bare.xml"), interface="")
+    _l, its = TD.collect(bare, att)
+    check([i.kind for i in its] == ["interface_unset"]
+          and "Interface = <name>" in its[0].detail,
+          "interface: without the field the names are open, with what to do",
+          str([(i.kind, i.detail) for i in its]))
+    numbered_sym = _slx_netlist(os.path.join(top, "num.xml"), interface="",
+                                names={n: n for n in _SLX_NAMES})
+    check(TD.collect(numbered_sym, att)[1] == [],
+          "interface: a symbol that names no pins needs no interface")
+
+    # -- the interface table: spec, hints confirmed one by one, sign ---------
+    spec = os.path.join(top, "slx.md")
+    open(spec, "w").write(_SLX_SPEC)
+    lines, items = TD.collect(comps, att)
+    check([i.kind for i in items] == ["interface_unfilled"],
+          "interface: only the interface table is open now", str(items))
+    seen = []
+    answers = iter([spec, "2",                 # the spec, its header table
+                    "", "GND", "", "GND", "",  # pins 1-5: Enter takes the hint
+                    "GND", "", "GND", "", "GND",
+                    "y"])                      # pin 5 differs: fix the symbol
+
+    def ask(prompt):
+        seen.append(prompt)
+        return next(answers)
+    w = WZ.Wizard(att, top, lines, items, ask=ask, say=said.append,
+                  auto_open=False, by="T")
+    w.do_interface_unfilled(items[0], lines[0])
+    check(any("(IO_3)" in x for x in seen) and not any("IO_4" in x for x in seen),
+          "interface: the spec's name is offered, never the symbol's", str(seen))
+    signed = os.path.join(att, "reference", "interface", "SLX-SLX_Header_2x5.toml")
+    doc = P.Document(signed, tomlite.load(signed))
+    check(doc.reviewed_by == "T" and doc.interface == "SLX"
+          and doc.spec == os.path.relpath(spec, os.path.dirname(signed))
+          and doc.variants[0].pins["5"] == "IO_3"
+          and doc.variants[0].symbols == ["Jitter_Connectors:SLX_Header_2x5"],
+          "interface: signed, keyed to the symbol, spec kept", open(signed).read())
+
+    # -- the swap is found and reported like a datasheet difference ----------
+    lines, items = TD.collect(comps, att)
+    check([(i.kind, i.code) for i in items]
+          == [("interface_difference", "interface_difference")]
+          and items[0].findings[0]["pin"] == "5",
+          "interface: the symbol's swapped name is a difference", str(items))
+    L = []
+    e, _w = cli.interface_report(L, comps[0], lines[0].table,
+                                 TD.interface_docs(att))
+    check(e == 1 and any("interface_mismatch" in x for x in L),
+          "report: the interface difference is an error", "\n".join(L))
+
+    # -- a fixed symbol passes both tables -----------------------------------
+    fixed = _slx_netlist(os.path.join(top, "fixed.xml"),
+                         names=dict(_SLX_NAMES, **{"5": "IO_3"}))
+    lines, items = TD.collect(fixed, att)
+    check(items == [] and len(TD.done_lines(lines, items)) == 1,
+          "interface: a symbol that agrees with both tables is done", str(items))
+    L = []
+    e, _w = cli.interface_report(L, fixed[0], lines[0].table,
+                                 TD.interface_docs(att))
+    check(e == 0 and any("**OK**" in x for x in L), "report: interface OK",
+          "\n".join(L))
+    L = []
+    e, _w = cli.interface_report(L, bare[0], lines[0].table, [])
+    check(e == 1 and any("interface_unset" in x for x in L),
+          "report: names nothing checks are an error")
+
+    # -- the browser shows the spec, markdown as text ------------------------
+    import webui
+    ui = webui.WebUI(echo=lambda t: None)
+    ui.show_doc(spec, "SLX spec")
+    check(ui.pdf["doc"] and ui.pdf["url"].endswith("/slx.md"),
+          "webui: a markdown spec is shown in the document pane", str(ui.pdf))
+    ui.show_doc("https://example.com/slx.md")
+    check(ui.pdf["remote"] == "https://example.com/slx.md" and ui.pdf["doc"],
+          "webui: a spec URL opens in the pane")
+
+    # -- a draft only holds hints until a person answers ---------------------
+    d = os.path.join(top, "d.toml")
+    IF.write_stub(d, "SLX", "L:S", ["1", "3"], spec, {"1": "VBAT"}, "slx.md")
+    v = P.Document(d, tomlite.load(d)).variants[0]
+    check(v.pins == {"1": "", "3": ""} and IF.hints_of(d) == {"1": "VBAT"},
+          "interface: a machine-read name is a hint, never a value")
+
+
 def main():
     for fn in (test_defect_is_caught, test_polarity_is_not_lost,
                test_provenance_rejects_known_bad_pdfs, test_whole_token_matching,
@@ -2757,7 +2947,8 @@ def main():
                test_polarity_parts, test_waivers,
                test_half_typed_pin_stub_on_polar_part,
                test_wizard_closes_its_viewers,
-               test_web_front_end_asks_the_same_questions):
+               test_web_front_end_asks_the_same_questions,
+               test_interface_tables):
         if "-v" in sys.argv:
             print(f"{fn.__name__}:")
         try:

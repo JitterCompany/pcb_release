@@ -140,6 +140,21 @@ class WebUI:
                         "name": f"{name} ({os.path.basename(path)})"}
             self._changed()
 
+    def show_doc(self, where, name=""):
+        """A document that is not a part's datasheet: an interface spec, as
+        a URL or a file (markdown is shown as plain text)."""
+        with self.cv:
+            if where.lower().startswith(("http://", "https://")):
+                self.pdf = {"remote": where, "page": 0, "maker": "",
+                            "name": name or where, "doc": True}
+            else:
+                fid = self._register(where)
+                base = os.path.basename(where)
+                self.pdf = {"id": fid, "url": f"file/{fid}/{base}", "page": 1,
+                            "name": f"{name} ({base})" if name else base,
+                            "doc": not where.lower().endswith(".pdf")}
+            self._changed()
+
     def show_image(self, path, name=""):
         with self.cv:
             fid = self._register(path)
@@ -262,6 +277,10 @@ class _Handler(BaseHTTPRequestHandler):
         with open(path, "rb") as f:
             body = f.read()
         ctype = mimetypes.guess_type(path)[0] or "application/octet-stream"
+        if ctype.startswith("text/") or path.lower().endswith((".md", ".rst")):
+            # A spec in markdown: shown as text. Never as HTML, which could
+            # run script next to the page that holds the token.
+            ctype = "text/plain; charset=utf-8"
         self._send(200, body, ctype, [("Content-Disposition", "inline")])
 
     def do_GET(self):

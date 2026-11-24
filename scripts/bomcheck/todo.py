@@ -46,6 +46,11 @@ KINDS = [
     ("connections", "Inside the part: datasheet and symbol disagree"),
     ("table_partial", "Some pins are not in the datasheet's list"),
     ("unsigned", "Pins nobody has checked yet"),
+    ("interface_unset", "Pin names nothing checks: say which interface they follow"),
+    ("interface_unfilled", "Type the interface's pin names from its spec"),
+    ("interface_difference", "Pin names that differ from the interface spec"),
+    ("interface_partial", "Some pins are not in the interface table"),
+    ("interface_unsigned", "Interface names nobody has checked yet"),
 ]
 AUTOMATIC = {"not_prepared"}
 
@@ -74,7 +79,7 @@ class Item:
 
 # Design findings a person may waive (see waivers.py). Missing work -- a
 # table nobody typed, a signature -- is never waivable.
-WAIVABLE = {"pin_difference", "mixed_symbols", "connections", "polarity.unnamed_cathode",
+WAIVABLE = {"pin_difference", "interface_difference", "mixed_symbols", "connections", "polarity.unnamed_cathode",
             "polarity.wrong_pad", "polarity.polar_on_unmarked",
             "polarity.bidirectional_on_marked", "polarity.datasheet_not_polar",
             "polarity.mark_unclear",
@@ -126,6 +131,126 @@ def signed_docs(att, project=None):
         for f, d in load_docs(os.path.join(root, "attestations"), "datasheet"):
             if not {m for v in d.variants for m in v.mpns} & covered:
                 out.append((f, d))
+    return out
+
+
+# ---- interface tables ----------------------------------------------------
+# A connector that implements an interface (SL23) has two references: the
+# part's datasheet, which only numbers the contacts, and the interface spec,
+# which names them. The symbol says which interface with this field.
+FIELD = "Interface"
+INTERFACE_DRAFTS = os.path.join("draft", "interface")
+
+# Pin names that carry no function: a connector's Pin_1, a choke's "1".
+_NUMBERISH = re.compile(r"^(pin_?)?\d+$|^[~-]?$", re.I)
+
+
+def numbered_only(pins):
+    """True when the symbol names no pin, so the only claim is the numbering."""
+    return all(_NUMBERISH.match(p.name.strip()) or p.name == p.num for p in pins)
+
+
+def interface_of(comp):
+    """The symbol's Interface field: on the placed symbol, else on the
+    library symbol the netlist carries. "" when there is none."""
+    value = comp.field(FIELD)
+    lp = getattr(comp, "libpart", None)
+    if not value and lp is not None:
+        value = next((v.strip() for k, v in lp.fields.items()
+                      if k.strip().lower() == FIELD.lower()), "")
+    return value
+
+
+def covers_symbol(var, lib_id):
+    """An interface variant lists the symbols it is for: `Lib:Name`, or a
+    bare `Name` for that symbol in any library."""
+    name = lib_id.partition(":")[2]
+    return any(s == lib_id or (":" not in s and s == name) for s in var.symbols)
+
+
+def interface_docs(att, project=None):
+    """-> [(path, Document)] of signed-place interface tables: the board's
+    own first, then the component libraries'. The board's wins per symbol."""
+    own = load_docs(att, "interface")
+    if not project:
+        return own
+    covered = {s for _f, d in own for v in d.variants for s in v.symbols}
+    out = list(own)
+    for root in LIB.read_roots(project):
+        for f, d in load_docs(os.path.join(root, "attestations"), "interface"):
+            if not {s for v in d.variants for s in v.symbols} & covered:
+                out.append((f, d))
+    return out
+
+
+def find_interface(docs, name, lib_id):
+    """-> (path, Document, Variant) of the table for interface `name` that
+    covers this symbol, or (None, None, None). An empty name takes any."""
+    for f, d in docs:
+        if name and d.interface.lower() != name.lower():
+            continue
+        for v in d.variants:
+            if covers_symbol(v, lib_id):
+                return f, d, v
+    return None, None, None
+
+
+def interface_draft_path(att, name, lib_id):
+    safe = lambda s: re.sub(r"[^A-Za-z0-9._-]", "_", s)
+    return os.path.join(att, "reference", INTERFACE_DRAFTS,
+                        f"{safe(name)}-{safe(lib_id.partition(':')[2] or lib_id)}.toml")
+
+
+def names_unchecked(ln):
+    """A signed numbered-only part table on a symbol that names its pins
+    (more than two): the datasheet checks the numbering, nothing the names."""
+    c = ln.comp
+    return (ln.table is not None and ln.table.numbered and len(c.pins) > 2
+            and not numbered_only(c.pins))
+
+
+def interface_items(ln, docs, drafts):
+    """The symbol's names against its interface table, when it names an
+    interface or when its datasheet only numbers the pins."""
+    c = ln.comp
+    name = interface_of(c)
+    if not name:
+        if not names_unchecked(ln):
+            return []
+        _f, other, _v = find_interface(docs, "", c.libsource)
+        what = (f"a signed table for interface {other.interface} covers this "
+                f"symbol: add the field {FIELD} = {other.interface} to the symbol"
+                if other else
+                f"if they follow an interface spec, add the field {FIELD} = "
+                f"<name> to the symbol and sign its table with `bomcheck wizard`")
+        return [Item("interface_unset", ln.mpn, ln.refs, "",
+                     f"the datasheet only numbers the pins, so nothing checks "
+                     f"the names of {c.libsource}; {what}")]
+    path, doc, var = find_interface(docs, name, c.libsource)
+    if var is None:
+        dpath, _d, dvar = find_interface(drafts, name, c.libsource)
+        typed = sum(1 for v in (dvar.pins.values() if dvar else []) if v.strip())
+        detail = (f"{FIELD} = {name}: no signed table for {c.libsource}"
+                  + (f", draft has {typed} of {len(dvar.pins)} names" if dvar
+                     else "; type it from the spec in `bomcheck wizard`"))
+        return [Item("interface_unfilled", ln.mpn, ln.refs, dpath or "", detail)]
+    out = []
+    broken, why = P.structurally_disagrees(var, c.pins)
+    found = P.compare(var, c.pins)
+    bad = [f for f in found if f["code"] in DISAGREE]
+    if broken:
+        out.append(Item("interface_difference", ln.mpn, ln.refs, path,
+                        f"{name}: {why}", code="interface_structure"))
+    elif bad:
+        out.append(Item("interface_difference", ln.mpn, ln.refs, path,
+                        f"{name}: " + _summary(bad), bad,
+                        code="interface_difference"))
+    gaps = [f for f in found if f["code"] in GAPS + ("reference_unfilled",)]
+    if gaps and not broken:
+        out.append(Item("interface_partial", ln.mpn, ln.refs, path,
+                        f"{name}: " + _summary(gaps), gaps))
+    if not doc.reviewed_by:
+        out.append(Item("interface_unsigned", ln.mpn, ln.refs, path, name))
     return out
 
 
@@ -206,6 +331,8 @@ def collect(parts, att, project=None, rev=None, waived=None):
     Waived findings go to the `waived` list, if one is given, not to items."""
     promoted = signed_docs(att, project)
     drafts = load_docs(att, "draft")
+    interfaces = interface_docs(att, project)
+    iface_drafts = load_docs(att, INTERFACE_DRAFTS)
     review = os.path.join(att, "review")
     lines = lines_of(parts)
     items = []
@@ -267,6 +394,7 @@ def collect(parts, att, project=None, rev=None, waived=None):
                               "names half typed"))
             continue
         items += _table_items(ln, promoted)
+        items += interface_items(ln, interfaces, iface_drafts)
         if var is not None and var.polarity and var.marked:
             items += datasheet_items(ln, var)
 

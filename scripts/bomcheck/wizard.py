@@ -25,6 +25,7 @@ import datasheet as D
 import decisions as DC
 import exempt as EX
 import footprint as FP
+import interface as IF
 import netlist as N
 import pintable as P
 import polarity as PO
@@ -49,13 +50,7 @@ class Skip(Exception):
     pass
 
 
-# Pin names that carry no function: a connector's Pin_1, a choke's "1".
-_NUMBERISH = re.compile(r"^(pin_?)?\d+$|^[~-]?$", re.I)
-
-
-def numbered_only(pins):
-    """True when the symbol names no pin, so the only claim is the numbering."""
-    return all(_NUMBERISH.match(p.name.strip()) or p.name == p.num for p in pins)
+numbered_only = TD.numbered_only
 
 
 class Wizard:
@@ -620,14 +615,21 @@ class Wizard:
             self.say("    The symbol names none of these pins.")
             if self.ask("    Does the datasheet only number them too (no pin "
                         "functions)", ["y", "n"]) == "y":
-                R.make_numbered(it.path, [p.num for p in c.pins])
-                if TD.asks_connections(_variant(it.path, ln.mpn), c.pins):
-                    self.ask_connections(it.path, ln)
-                path = self.sign_and_promote(it.path, ln)
-                return self.connection_result(path, ln)
+                return self.numbers_only(it, ln)
+        elif _connector_like(ln):
+            self.tell("The symbol names its pins. A plain connector's datasheet "
+                      "often only numbers its contacts; the names then come "
+                      "from an interface spec, which is checked separately.")
+            if self.ask("    Does the datasheet name these pins, or only number "
+                        "them", ["n", "u"], "n",
+                        labels={"n": "it names them",
+                                "u": "it only numbers them"}) == "u":
+                return self.numbers_only(it, ln)
         pictured = self.show_pads(ln)
         self.tell("Type each pin's name as the DATASHEET prints it (- for no "
-                  "connect, empty to leave the pin for later)."
+                  "connect, empty to leave the pin for later"
+                  + ("" if numbered_only(c.pins) else
+                     ", :n if the datasheet only numbers the pins") + ")."
                   + (" The picture is the footprint on the board, "
                                  "with its pad numbers: pin N is pad N. Where "
                                  "the drawing only numbers its contacts (C1, "
@@ -640,6 +642,8 @@ class Wizard:
                 continue  # typed in an earlier session
             name = self.ask(f"    pin {p.num}" + (f" (pad {p.num})" if pictured
                                                     else ""))
+            if name == ":n":
+                return self.numbers_only(it, ln)
             if not name:
                 left.append(p.num)
                 continue
@@ -650,6 +654,25 @@ class Wizard:
             return
         self.check_table(it.path, ln)
         self.sign_and_promote(it.path, ln)
+
+    def numbers_only(self, it, ln):
+        """The datasheet only numbers the pins: the table claims the
+        numbering, and the questions about the part's inside and pin 1 check
+        the footprint. A symbol's names are NOT taken over: an interface
+        table checks those, or nothing does and that stays open."""
+        c = ln.comp
+        R.make_numbered(it.path, [p.num for p in c.pins])
+        if not numbered_only(c.pins):
+            iface = TD.interface_of(c)
+            self.tell("The part's table records the pin numbers only. It does "
+                      "not check the symbol's pin names: "
+                      + (f"the {iface} interface table does that." if iface else
+                         f"an interface table does that, once the symbol has "
+                         f"the field {TD.FIELD} = <name>."))
+        if TD.asks_connections(_variant(it.path, ln.mpn), c.pins):
+            self.ask_connections(it.path, ln)
+        path = self.sign_and_promote(it.path, ln)
+        return self.connection_result(path, ln)
 
     # ---- inside a numbered-only part ----------------------------------------
     def do_connections_unfilled(self, it, ln):
@@ -808,7 +831,7 @@ class Wizard:
             return
         self.check_table(it.path, ln, it.findings)
 
-    def do_table_partial(self, it, ln):
+    def do_table_partial(self, it, ln, word="datasheet"):
         var = _variant(it.path, ln.mpn)
         gaps = sorted((p for p in ln.comp.pins
                        if not str(var.pins.get(p.num, "")).strip()),
@@ -820,15 +843,21 @@ class Wizard:
                      f"({var.pin_count}). Check pin_count in {self.rel(it.path)}.")
             return
         self.say(f"    {len(gaps)} pin(s) of the symbol have no name from the "
-                 f"datasheet yet. Type them from the datasheet (- for no "
+                 f"{word} yet. Type them from the {word} (- for no "
                  f"connect, Enter = later).")
-        self.show_pdf(ln, var.pins.values())
+        if word == "datasheet":
+            self.show_pdf(ln, var.pins.values())
+        else:
+            self.show_spec(it.path)
         for p in gaps:
             name = self.ask(f"    pin {p.num}")
             if name:
                 put = R.set_pin_names if p.num in var.pins else R.add_pins
                 put(it.path, {p.num: "NC" if name == "-" else name})
-        self.check_table(it.path, ln)
+        if word == "datasheet":
+            self.check_table(it.path, ln)
+        else:
+            self.check_table(it.path, ln, word=word, code="interface_difference")
 
     def do_unsigned(self, it, ln):
         doc = P.Document(it.path, tomlite.load(it.path))
@@ -844,6 +873,196 @@ class Wizard:
                     ["y", "n"]) == "y":
             R.sign(it.path, self.by, self.today)
             self.say(f"    marked as checked in {self.rel(it.path)}")
+
+    # ---- interface tables -------------------------------------------------
+    def interface_docs(self):
+        return TD.interface_docs(self.att, self.project or None)
+
+    def do_interface_unset(self, it, ln):
+        c = ln.comp
+        self.tell(it.detail[0].upper() + it.detail[1:] + ".")
+        self.tell("bomcheck does not edit symbol libraries: add the field in "
+                  "the symbol editor, then Update Symbols from Library in the "
+                  "schematic. Until then the names stay open.")
+        _f, other, _v = TD.find_interface(self.interface_docs(), "", c.libsource)
+        if other is None:
+            name = self.ask("    The interface's name, to type its table now "
+                            "(e.g. SL23; Enter = later)")
+            if name:
+                self.fill_interface(ln, name)
+        raise Skip()
+
+    def do_interface_unfilled(self, it, ln):
+        name = TD.interface_of(ln.comp)
+        _f, _d, var = TD.find_interface(self.interface_docs(), name,
+                                        ln.comp.libsource)
+        if var is not None:
+            return self.say("    signed earlier in this session")
+        self.fill_interface(ln, name)
+
+    def fill_interface(self, ln, name):
+        """Type, or confirm, each pin's name from the interface spec, then
+        compare with the symbol and sign. The symbol's names are not shown
+        while typing: they are what the table checks."""
+        c = ln.comp
+        path = TD.interface_draft_path(self.att, name, c.libsource)
+        if not os.path.isfile(path) and not self.start_interface(path, ln, name):
+            return
+        self.show_spec(path)
+        hints = IF.hints_of(path)
+        var = _variant(path, "")
+        blank = [n for n in sorted(var.pins, key=P._pinsort)
+                 if not var.pins[n].strip()]
+        self.tell(f"Type each pin's signal name as the {name} spec gives it, "
+                  f"never from the symbol (- = not connected, Enter = later).")
+        if hints:
+            self.tell("bomcheck read some names from a table in the spec. Each "
+                      "one is offered as the answer: check it in the spec "
+                      "before you press Enter, a misread table is still wrong.")
+        pictured = self.show_pads(ln)
+        if len([n for n in blank if n not in hints]) > 8:
+            self.tell("Many pins with one name can go in one line first: "
+                      "NAME = pins, e.g. GND = 2-50/2 (every second pin from 2 "
+                      "to 50) or GND = 2 4 10-12. Enter = none or done.")
+            while True:
+                ans = self.ask("    shared name")
+                if not ans:
+                    break
+                nm, nums, wrong = IF.parse_shared(ans, set(blank))
+                if wrong or not nums:
+                    self.tell("Write it as NAME = pins, e.g. GND = 2-50/2."
+                              + (f" Not a blank pin of this part: "
+                                 f"{', '.join(wrong)}." if wrong else ""))
+                    continue
+                R.set_pin_names(path, {n: "NC" if nm == "-" else nm for n in nums})
+                blank = [n for n in blank if n not in nums]
+                self.say(f"    {nm}: pin {', '.join(nums)}")
+        left = []
+        for n in blank:
+            ans = self.ask(f"    pin {n}" + (f" (pad {n})" if pictured else ""),
+                           default=hints.get(n, ""))
+            if not ans:
+                left.append(n)
+                continue
+            R.set_pin_names(path, {n: "NC" if ans == "-" else ans})
+        if left:
+            self.say(f"    Left empty: pin {', '.join(left)}. The table stays a "
+                     f"draft in {self.rel(path)}; the next run asks for those "
+                     f"pins again.")
+            return
+        self.check_table(path, ln, word="spec", code="interface_difference")
+        self.sign_interface(path, ln)
+
+    def start_interface(self, path, ln, name):
+        """Ask for the spec and write a blank table, with names read from a
+        markdown table in the spec as hints. -> False without a spec."""
+        self.tell(f"No table for the {name} interface on {ln.comp.libsource} "
+                  f"yet. Its reference is the {name} spec: a URL or a file "
+                  f"(markdown is fine).")
+        while True:
+            spec = self.ask(f"    The {name} spec (URL or file; Enter = later)",
+                            files=True)
+            if not spec:
+                self.say("    Without the spec there is nothing to type the "
+                         "names from.")
+                return False
+            where = spec if IF.is_url(spec) else self.abspath(spec)
+            if IF.is_url(where) or os.path.isfile(where):
+                break
+            self.say("    not a URL, and no such file")
+        pins = {p.num for p in ln.comp.pins}
+        hints, source = {}, ""
+        if not IF.is_url(where) and not where.lower().endswith(".pdf"):
+            with open(where, encoding="utf-8", errors="replace") as f:
+                tables = [(h, {n: v for n, v in t.items() if n in pins})
+                          for h, t in IF.spec_tables(f.read())]
+            tables = [(h, t) for h, t in tables if t]
+            pick = 0
+            if len(tables) == 1:
+                pick = 1
+            elif tables:
+                self.say("    The spec has several pin tables:")
+                for k, (h, t) in enumerate(tables, 1):
+                    self.say(f"      {k} = {h or 'a table'} ({len(t)} pins)")
+                keys = [str(k) for k in range(1, len(tables) + 1)]
+                ans = self.ask("    Which one is this symbol's pinout",
+                               keys + ["n"], "n",
+                               labels={"n": "none, type all"})
+                pick = int(ans) if ans != "n" else 0
+            if pick:
+                heading, hints = tables[pick - 1]
+                source = os.path.basename(where) + (
+                    f", table under '{heading}'" if heading else "")
+        IF.write_stub(path, name, ln.comp.libsource,
+                      sorted(pins, key=P._pinsort), where, hints, source)
+        return True
+
+    def sign_interface(self, path, ln):
+        R.sign(path, self.by, self.today)
+        dst = R.promote(path, self.save_dir(ln, "interface"))
+        doc = P.Document(dst, tomlite.load(dst))
+        if doc.spec and not IF.is_url(doc.spec) and os.path.isabs(doc.spec):
+            # Relative to the table, so the link survives another checkout.
+            text = R.set_top_key(open(dst, encoding="utf-8").read(), "spec",
+                                 os.path.relpath(doc.spec, os.path.dirname(dst)))
+            atomic.write_text(dst, text)
+            if _repo_root(os.path.dirname(doc.spec)) != \
+                    _repo_root(os.path.dirname(dst)):
+                self.tell("The spec file is in another repository than the "
+                          "table, so other checkouts may not find it. Put its "
+                          f"URL in spec = ... in {self.rel(dst)}.")
+        self.say(f"    saved, checked by {self.by or '?'}: {self.rel(dst)}")
+        if self.library and dst.startswith(self.library + os.sep):
+            self.saved_in_library.append(dst)
+        return dst
+
+    def show_spec(self, path):
+        """Point at the interface spec a table names: a URL or a file."""
+        doc = P.Document(path, tomlite.load(path))
+        where = IF.resolve_spec(doc.spec, os.path.dirname(path))
+        if not where:
+            self.tell(f"bomcheck cannot open the spec this table names "
+                      f"(spec = {doc.spec!r} in {self.rel(path)}).")
+            return
+        if self.ui is not None:
+            return self.ui.show_doc(where, f"{doc.interface} spec")
+        self.say("    spec: " + (where if IF.is_url(where)
+                                 else "file://" + urllib.parse.quote(where)))
+        if self.auto_open and where not in self.opened:
+            self.opened.add(where)
+            self.viewers.append(_open(where) if where.lower().endswith(".pdf")
+                                else _spawn(_any_cmd(where)))
+
+    def do_interface_difference(self, it, ln):
+        self.show_spec(it.path)
+        if it.code == "interface_structure":
+            self.say(f"    The interface table does not fit this symbol: "
+                     f"{it.detail}")
+            self.say(f"    Fix or delete {self.rel(it.path)} by hand.")
+            raise Skip()
+        self.show_symbol(ln)
+        self.check_table(it.path, ln, it.findings, word="spec",
+                         code="interface_difference")
+
+    def do_interface_partial(self, it, ln):
+        self.do_table_partial(it, ln, word="spec")
+
+    def do_interface_unsigned(self, it, ln):
+        doc = P.Document(it.path, tomlite.load(it.path))
+        if doc.reviewed_by:
+            return  # signed earlier in this session
+        var = _variant(it.path, "")
+        self.say(f"    {len(var.pins)} names from the {doc.interface} spec, typed "
+                 f"by {doc.extracted_by or '?'}. Nobody has checked them yet.")
+        if self.ask("    Show it", ["y", "n"], "n") == "y":
+            self.show_table(var, ln.comp.pins, word="spec")
+        self.show_spec(it.path)
+        if self.ask("    Have you checked these names against the spec",
+                    ["y", "n"]) == "y":
+            R.sign(it.path, self.by, self.today)
+            self.say(f"    marked as checked in {self.rel(it.path)}")
+        else:
+            raise Skip()
 
     # ---- polarity ---------------------------------------------------------
     def do_polarity_unfilled(self, it, ln):
@@ -1010,8 +1229,10 @@ class Wizard:
                     self.viewers.append(_open_file(svg))
 
     # ---- shared steps -----------------------------------------------------
-    def check_table(self, path, ln, findings=None):
-        """Settle every pin where the table and the symbol disagree."""
+    def check_table(self, path, ln, findings=None, word="datasheet",
+                    code="pin_difference"):
+        """Settle every pin where the table and the symbol disagree. `word`
+        names the reference (datasheet or spec), `code` the waiver."""
         var = _variant(path, ln.mpn)
         if findings is None:
             findings = [f for f in P.compare(var, ln.comp.pins)
@@ -1022,9 +1243,9 @@ class Wizard:
             self.settle_units(path, ln, mixed)
         if not findings:
             return
-        self.say(f"    {len(findings)} pin(s) differ between the datasheet table "
+        self.say(f"    {len(findings)} pin(s) differ between the {word} table "
                  f"and the symbol:")
-        self.say(f"    {'pin':>5}  {'datasheet':24} symbol")
+        self.say(f"    {'pin':>5}  {word:24} symbol")
         for f in findings:
             self.say(f"    {f['pin']:>5}  {f['datasheet'] or '-':24} {f['symbol']}")
         if len(findings) > 1:
@@ -1037,10 +1258,10 @@ class Wizard:
                     DC.add_alias(path, ln.mpn, f["pin"], f["symbol"], f["datasheet"])
                 return
         for f in findings:
-            self.say(f"\n    pin {f['pin']}: datasheet {f['datasheet']!r}, "
+            self.say(f"\n    pin {f['pin']}: {word} {f['datasheet']!r}, "
                      f"symbol {f['symbol']!r}")
             self.say("      a = same pin, the symbol just names it differently")
-            self.say("      t = the datasheet column was read wrong, type the right name")
+            self.say(f"      t = the {word} column was read wrong, type the right name")
             self.say("      y = the symbol is wrong, fix it now (stays open until fixed)")
             rev = f"rev {self.rev}" if self.rev else "this revision"
             self.say(f"      k = the symbol is wrong, known issue of {rev}")
@@ -1055,7 +1276,7 @@ class Wizard:
                 note = ""
                 while not note:
                     note = self.ask("      why (a note is required)")
-                WV.add(self.att, "pin_difference", ln.refs, note, self.by,
+                WV.add(self.att, code, ln.refs, note, self.by,
                        self.today, pins=[f["pin"]], until=self.rev,
                        about=_about(ln, f["msg"]))
 
@@ -1101,11 +1322,11 @@ class Wizard:
             self.saved_in_library.append(dst)
         return dst
 
-    def save_dir(self, ln):
+    def save_dir(self, ln, kind="datasheet"):
         """The library for a part from a component library or KiCad's own,
         the project for a project-local symbol. Asked, with that as the
-        default, unless --save-to says."""
-        own = os.path.join(self.att, "reference", "datasheet")
+        default, unless --save-to says. `kind`: datasheet or interface."""
+        own = os.path.join(self.att, "reference", kind)
         if not self.library:
             return own
         default = LIB.scope_of(ln.comp.libsource, self.project)
@@ -1117,7 +1338,10 @@ class Wizard:
                            labels={"l": f"library ({name}), for every board",
                                    "p": "this project only"})
             where = "library" if ans == "l" else "project"
-        return LIB.signed_dir(self.library) if where == "library" else own
+        if where != "library":
+            return own
+        return (LIB.interface_dir(self.library) if kind == "interface"
+                else LIB.signed_dir(self.library))
 
     def edit_table(self, path, ln):
         self.say("    Pin number and the datasheet's name, empty line to finish.")
@@ -1145,11 +1369,11 @@ class Wizard:
         self.do_stub_unfilled(it, ln)
 
     # ---- showing things ---------------------------------------------------
-    def show_table(self, var, pins):
+    def show_table(self, var, pins, word="datasheet"):
         sym = {p.num: p.name for p in pins}
         unit = {p.num: f" (unit {p.unit})" for p in pins if getattr(p, "unit", "")}
         nums = sorted(set(var.pins) | set(sym), key=P._pinsort)
-        self.say(f"    {'pin':>5}  {'datasheet':24} symbol   (< = named differently)")
+        self.say(f"    {'pin':>5}  {word:24} symbol   (< = named differently)")
         for n in nums:
             ds, sy = var.pins.get(n, "-"), sym.get(n, "-")
             mark = "" if P._norm_pin_name(ds) == P._norm_pin_name(sy) else "  <"
@@ -1203,8 +1427,20 @@ class Wizard:
             self.viewers.append(_open(pdf, page))
 
 def _variant(path, mpn):
+    """The part's variant; for an interface table (keyed to symbols, one
+    variant per file) that one variant."""
     doc = P.Document(path, tomlite.load(path))
-    return next(v for v in doc.variants if mpn in v.mpns)
+    return next((v for v in doc.variants if mpn in v.mpns), None) or next(
+        v for v in doc.variants if not v.mpns)
+
+
+def _connector_like(ln):
+    """Worth asking whether the datasheet only numbers the pins: a symbol
+    with an interface, a J/P/X/CN designator, or a connector footprint."""
+    c = ln.comp
+    return bool(TD.interface_of(c)) or any(
+        re.match(r"(J|P|X|CN|CON)\d", r) for r in ln.refs) or \
+        c.footprint.lower().startswith("connector")
 
 
 def _about(ln, detail):
@@ -1393,3 +1629,11 @@ def _open_file(path):
 
 def _open(pdf, page=1):
     return _spawn(_viewer_cmd(pdf, page))
+
+
+def _any_cmd(target):
+    """Hand a URL or a non-PDF file (a markdown spec) to the desktop."""
+    for cmd in ("xdg-open", "open"):
+        if shutil.which(cmd):
+            return [cmd, target]
+    return None

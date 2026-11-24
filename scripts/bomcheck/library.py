@@ -16,6 +16,9 @@ import re
 import subprocess
 
 SIGNED = ("attestations", "reference", "datasheet")
+# Signed interface tables: what an interface spec says each pin of a symbol
+# is. Keyed to symbols, not MPNs, so they belong in the library too.
+INTERFACE = ("attestations", "reference", "interface")
 
 
 def _git_root(path):
@@ -78,6 +81,10 @@ def signed_dir(root):
     return os.path.join(root, *SIGNED)
 
 
+def interface_dir(root):
+    return os.path.join(root, *INTERFACE)
+
+
 def scope_of(lib_id, project):
     """Where a part's table belongs by default: "project" for a symbol from a
     library inside the board's repo, "library" for one from a component
@@ -92,11 +99,13 @@ def scope_of(lib_id, project):
 
 
 def uncommitted(root):
-    """-> [relative path] of signed tables in a library that git does not have
-    yet: they reach other boards only through a commit there."""
+    """-> [relative path] of signed tables (datasheet and interface) in a
+    library that git does not have yet: they reach other boards only through
+    a commit there."""
     try:
         r = subprocess.run(["git", "-C", root, "status", "--porcelain",
-                            "--untracked-files=all", "--", os.path.join(*SIGNED)],
+                            "--untracked-files=all", "--", os.path.join(*SIGNED),
+                            os.path.join(*INTERFACE)],
                            capture_output=True, text=True, timeout=10)
     except Exception:                                            # noqa: BLE001
         return []

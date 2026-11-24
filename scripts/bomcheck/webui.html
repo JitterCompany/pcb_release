@@ -230,14 +230,14 @@ function pdfSrc(s) {
 
 function renderPdf(s, force) {
   if (s.pdf && s.pdf.remote !== undefined) return renderRemote(s.pdf, force);
-  $("imgtoggle").hidden = !(s.pdf && s.page_images);
+  $("imgtoggle").hidden = !(s.pdf && s.page_images && !s.pdf.doc);
   const key = s.pdf ? `${s.pdf.id}#${s.pdf.page}#${$("asimage").checked}` : "";
   if (key === shownPdf && !force) return;
   shownPdf = key;
   // One frame for the whole session, only its address changes: a frame
   // made anew each time sometimes started the viewer at the wrong width.
   const frame = $("pdfframe"), img = $("pdfimg");
-  const asImage = !!s.pdf && $("asimage").checked;
+  const asImage = !!s.pdf && $("asimage").checked && !s.pdf.doc;
   $("nopdf").hidden = !!s.pdf;
   $("droplead").textContent = s.pdf ? "Wrong or old datasheet? Drop a better PDF or URL here"
                                     : "Drop a PDF or a URL here";
@@ -250,7 +250,7 @@ function renderPdf(s, force) {
     frame.src = "about:blank";
     return;
   }
-  $("pdfname").textContent = `${s.pdf.name}, page ${s.pdf.page}`;
+  $("pdfname").textContent = s.pdf.doc ? s.pdf.name : `${s.pdf.name}, page ${s.pdf.page}`;
   $("pdfopen").href = `${s.pdf.url}#page=${s.pdf.page}`;
   if (asImage) img.src = pdfSrc(s);
   else frame.contentWindow.location.replace(new URL(pdfSrc(s), location.href).href);
@@ -276,7 +276,8 @@ function renderRemote(p, force) {
     frame.src = "about:blank";
     return;
   }
-  $("pdfname").textContent = (p.maker ? p.maker + " datasheet, n" : "N") +
+  $("pdfname").textContent = p.doc ? `${p.name}: if the frame stays empty, open it in a new tab.` :
+    (p.maker ? p.maker + " datasheet, n" : "N") +
     "ot downloaded: the site blocked bomcheck. If the frame is empty or says the " +
     "site refuses to be shown here, open it in a new tab, save the PDF and drop it here.";
   $("pdfopen").href = p.remote;

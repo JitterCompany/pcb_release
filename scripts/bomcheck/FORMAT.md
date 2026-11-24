@@ -9,7 +9,9 @@ comments stay.
       footprints.toml        footprint polarity marks a person confirmed
       waivers.toml           design findings accepted, or known issues of a rev
       reference/datasheet/   THE DATABASE. Only these files are checked against.
-      reference/draft/       work in progress: machine-read DRAFT-*, blank STUB-*
+      reference/interface/   signed interface tables (see below)
+      reference/draft/       work in progress: machine-read DRAFT-*, blank STUB-*,
+                             interface tables in draft/interface/
       review/                working files; regenerated, safe to delete, never
                              committed (bomcheck puts a .gitignore in it)
 
@@ -33,6 +35,8 @@ on the board. It can live in two places:
 - A table saved in the library reaches other boards only after a commit there
   (a PR in the library repo) and a submodule update in those boards. `bomcheck`
   lists the library's tables that are not committed yet.
+- Interface tables follow the same rules, in `reference/interface/`. For the
+  same symbol, the board's own wins.
 - Everything else (drafts, waivers, exemptions, review files) stays with the board.
 
 ## A reference file
@@ -87,7 +91,67 @@ table claims only the numbering:
   pin_numbers  = ["1", "2", "3"]
 ```
 
-The check is then that the symbol has exactly these pin numbers.
+The check is then that the symbol has exactly these pin numbers. The wizard
+also asks which pins are joined inside the part (`joined`), the winding dots
+(`dots`) and whether the footprint is numbered like the datasheet's drawing
+(`pad_layout = "same"` or `"differs"`).
+
+A numbers-only table can also belong to a symbol that names its pins: a
+plain socket on a symbol that names the pins after an interface. The table
+then checks the numbering only. The names are checked by an interface table.
+Without one they stay open (`interface_unset`).
+
+## Interface tables
+
+A connector that implements an interface (SL23) gets its pin names from the
+interface spec, not from its datasheet. The spec is then the reference for
+the names:
+
+```toml
+interface    = "SL23"
+spec         = "https://example.com/docs/interfaces/sl23.md"   # URL, or a path relative to this file
+origin       = "manual"            # or "spec-read": names offered from the spec's table
+extracted_by = "A. Person"
+reviewed_by  = "A. Person"         # who checked it against the spec
+reviewed_on  = "2026-11-24"
+
+  [[variant]]                      # one per file
+  part         = "SL23 SL23_Header_2x25"
+  symbols      = ["Jitter_Connectors:SL23_Header_2x25"]   # or a bare symbol name
+  pin_count    = 50
+
+    [variant.pins]                 # pin number = name AS THE SPEC PRINTS IT
+    1 = "IO_1"
+    2 = "GND"
+
+    [variant.symbol_alias]         # optional, as in a datasheet table
+```
+
+- **The symbol names its interface** in the field `Interface` (here
+  `Interface = SL23`), in the symbol library. bomcheck reads it from the
+  placed symbol, else from the library symbol.
+- **Keyed to symbols, not MPNs.** `symbols` lists the symbols with this
+  pinout: `Lib:Name`, or `Name` for that symbol in any library. A connector
+  with another pinout for the same interface (the FFC) gets its own file.
+- The file lives in `reference/interface/`, in the component library or the
+  board's repo, like a datasheet table. Its name is `<interface>-<symbol>.toml`.
+- **Names are the spec's**, never copied from the symbol. The symbol's names
+  are compared with it exactly as with a datasheet table, and differences are
+  reported and settled the same way (`interface_difference`, waivable per pin).
+- **Only signed files count.**
+- A draft can be pre-filled from a pin table in a markdown spec. The names go
+  into comments (`1 = ""   # spec: IO_1`), not into the values: only a
+  person's answer fills a pin.
+
+What `bomcheck` reports for a symbol:
+
+| case | item |
+|---|---|
+| numbers-only part table, symbol names its pins, no `Interface` field | `interface_unset` |
+| `Interface` field, no signed table for this symbol | `interface_unfilled` |
+| names differ from the spec | `interface_difference` |
+| table misses pins of the symbol | `interface_partial` |
+| table not signed | `interface_unsigned` |
 
 ## Polarity-only parts
 
@@ -190,4 +254,6 @@ the schematic yet, so give it a copy the same way.
 Anything the wizard does can be done in an editor: fill a stub, add a
 `symbol_alias` line, sign. Move a finished draft to `reference/datasheet/`
 (drop the `DRAFT-`/`STUB-` prefix), or run `bomcheck promote`, which refuses
-unsigned or unfinished tables. `bomcheck` shows the result.
+unsigned or unfinished tables. A finished interface draft moves from
+`reference/draft/interface/` to `reference/interface/` by hand: `promote`
+handles datasheet tables only. `bomcheck` shows the result.

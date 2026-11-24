@@ -128,7 +128,8 @@ def short_refs(refs, keep=4):
 
 
 # Sections that are a conflict in the design, not work still to do.
-CONFLICT = {"waiver_invalid", "mixed_symbols", "polarity", "connections"}
+CONFLICT = {"waiver_invalid", "mixed_symbols", "polarity", "connections",
+            "interface_difference"}
 
 
 def paint(text, *codes):
@@ -207,6 +208,12 @@ def cmd_status(a):
     section("connections_unread", "Compare the symbol's drawing with the datasheet")
     section("connections_unfilled", "Say which pins are connected inside the part "
             "(numbered-only datasheet)")
+    section("interface_unset", "Pin names nothing checks: the datasheet only "
+            "numbers the pins")
+    section("interface_unfilled", "Interface tables to type from the spec")
+    section("interface_difference", "Pin names that differ from the interface spec")
+    section("interface_partial", "Pins the interface table does not list")
+    section("interface_unsigned", "Interface tables nobody has checked yet")
     exs = TD.EX.load(att)
     exempt = {ln.mpn: exs[ln.mpn] for ln in lines
               if ln.mpn in exs and not exs[ln.mpn].problem}
@@ -325,6 +332,7 @@ def cmd_report(a):
                 p.unit = units.get(p.num, "")
 
         docs = [d for _f, d in TD.signed_docs(att, a.project)]
+        interfaces = TD.interface_docs(att, a.project)
         exemptions = TD.EX.load(att)
 
         L, n_err, n_warn = [], 0, 0
@@ -428,6 +436,8 @@ def cmd_report(a):
                     for f in notes:
                         L.append(f"  - _{f['msg']}_")
 
+            e, w = interface_report(L, c, var, interfaces)
+            n_err, n_warn = n_err + e, n_warn + w
             L.append("")
 
         L.append("---")
@@ -444,6 +454,58 @@ def cmd_report(a):
         print(text)
     print(f"[bomcheck] report: {n_err} error(s), {n_warn} warning(s)")
     return 1 if n_err else 0
+
+
+def interface_report(L, c, var, interfaces):
+    """The symbol's names against its interface table, as report lines.
+    -> (errors, warnings)."""
+    name = TD.interface_of(c)
+    numbered = (var is not None and var.numbered and len(c.pins) > 2
+                and not TD.numbered_only(c.pins))
+    if not name:
+        if not numbered:
+            return 0, 0
+        L.append("")
+        L.append(f"**ERROR** `interface_unset` — the datasheet only numbers the "
+                 f"pins, so nothing checks the symbol's names. Add the symbol "
+                 f"field `{TD.FIELD}` and sign the interface's table.")
+        return 1, 0
+    path, doc, iv = TD.find_interface(interfaces, name, c.libsource)
+    L.append(f"- interface `{name}`" + (f", spec {doc.spec}" if doc else ""))
+    L.append("")
+    if iv is None:
+        L.append(f"**ERROR** `interface_unfilled` — no signed {name} table "
+                 f"covers `{c.libsource}`, so nothing checks its pin names.")
+        return 1, 0
+    errors, warnings = 0, 0
+    broken, why = P.structurally_disagrees(iv, c.pins)
+    found = [] if broken else P.compare(iv, c.pins)
+    bad = [f for f in found if f["code"] in TD.DISAGREE]
+    gaps = [f for f in found if f["code"] in TD.GAPS + ("reference_unfilled",)]
+    if broken:
+        L.append(f"**ERROR** `interface_not_this_symbol` — {why}")
+        errors += 1
+    elif bad:
+        L.append(f"**ERROR** `interface_mismatch` — {len(bad)} pin(s) disagree "
+                 f"with the {name} spec:")
+        L.append("")
+        for f in bad:
+            L.append(f"  - `{f['code']}` {f['msg'].replace('datasheet', 'spec')}")
+        errors += 1
+    else:
+        covered = len(set(iv.pins) & {p.num for p in c.pins})
+        L.append(f"**OK** — all {covered} pin(s) the {name} spec covers agree "
+                 f"with the symbol.")
+    if not doc.reviewed_by:
+        L.append("")
+        L.append("**ERROR** `interface_unsigned` — nobody has signed this "
+                 "interface table, so it is not evidence yet.")
+        errors += 1
+    if gaps:
+        L.append("")
+        L.append(f"_{len(gaps)} pin(s) not covered by the {name} table._")
+        warnings += 1
+    return errors, warnings
 
 
 def parse_pages(spec):
