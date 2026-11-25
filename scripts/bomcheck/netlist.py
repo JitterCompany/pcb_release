@@ -83,8 +83,9 @@ class Comp:
 
     @property
     def mpn(self):
-        """MPN from the fields, case-insensitively -- one symbol on this board
-        uses lowercase 'manufacturer', so do not trust exact casing."""
+        """MPN from the fields, case-insensitively. Symbols in the wild use
+        lowercase field names too ('manufacturer'), so do not trust exact
+        casing."""
         for k, v in self.fields.items():
             if k.strip().lower() == "mpn" and v.strip():
                 return v.strip()
@@ -94,12 +95,12 @@ class Comp:
     def mpn_effective(self):
         """-> (mpn, source). Falls back to VALUE when the MPN field is empty.
 
-        Some symbols carry the part number in Value instead -- Q3 on this board
-        is `BC857BS` with no MPN field -- and refusing to look means the part
-        cannot be validated at all. But the fallback must be able to say NO:
-        J1's value is `swd_with_uart_client`, a functional name, and accepting
-        that as a part number would send the tool hunting for a datasheet that
-        cannot exist.
+        Some symbols carry the part number in Value instead (a transistor
+        with Value `BC857BS` and no MPN field), and refusing to look means the
+        part cannot be validated at all. But the fallback must be able to say
+        NO: a connector with Value `swd_with_uart_client` has a functional
+        name, and accepting that as a part number would send the tool hunting
+        for a datasheet that cannot exist.
 
         The MPN field remains the source of truth; using Value is always
         reported, because a part number living only in Value is a gap in the
@@ -121,8 +122,8 @@ class Comp:
         """True if nothing gets soldered here, so there is nothing to validate.
 
         A do-not-populate part is not on the BOM and is not fitted, so demanding
-        an MPN and a datasheet for it is noise: J2 on this board is a DNI U.FL
-        connector and was being reported as a missing datasheet. Both the native
+        an MPN and a datasheet for it is noise: a DNI U.FL connector would be
+        reported as a missing datasheet. Both the native
         KiCad flags and the legacy markers are honoured, matching the existing
         dnp_lint, so a part excluded one way is not silently validated the
         other."""

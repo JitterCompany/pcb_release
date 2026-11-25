@@ -2,23 +2,24 @@
 """Resolve, fetch and VERIFY datasheets.
 
 The verification half is the point. A datasheet that is merely *present* proves
-nothing -- this repo already contains two counterexamples:
+nothing. Two typical mistakes:
 
-  * datasheets/ads114s08b.pdf is the B variant (SBAS852A); the fitted part needs
-    SBAS815A. A substring test passes it, because "ADS114S08" really is inside
+  * the B variant's datasheet (ADS114S08B) next to the non-B part (ADS114S08).
+    A substring test passes it, because "ADS114S08" really is inside
     "ADS114S08B". Hence whole-token matching.
-  * datasheets/quectel_ec21_series_hardware_design_v2-3-1.pdf is an EC21
-    document sitting next to an EG915N BOM line.
+  * a module family's document (EC21) next to another module (EG915N).
 
 A symbol's Datasheet field is a claim like any other and gets checked the same
 way; when it resolves to the wrong part that is a defect in the SCHEMATIC, worth
 fixing at source.
 
 Fetching is deliberately plain HTTP/1.1 with an explicit `Connection: close`,
-and a User-Agent that names bomcheck. The previous attempt at this failed on st.com HTTP/2
-INTERNAL_ERROR and on 403s from vendor CDNs; measured from this host, TI now
-succeeds and ST still times out, which is why a distributor mirror is a
-first-class fallback rather than an afterthought.
+and a User-Agent that names bomcheck. HTTP/2 to some vendor sites fails with
+INTERNAL_ERROR. Some vendors (st.com, mouser.com) refuse scripted downloads
+whatever the headers, while ti.com works. bomcheck does not get round that: the
+person downloads the PDF and hands it over (`bomcheck add-pdf`). `resolve()`
+takes a distributor mirror URL as a candidate, but no command passes one, so
+there is no distributor fallback in practice.
 
 Nothing here raises on failure. A datasheet we could not get is DATA -- it
 becomes one batched line for a human, never a crashed run.
@@ -299,9 +300,9 @@ def subject_check(mpn, text, min_prefix=8, ratio=5, floor=20):
     -> (ok, why). Not a substitute for the whole-token test; an extra signal
     that catches a specific and expensive mistake.
 
-    A schematic on this board links TXU0204PWR to txu0304.pdf. That document
-    names TXU0304 seventy-five times and TXU0204 four times, in a
-    related-products table -- so the exact-token test says "family-only" and
+    Example: a schematic links TXU0204PWR to txu0304.pdf. That document
+    names TXU0304 dozens of times and TXU0204 a few times, in a
+    related-products table. So the exact-token test says "family-only" and
     extraction then reads TXU0304's pin map, giving pin 4 as A3 for a part whose
     pin 4 is A3Y. The part number is present; the document is simply about
     something else.

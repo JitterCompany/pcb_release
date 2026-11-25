@@ -4,8 +4,8 @@
 THE GOAL. Manufacturer, MPN and datasheet URL should live in the schematic. That
 is what makes the factory order the part we designed against, and it is what
 lets any later check -- pinout, package, obsolescence -- start from the design
-rather than from somebody's memory. Today 28 of this board's pin-mapped symbols
-have no datasheet URL and two have no MPN field at all.
+rather than from somebody's memory. Symbols often lack a datasheet URL, and
+some lack an MPN field.
 
 WHAT THIS DOES NOT DO. It does not edit the schematic. Every output is a
 SUGGESTION with the evidence that produced it, for a human to accept or correct;
@@ -17,7 +17,7 @@ reason travels with it:
 
   * the datasheet that VERIFIED for this part gives the URL directly, and its
     host gives the manufacturer -- ti.com is Texas Instruments and nothing else;
-  * the Value field gives an MPN when it plausibly holds one (Q3 is `BC857BS`),
+  * the Value field gives an MPN when it plausibly holds one (`BC857BS`),
     and never when it holds a functional name (`swd_with_uart_client`);
   * the manufacturer name found in the datasheet text corroborates the host.
 

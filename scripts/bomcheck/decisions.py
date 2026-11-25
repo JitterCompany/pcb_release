@@ -21,8 +21,8 @@ already has a value is visible by construction rather than by convention. The
     add       the field is empty and a value is proposed
     REPLACE   the field HAS a value and a different one is proposed
     mixed     instances of this part disagree with each other, which is a
-              finding in itself -- SMA6J13A-TR carries a datasheet URL on some
-              of its sixteen placements and not on others
+              finding in itself: two placements of one MPN carry different
+              datasheet URLs
 
 A REPLACE is not carried out unless `bomcheck apply --replace` is passed.
 Filling an empty field is nearly free to undo; overwriting an engineer's value
@@ -35,10 +35,11 @@ claim that the design is right, and that should take a deliberate act.
 
 SURVIVING A SPREADSHEET. Only `refs`, the `_set` columns and `accept` are
 load-bearing; everything else is context re-derived from the design at apply
-time. Spreadsheets rewrite data on save, and eight parts on this board have
-all-numeric MPNs -- Würth's 691322310003 comes back as 6.91322e+11 -- so long
-digit strings are written apostrophe-forced, a mangled context column changes
-nothing, and a mangled `_set` value is refused rather than written.
+time. Spreadsheets rewrite data on save: an all-numeric MPN such as Würth's
+691322310003 comes back as 6.91322e+11. So long digit strings are written
+apostrophe-forced, a mangled context column changes nothing, and a mangled
+`_set` value is refused rather than written. The file is UTF-8 with a BOM, or
+Excel shows Würth as WÃ¼rth.
 """
 import csv
 import io

@@ -7,7 +7,7 @@ partial transcription that LOOKS complete is worse than none, so the design rule
 here is: extract what can be extracted, and make everything missing impossible to
 miss.
 
-WHAT REAL TABLES LOOK LIKE (measured on the PDFs in this repo, not assumed):
+WHAT REAL TABLES LOOK LIKE (taken from real datasheets, not assumed):
 
   TI, SCDS477A -- name-major, one pin per row:
       S0B                 1                 I/O           Source pin 0 of mux B.
@@ -412,9 +412,9 @@ def compress(nums):
 # different numbering: in DS12023, LQFP100 is column 0 for STM32L4R5xxx/L4R7xxx
 # and column 8 for STM32L4R9xxx.
 #
-# Getting that choice wrong is not a near miss. Measured against the board's own
-# 100-pin symbol: column 0 agrees on 88 of 89 pins, column 8 agrees on 15 of 80.
-# A wrong column yields a confident, complete, entirely wrong pin table.
+# Getting that choice wrong is not a near miss. Against a correct 100-pin
+# symbol, the right column agrees on nearly every pin and the other column on
+# few. A wrong column yields a confident, complete, entirely wrong pin table.
 #
 # So the column MUST be chosen from the document, never by seeing which column
 # best fits the symbol -- the symbol is the thing under test, and fitting the

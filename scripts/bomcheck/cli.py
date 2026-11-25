@@ -1,50 +1,48 @@
 #!/usr/bin/env python3
-"""bomcheck — validate BOM entries against manufacturer evidence.
+"""bomcheck: check KiCad symbol pin names against signed datasheet pin tables.
 
-Standalone: nothing here is referenced by pcb-release.sh or any workflow
-yet. The generation half is interactive and touches the network, which does
-not fit the existing check-job shape, so wiring is a later decision made on
-evidence rather than in advance.
+Usage: bomcheck [COMMAND] [PROJECT_DIR] [options]
+PROJECT_DIR is the KiCad project folder (default: here). Without a command,
+bomcheck runs `status`. See README.md for the workflow, FORMAT.md for the files.
 
-  bomcheck report  PROJECT_DIR [--only U1,U9] [--out FILE]
-        What do we know, and what is wrong? Reads the netlist, resolves each
-        pin-mapped part against the reference tables, and reports.
+Day to day:
+  status    what is left to do, and who does it. Offline. Exits 1 while
+            anything is open. The default command.
+  prepare   the automatic half: get and verify datasheets, read pin tables
+            into drafts, write stubs, propose BOM fields. Safe to run again.
+            --refresh reads unsigned machine-made tables again.
+  wizard    answer the open items one by one. --gui asks in a browser tab
+            (--port N, --no-browser). --by NAME, --no-open.
+  apply     write the answers in review/decisions-*.csv into the schematic and
+            the tables. --replace also overwrites existing values,
+            --dry-run writes nothing.
+  prune     remove waivers that match no finding any more.
+  add-pdf URL_OR_MPN FILE
+            use a PDF you downloaded, for a URL behind a login, a blocked
+            vendor, or an embedded datasheet.
 
-  bomcheck extract PROJECT_DIR --mpn MPN --pdf FILE
-                   [--pin-count N] [--package NAME]
-        Propose a pin table from a datasheet and say exactly what it could not
-        get. Writes a DRAFT reference file that stays failing until a human
-        completes it -- a partial table must never read as a finished check.
+Single steps and debugging:
+  report    the full check as a markdown report, against signed tables only.
+  fetch     find, download and verify datasheets. Never fails the run.
+  extract   --mpn MPN --pdf FILE [--pin-count N] [--package NAME]
+            [--family STEM] [--footprint FP]: read a pin table from one PDF
+            into a draft that stays open until a person completes it.
+  suggest   propose the Manufacturer, MPN and Datasheet fields a symbol lacks.
+  review    write review/decisions-fields.csv and decisions-pins.csv.
+  promote   move signed drafts to reference/datasheet/. Refuses unexplained
+            pin differences unless --force. [--mpn MPN]
+  stub      a blank table to type by hand: pin numbers filled in, names empty.
 
-  bomcheck suggest PROJECT_DIR [--only ...] [--out FILE]
-        Propose the Manufacturer / MPN / datasheet-URL fields a symbol is
-        missing, with the evidence for each. Writes nothing to the design.
-
-  bomcheck review  PROJECT_DIR [--out FILE]
-        Collect everything needing a human into ONE CSV: missing BOM fields,
-        and pin names that differ from the datasheet. Open it in a spreadsheet;
-        put anything in `apply` to accept a row, edit `value` to correct it.
-
-  bomcheck apply   PROJECT_DIR [--dry-run] [--replace]
-        Write the `_set` values into the .kicad_sch and record accepted pin
-        renames as aliases. Rows that OVERWRITE an existing value need
-        --replace; filling an empty field is nearly free to undo, overwriting
-        an engineer's value is not.
-
-  bomcheck promote PROJECT_DIR [--mpn MPN] [--force]
-        Move a reviewed draft pin table into reference/datasheet/, where the
-        checks read it. Refuses a draft that still has unexplained pin
-        differences -- promoting is the act of saying it was reviewed.
-
-  bomcheck stub    PROJECT_DIR [--only U1,Q1] [--all]
-        Write a skeleton reference table for parts whose datasheet has no pin
-        table to read -- the pin numbers filled in from the symbol, the names
-        left blank for you to type from the drawing. Fifteen parts on this
-        board have no other route.
-
-  bomcheck fetch   PROJECT_DIR [--only ...] [--cache DIR]
-        Resolve + download + verify datasheets. Never interactive, never fails
-        the run: what could not be got becomes one batched line for a human.
+Common options:
+  --only U1,U9      restrict to these designators
+  --netlist FILE    use a kicadxml netlist instead of exporting one
+  --out FILE        write the report or review files here
+  --cache DIR       datasheet cache (default ~/.cache/bomcheck/datasheets,
+                    or BOMCHECK_CACHE)
+  --save-to ask|library|project
+                    wizard, promote: where a signed table goes
+  --library DIR     the component library for shared tables, when the
+                    project uses more than one (or BOMCHECK_LIBRARY)
 
 Exit: 0 clean, 1 findings, 2 usage/unreadable input.
 """

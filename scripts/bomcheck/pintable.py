@@ -128,8 +128,8 @@ class Variant:
         # ("Active low logic input") or with an overbar the text loses. So a
         # machine-made table knows nothing about polarity, and comparing anyway
         # asserts "the datasheet says active high" -- which it does not say.
-        # That produced five false mismatches on this board, on CS, EN and
-        # FAULT pins that are all correctly drawn active-low.
+        # It would report correctly drawn active-low CS, EN and FAULT pins as
+        # mismatches.
         self.polarity_known = bool(d.get("active_low")) or bool(
             d.get("polarity_known"))
         # 'peripheral' | 'controller' | '' -- READ from the datasheet at

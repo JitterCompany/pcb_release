@@ -2,9 +2,9 @@
 
 Plain TOML, one file per datasheet, meant to be read and edited by hand. The
 tool changes these files line by line and never regenerates them, so your
-comments stay.
+comments stay. They live in `attestations/` beside the board folder.
 
-    hardware/attestations/
+    attestations/
       exemptions.toml        parts excused from the datasheet rule
       footprints.toml        footprint polarity marks a person confirmed
       waivers.toml           design findings accepted, or known issues of a rev

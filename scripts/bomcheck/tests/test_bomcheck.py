@@ -60,7 +60,7 @@ def test_defect_is_caught():
     """The whole point: same MPN, one broken tree, one fixed tree."""
     docs = P.load_dir(REF)
     if not docs:
-        FAILS.append("no reference tables found -- is the board clone present?")
+        FAILS.append(f"no reference tables found in {REF}")
         return
 
     broken = one("tmux_broken.xml")
@@ -309,9 +309,9 @@ def test_multipackage_column_choice():
     package appears once per device family with different numbering.
 
     In DS12023, LQFP100 is column x=16 for STM32L4R5xxx/L4R7xxx and x=115 for
-    STM32L4R9xxx. Measured against the board's own 100-pin symbol, the first
-    agrees on 88 of 89 pins and the second on 15 of 80 — so a wrong column is
-    not a near miss, it is a complete, confident, wrong pin table.
+    STM32L4R9xxx. Against a correct 100-pin symbol the first agrees on nearly
+    every pin and the second on few, so a wrong column is not a near miss: it
+    is a complete, confident, wrong pin table.
 
     The column must be chosen from the DOCUMENT. Choosing it by whichever column
     best fits the symbol would be circular: the symbol is the thing under test."""
@@ -582,9 +582,9 @@ def test_schematic_property_write():
 def test_symbol_serving_several_designators():
     """A sheet used more than once shares ONE symbol block: the Reference
     property is only the default and the real designators live in (instances).
-    On this board a single connector is J5, J6, J7 AND J8 -- looking up J7 by
-    the Reference property alone reports it as absent from a board it is on,
-    and writing to it silently changes all four."""
+    A connector on a sheet used four times is one block with four designators.
+    Looking up the third by the Reference property alone reports it as absent
+    from a board it is on, and writing to it silently changes all four."""
     i = SCH._instances_of(SCH_FIXTURE)[0]
     check(i.refs == ["R1", "R9"], "sch: both designators found", str(i.refs))
     check("R9" in i.refs, "sch: the non-default designator is matched")
@@ -698,7 +698,10 @@ def test_conventions_live_in_matching_not_extraction():
     check("def spi_role" in src,
           "layering: ...but reading the role FROM the document belongs there")
 
-    # And the stored table keeps the datasheet's own spelling.
+    # And the stored table keeps the datasheet's own spelling. That draft is
+    # real board data, so this part needs BOMCHECK_TEST_BOARD.
+    if not BOARD:
+        return
     d = os.path.join(BOARD, "attestations", "reference", "draft")
     f = os.path.join(d, "DRAFT-ADS114S08IPBSR.toml")
     if os.path.isfile(f):
@@ -1002,7 +1005,7 @@ def test_partial_fill_is_not_a_conflict():
     value and the rest are empty, that is an incomplete FILL, not a
     disagreement, and the value that exists should be proposed for the rest.
 
-    On this board 3 of SMA6J13A-TR's 16 placements carry a datasheet URL. The
+    Example: a few of a TVS diode's many placements carry a datasheet URL. The
     row used to read `(varies)` and propose nothing, which is a shrug rather
     than an answer. Only two DIFFERENT non-empty values are a real conflict,
     because then choosing one would be a guess about which placement is right.
@@ -1194,8 +1197,8 @@ def test_family_stem_must_be_distinctive():
 
 def test_dnp_parts_are_out_of_scope():
     """A do-not-populate part is not fitted and not on the BOM, so demanding an
-    MPN and a datasheet for it is noise. J2 on this board is a DNI U.FL
-    connector and was being reported as a missing datasheet."""
+    MPN and a datasheet for it is noise: a DNI U.FL connector would be
+    reported as a missing datasheet."""
     dnp = N.Comp("J2", "U.FL-R-SMT-1(10)", {}, {"dnp": ""}, "", "x:y")
     check(dnp.not_placed, "dnp: native flag recognised")
     legacy = N.Comp("J9", "DNI", {}, {}, "", "x:y")

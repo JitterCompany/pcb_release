@@ -1,26 +1,20 @@
 #!/usr/bin/env python3
-"""A small, correct TOML reader — the one this package uses everywhere.
+"""A small, correct TOML reader, the one this package uses everywhere.
 
-WHY THIS EXISTS. The repo already has two TOML readers and both corrupt this
-board's real data:
-
-  * release_ci.load_toml strips at the first '#' regardless of quoting, and
-    splits inline arrays on ',' regardless of quoting. On BOM line 17 of
-    a test board, `rating = ["600W, Vr=13V,Vc=22V", "Cj<1nF"]` parses to FOUR
-    elements with stray quote characters attached, and any string containing a
-    '#' is silently truncated.
-  * attest_scan.py's _mini_toml/_mini_value has the same array bug.
-
-Attestation records carry `source`, `claim` and multi-sentence `evidence`
-strings — exactly the values those bugs eat. A validation tool that silently
-mis-reads its own database is worse than no tool, so this is groundwork, not
-polish.
+WHY THIS EXISTS. The signed tables are bomcheck's database, and they are full
+of quoted strings that hold ',' and '#': `rating = ["600W, Vr=13V,Vc=22V",
+"Cj<1nF"]`, a comment-like '#' inside a claim, multi-sentence evidence. A small
+ad-hoc reader that strips at the first '#' or splits arrays on ',' without
+regard to quoting misreads exactly these values, and does so silently. Such
+readers are fine for flat config files (release_ci.load_toml is one, for its
+own files), but not here. A validation tool that silently misreads its own
+database is worse than no tool, and [[array-of-tables]] is needed too.
 
 WHY NOT tomllib. The dev host is Python 3.10 (`import tomllib` raises) while the
 KiCad CI container is newer. Selecting a parser by version would mean CI and the
 laptop could disagree about what a database says, which is a bug class we refuse
-to ship into a gate. So: always our parser. `--selftest` runs tomllib as a
-DIFFERENTIAL ORACLE where available, which is how we know ours agrees with the
+to ship into a gate. So: always our parser. tests/test_tomlite.py runs tomllib
+as a DIFFERENTIAL ORACLE where available, which is how we know ours agrees with the
 real thing rather than merely being self-consistent.
 
 SUPPORTED: [table], [[array.of.tables]], nested keys (a.b.c), basic strings with

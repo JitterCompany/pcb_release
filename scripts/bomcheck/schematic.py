@@ -2,9 +2,9 @@
 """Read and WRITE symbol properties in a .kicad_sch, surgically.
 
 WHY WRITE AT ALL. The goal is for the schematic to be the source of truth for
-Manufacturer, MPN and datasheet URL. Forty-one suggested fields is an afternoon
-of clicking in the KiCad GUI, and an afternoon of clicking is how fields stay
-empty. So the accepted suggestions are applied for you.
+Manufacturer, MPN and datasheet URL. Dozens of suggested fields are an
+afternoon of clicking in the KiCad GUI, and an afternoon of clicking is how
+fields stay empty. So the accepted suggestions are applied for you.
 
 HOW IT STAYS SAFE. Every edit is a BYTE SPLICE into the original text: the file
 is not re-serialised, so nothing outside the property being changed can move,
@@ -33,8 +33,8 @@ def _blocks(text, name, top_level_only=True):
     """-> [(start, end)] for every (name ...) block, by a depth-aware scan.
 
     A regex window cannot do this: symbol blocks nest, and a fixed-size window
-    runs into the NEXT symbol and reads its Reference. That mistake made U16
-    look like a Device:C_Small.
+    runs into the NEXT symbol and reads its Reference, so an IC can look like
+    the capacitor placed after it.
     """
     out, depth, start, want = [], 0, None, None
     for m in _TOKEN.finditer(text):
@@ -72,8 +72,8 @@ class Instance:
 
     A sheet used more than once reuses one symbol block for every copy: the
     (property "Reference" ...) holds only the default, and the real designators
-    live in the (instances ...) block, one per sheet path. On this board a
-    single Conn_01x03 in pt100_input.kicad_sch is J5, J6, J7 AND J8.
+    live in the (instances ...) block, one per sheet path. A connector on a
+    sheet used four times is one block with four designators.
 
     Two consequences, both load-bearing:
       * looking a part up by its designator must search these, or J7 is simply

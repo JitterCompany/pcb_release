@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """tomlite regression suite.
 
-Every case in CASES is a bug that exists TODAY in release_ci.load_toml and/or
-attest_scan._mini_toml, expressed against this board's real data. If a case here
-fails, an attestation database can be silently misread.
+Every case in CASES is a value that a naive TOML reader gets wrong (a '#' or a
+',' inside a quoted string, arrays of tables, and so on), taken from the kind
+of data the signed tables hold. If a case here fails, a signed table can be
+silently misread.
 
 Where tomllib is available (py>=3.11) it is run as a differential oracle: our
 result must equal the real parser's, so this suite proves agreement with the
