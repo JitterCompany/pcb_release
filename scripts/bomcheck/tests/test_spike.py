@@ -3093,7 +3093,6 @@ def test_signed_tables_stay_valid():
     # The check is not empty: a renamed pin on the symbol is still caught.
     snap = sorted(glob.glob(os.path.join(FIX, "compat", "*")))[0]
     tmp = tempfile.mkdtemp()
-    shutil.copy(os.path.join(snap, "sl23-sen6x", "board.kicad_sch"), tmp)
     text = open(os.path.join(snap, "sl23-sen6x", "netlist.xml")).read()
     open(os.path.join(tmp, "netlist.xml"), "w").write(
         text.replace('name="IO_13"', 'name="IO_31"', 1))
