@@ -699,31 +699,6 @@ def _structural_rows(page, ncols, col_x):
     return out
 
 
-def _row_lines(page, ncols, col_x):
-    """-> [(line_index, pin_number, name_or_None, name_x)] for structural rows.
-
-    A row is a line carrying exactly `ncols` number cells. That structural test
-    is what distinguishes a real table row from prose that happens to start with
-    a digit."""
-    out = []
-    for n, ln in enumerate(page.split("\n")):
-        cells = [(m.start(), m.group(0)) for m in re.finditer(r"\S+", ln)]
-        if len(cells) < ncols:
-            continue
-        nums = cells[:ncols]
-        # every one of them must look like a pin-number cell
-        if not all(_PKG_CELL.fullmatch(c[1]) for c in nums):
-            continue
-        pick = min(nums, key=lambda c: abs(c[0] - col_x))
-        if abs(pick[0] - col_x) > 4 or pick[1] == "-":
-            continue
-        rest = cells[ncols:]
-        name = rest[0][1] if rest else None
-        name_x = rest[0][0] if rest else None
-        out.append((n, pick[1], name, name_x))
-    return out
-
-
 def _name_column_x(rows):
     """Where the pin-name column starts, from the rows that DID render one."""
     xs = [x for _, _, nm, x in rows if nm and x is not None]

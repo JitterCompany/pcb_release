@@ -489,10 +489,6 @@ def _synonym(sym, ref, role):
     return ""
 
 
-def _spi_equivalent(sym, ref, role):
-    return bool(_synonym(sym, ref, role))
-
-
 def _spi_candidate(sym, ref, role):
     """True if this LOOKS like the same serial pin but the role is UNKNOWN.
 

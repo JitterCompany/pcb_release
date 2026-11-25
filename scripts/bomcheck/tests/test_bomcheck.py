@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Phase-0 spike assertions — each one a pass/fail claim, not a judgement.
+"""bomcheck's tests. Each check is a pass/fail claim, not a judgement.
 
-These encode what the spike set out to prove. The load-bearing pair is
+The load-bearing pair is
 tmux_broken vs tmux_fixed: the SAME MPN in a defective tree and a fixed one. A
 check that passes both, or fails both, is worthless regardless of how good its
 output looks.
@@ -9,7 +9,7 @@ output looks.
 Offline only. Network behaviour is exercised by `bomcheck fetch`, not here, so
 this suite cannot go red because a vendor website changed.
 
-Usage: python3 tests/test_spike.py [-v]        (exit 0 pass, 1 fail)
+Usage: python3 tests/test_bomcheck.py [-v]        (exit 0 pass, 1 fail)
 """
 import glob
 import os
@@ -3177,9 +3177,9 @@ def main():
     if FAILS:
         for f in FAILS:
             print(f"FAIL {f}")
-        print(f"\nspike: {len(FAILS)} FAILED")
+        print(f"\nbomcheck tests: {len(FAILS)} FAILED")
         return 1
-    print("spike: all assertions passed")
+    print("bomcheck tests: all passed")
     return 0
 
 

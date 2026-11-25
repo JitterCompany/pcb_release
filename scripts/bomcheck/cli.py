@@ -10,7 +10,7 @@ evidence rather than in advance.
         What do we know, and what is wrong? Reads the netlist, resolves each
         pin-mapped part against the reference tables, and reports.
 
-  bomcheck extract PROJECT_DIR --mpn MPN --pdf FILE [--pages 27-36]
+  bomcheck extract PROJECT_DIR --mpn MPN --pdf FILE
                    [--pin-count N] [--package NAME]
         Propose a pin table from a datasheet and say exactly what it could not
         get. Writes a DRAFT reference file that stays failing until a human
@@ -509,21 +509,6 @@ def interface_report(L, c, var, interfaces):
     return errors, warnings
 
 
-def parse_pages(spec):
-    """'27-36,40' -> [27..36, 40]"""
-    out = []
-    for part in (spec or "").split(","):
-        part = part.strip()
-        if not part:
-            continue
-        if "-" in part:
-            a, b = part.split("-", 1)
-            out.extend(range(int(a), int(b) + 1))
-        else:
-            out.append(int(part))
-    return out
-
-
 def cmd_extract(a):
     if not a.mpn or not a.pdf:
         sys.exit("bomcheck extract: --mpn and --pdf are both required")
@@ -615,17 +600,6 @@ def cmd_extract(a):
     return finish_extract(a, v, r)
 
 
-def _unused_legacy_path(a, text, v):
-    want = parse_pages(a.pages)
-    if not want:
-        sugg = X.page_scores(text.split("\f"))[:8]
-        if sugg:
-            print("[bomcheck] no --pages given; candidate pin-table pages "
-                  "(page, distinct pins): " + ", ".join(f"{p}({n})" for p, n in sugg))
-    r = X.extract(text, want or None, a.pin_count or 0)
-    return finish_extract(a, v, r)
-
-
 def finish_extract(a, v, r):
     cov = r["coverage"]
 
@@ -694,7 +668,7 @@ def pintable_draft(a, v, r):
           "  [[variant]]",
           f'  package      = "{a.package or ""}"',
           f'  mpns         = ["{a.mpn}"]',
-          f'  source       = "pages {a.pages or "auto"}"',
+          f'  source       = "pages {X.compress([str(i) for i in r["pages_used"]]) or "auto"}"',
           '  confidence   = "draft"']
     declared, src = getattr(a, "_declared", (0, ""))
     if a.pin_count:
@@ -891,7 +865,7 @@ def cmd_prepare(a):
             if text:
                 ns = types.SimpleNamespace(
                     project=a.project, mpn=ln.mpn, pdf=pdf,
-                    pages=None, pin_count=0, package="", family="",
+                    pin_count=0, package="", family="",
                     footprint=c.footprint, symbol_pins=len(c.pins),
                     manufacturer=c.field("Manufacturer"), out=None,
                     _att=att, _result=None)
@@ -1539,8 +1513,6 @@ def main():
         p.add_argument("--cache", help="datasheet cache directory")
         p.add_argument("--mpn", help="extract: the part this datasheet describes")
         p.add_argument("--pdf", help="extract: the datasheet PDF")
-        p.add_argument("--pages", help="extract: page range, e.g. 27-36 (the "
-                                       "chapter a human points at)")
         p.add_argument("--pin-count", type=int, default=0,
                        help="extract: how many pins the part HAS, per the package "
                             "drawing -- lets an incomplete table be detected")

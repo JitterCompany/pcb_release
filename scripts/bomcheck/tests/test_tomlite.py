@@ -9,13 +9,13 @@ Where tomllib is available (py>=3.11) it is run as a differential oracle: our
 result must equal the real parser's, so this suite proves agreement with the
 spec rather than mere self-consistency.
 
-Usage: python3 test_tomlite.py [-v]        (exit 0 pass, 1 fail)
+Usage: python3 tests/test_tomlite.py [-v]        (exit 0 pass, 1 fail)
 """
 import datetime
 import sys
 import os
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import tomlite
 
 # (name, toml source, expected dict) -- expected is checked EXACTLY.

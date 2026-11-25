@@ -1549,11 +1549,6 @@ def _about(ln, detail):
     return f"{ln.mpn}; {', '.join(syms)}; {', '.join(fps)}; {detail}"
 
 
-def _csv(x):
-    x = str(x)
-    return '"' + x.replace('"', '""') + '"' if any(ch in x for ch in ',"\n') else x
-
-
 def _name_file():
     base = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
     return os.path.join(base, "bomcheck", "name")
