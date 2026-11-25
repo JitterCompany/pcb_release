@@ -5,6 +5,9 @@ the manufacturer prints for this MPN? Standalone for now; `pcb-release.sh` and
 CI do not call it yet. The `bomfields` gate is separate: it checks that the parts
 of one BOM line agree with each other, not with a datasheet.
 
+Signed tables are an API: a board that passed must keep passing after a
+bomcheck update. Read "Compatibility" in FORMAT.md before changing the format.
+
 ## Requirements
 
 - Python 3, standard library only (tested with 3.10). No pip packages.

@@ -300,3 +300,26 @@ alias line, sign. Move a finished draft to `reference/datasheet/`
 unsigned or unfinished tables. A finished interface draft moves from
 `reference/draft/interface/` to `reference/interface/` by hand: `promote`
 handles datasheet tables only. `bomcheck` shows the result.
+
+## Compatibility: a signed file is a promise
+
+A board that passed with its signed tables must keep passing when bomcheck is
+updated, or a released design would fail CI for no change of its own. So the
+format only grows:
+
+- **Never change the meaning of an existing key** and never stop reading one.
+  `[variant.symbol_alias]` still applies to every symbol, though the wizard now
+  writes `[[variant.alias_for]]` blocks.
+- **New keys are optional.** A file without them checks exactly as before.
+- **A new check may report something new only for files that use the new
+  key**, or for new parts. It must not turn a signed table into an open item.
+- **Waiver and finding codes are stable names.** Rename one only by keeping the
+  old name as an alias.
+- **The tests guard this.** `tests/fixtures/compat/<date>/` holds the signed
+  tables of that date and boards that use them; `test_signed_tables_stay_valid`
+  checks every board there is still fully checked. Never edit those files. For
+  a new format feature, add a new dated folder with tables that use it.
+
+The other direction is looser: an older bomcheck reading a newer table may
+check less (it ignores keys it does not know), but must not fail on it. A board
+pins its pcb_release version, while its component library can be newer.
