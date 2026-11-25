@@ -296,72 +296,31 @@ From `scripts/bomcheck/`:
 
 ## Why it works this way
 
-**Stage one reads the datasheet without ever seeing the symbol.** Extraction
-gets only the MPN and the document (`tables.Context` has no field from the
-symbol). If the symbol could steer it, a symbol drawn for the wrong part would
-pull the evidence along with it. The expected pin count comes from the order
-code or the footprint's package size, never from the symbol. A package size
-that is not a pin count (`SOT-353`) gives "unknown", because a wrong
-expectation is worse than none.
+The reasons are in decision records, [docs/decisions/](docs/decisions/INDEX.md).
+In short:
 
-**Names are the datasheet's, never copied from the symbol.** A table copied
-from the symbol would agree with the thing it is there to check. Stubs leave
-names blank for the same reason. Naming conventions belong to the comparison,
-not to extraction, and a test checks that the extraction modules contain no
-convention code.
-
-**The column comes from the document.** One table often covers several
-packages. bomcheck picks the column from the package the MPN decodes to (from
-the datasheet's own ordering table) or from the footprint. It never picks the
-column that fits the symbol best: that would make any symbol pass.
-
-**Signed tables are an API.** A released board must keep passing when bomcheck
-changes, so the format only grows. See
-[Compatibility](FORMAT.md#compatibility-a-signed-file-is-a-promise).
-
-**tomlite instead of a TOML library.** The tables are the database, so a
-misread is a silent wrong result. Small ad-hoc readers that split on `,` or
-`#` break on quoted strings, which these files are full of. `tomllib` is not in
-Python 3.10, and picking a parser by Python version would let CI and a laptop
-read the same file differently. So bomcheck always uses `tomlite.py`, and the
-tests compare it with `tomllib` where that exists.
-
-**One document can describe several parts.** A datasheet often covers a family
-with different pinouts in the same package. So a table is one document with one
-`[[variant]]` per part and package, and the MPN selects the variant. Reading
-the wrong variant gives a complete, confident, wrong pin table.
-
-**A datasheet must be about this part.** A file that is present proves nothing.
-bomcheck matches the order code as a whole token (`ADS114S08` is not
-`ADS114S08B`). A document that names only the family is `family-only` and needs
-a person. A document that names another part far more often than ours is
-rejected.
-
-**MPNs are listed, never matched by pattern.** Two parts can differ by one
-character and still differ in function (a uni- and a bidirectional TVS diode).
-A table lists its MPNs exactly, or names a decoder implemented in this folder,
-so a data file can never make CI run code.
-
-**Pin tables are read by a named set of shapes.** Vendors reuse a few layouts,
-so `tables.py` names them and one driver applies them. A new quirk is a new
-shape or a fix inside one, and every part that shares the layout benefits. A
-table with more pins than the part has is refused, because it looks finished.
-
-**Datasheets are the only reference.** KiCad's own symbol libraries were tried
-as a second source. They matched almost no MPNs independently, and a name
-prefix match joined different parts. So bomcheck uses no symbol library as
-evidence.
-
-**Numbers-only parts and interface tables.** A connector's datasheet numbers
-its contacts and names none of them. Its table claims only the numbering. When
-the symbol names the pins after an interface (SL23), the names come from the
-interface spec, in an interface table keyed to the symbol, not the MPN. So the
-same spec checks every connector symbol with that pinout.
-
-**Overwriting needs a separate flag.** Filling an empty field is easy to undo.
-Overwriting an engineer's value is not, so `REPLACE` rows need `--replace`.
-Accepting a pin difference is a claim about the design, so `accept` starts
-empty.
+- The datasheet is the only reference, read without seeing the symbol
+  ([ADR-0001](docs/decisions/0001-datasheet-is-the-only-reference.md)).
+- A datasheet must name this exact part. MPNs are listed, never patterns
+  ([ADR-0002](docs/decisions/0002-a-datasheet-must-be-about-this-part.md)).
+- One document can describe several parts: one variant per part
+  ([ADR-0003](docs/decisions/0003-one-document-several-parts.md)).
+- Pin tables are read by a named set of layouts
+  ([ADR-0004](docs/decisions/0004-named-table-shapes.md)).
+- `tomlite.py` reads every table, on any Python
+  ([ADR-0005](docs/decisions/0005-tomlite.md)).
+- Signed tables are an API
+  ([ADR-0006](docs/decisions/0006-signed-tables-are-an-api.md)).
+- Connectors: numbers-only tables, names from an interface table
+  ([ADR-0007](docs/decisions/0007-interface-tables.md)).
+- Aliases hold for the symbols they were accepted for
+  ([ADR-0008](docs/decisions/0008-aliases-name-their-symbol.md)).
+- One real PDF tests the full chain
+  ([ADR-0009](docs/decisions/0009-one-reference-pdf.md)).
+- Terminal and web page offer the same actions
+  ([ADR-0010](docs/decisions/0010-two-front-ends.md)).
+- Overwriting a schematic value needs `--replace`
+  ([ADR-0011](docs/decisions/0011-writes-to-the-schematic.md)).
 
 ## Modules
 
