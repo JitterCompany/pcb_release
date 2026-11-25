@@ -315,10 +315,11 @@ format only grows:
   key**, or for new parts. It must not turn a signed table into an open item.
 - **Waiver and finding codes are stable names.** Rename one only by keeping the
   old name as an alias.
-- **The tests guard this.** `tests/fixtures/compat/<date>/` holds the signed
-  tables of that date and boards that use them; `test_signed_tables_stay_valid`
-  checks every board there is still fully checked. Never edit those files. For
-  a new format feature, add a new dated folder with tables that use it.
+- **The tests guard this.** `tests/fixtures/compat/` holds real signed tables,
+  one per format feature or naming rule, and boards that use them.
+  `test_signed_tables_stay_valid` checks every board there is still fully
+  checked. Never edit those files. For a new format feature, add one real table
+  that uses it.
 
 The other direction is looser: an older bomcheck reading a newer table may
 check less (it ignores keys it does not know), but must not fail on it. A board

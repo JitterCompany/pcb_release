@@ -1,0 +1,687 @@
+<export version="E">
+  <components>
+    <comp ref="D2">
+      <value>BAT54A</value>
+      <footprint>Package_TO_SOT_SMD:SOT-23</footprint>
+      <datasheet>http://www.diodes.com/_files/datasheets/ds11005.pdf</datasheet>
+      <description>schottky barrier diode</description>
+      <fields>
+        <field name="MPN">BAT54ALT1G</field>
+        <field name="Manufacturer">onsemi</field>
+        <field name="Footprint">Package_TO_SOT_SMD:SOT-23</field>
+        <field name="Datasheet">http://www.diodes.com/_files/datasheets/ds11005.pdf</field>
+        <field name="Description">schottky barrier diode</field>
+      </fields>
+      <libsource lib="Diode" part="BAT54A" description="schottky barrier diode" />
+      <property name="MPN" value="BAT54ALT1G" />
+      <property name="Manufacturer" value="onsemi" />
+      <property name="ki_keywords" value="schottky diode" />
+      <property name="ki_fp_filters" value="SOT?23*" />
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1" />
+            <pin num="3" />
+            <pin num="2" />
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="D3">
+      <value>XGD10402KR</value>
+      <footprint>Resistor_SMD:R_0402_1005Metric</footprint>
+      <datasheet>https://www.littelfuse.com/assetdocs/polymer-esd-suppressors-xgd10402-datasheet?assetguid=c877d743-306d-43a1-805a-04d3d70e43e3</datasheet>
+      <description>Bidirectional transient-voltage-suppression diode</description>
+      <fields>
+        <field name="MPN">XGD10402KR</field>
+        <field name="Mouser" />
+        <field name="Farnell" />
+        <field name="rating" />
+        <field name="Footprint">Resistor_SMD:R_0402_1005Metric</field>
+        <field name="Datasheet">https://www.littelfuse.com/assetdocs/polymer-esd-suppressors-xgd10402-datasheet?assetguid=c877d743-306d-43a1-805a-04d3d70e43e3</field>
+        <field name="Description">Bidirectional transient-voltage-suppression diode</field>
+      </fields>
+      <libsource lib="Device" part="D_TVS" description="Bidirectional transient-voltage-suppression diode" />
+      <property name="MPN" value="XGD10402KR" />
+      <property name="Mouser" value="" />
+      <property name="Farnell" value="" />
+      <property name="rating" value="" />
+      <property name="ki_keywords" value="diode TVS thyrector" />
+      <property name="ki_fp_filters" value="TO-???* *_Diode_* *SingleDiode* D_*" />
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1" />
+            <pin num="2" />
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="D4">
+      <value>XGD10402KR</value>
+      <footprint>Resistor_SMD:R_0402_1005Metric</footprint>
+      <datasheet>https://www.littelfuse.com/assetdocs/polymer-esd-suppressors-xgd10402-datasheet?assetguid=c877d743-306d-43a1-805a-04d3d70e43e3</datasheet>
+      <description>Bidirectional transient-voltage-suppression diode</description>
+      <fields>
+        <field name="MPN">XGD10402KR</field>
+        <field name="Mouser" />
+        <field name="Farnell" />
+        <field name="rating" />
+        <field name="Footprint">Resistor_SMD:R_0402_1005Metric</field>
+        <field name="Datasheet">https://www.littelfuse.com/assetdocs/polymer-esd-suppressors-xgd10402-datasheet?assetguid=c877d743-306d-43a1-805a-04d3d70e43e3</field>
+        <field name="Description">Bidirectional transient-voltage-suppression diode</field>
+      </fields>
+      <libsource lib="Device" part="D_TVS" description="Bidirectional transient-voltage-suppression diode" />
+      <property name="MPN" value="XGD10402KR" />
+      <property name="Mouser" value="" />
+      <property name="Farnell" value="" />
+      <property name="rating" value="" />
+      <property name="ki_keywords" value="diode TVS thyrector" />
+      <property name="ki_fp_filters" value="TO-???* *_Diode_* *SingleDiode* D_*" />
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1" />
+            <pin num="2" />
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="D5">
+      <value>XGD10402KR</value>
+      <footprint>Resistor_SMD:R_0402_1005Metric</footprint>
+      <datasheet>https://www.littelfuse.com/assetdocs/polymer-esd-suppressors-xgd10402-datasheet?assetguid=c877d743-306d-43a1-805a-04d3d70e43e3</datasheet>
+      <description>Bidirectional transient-voltage-suppression diode</description>
+      <fields>
+        <field name="MPN">XGD10402KR</field>
+        <field name="Mouser" />
+        <field name="Farnell" />
+        <field name="rating" />
+        <field name="Footprint">Resistor_SMD:R_0402_1005Metric</field>
+        <field name="Datasheet">https://www.littelfuse.com/assetdocs/polymer-esd-suppressors-xgd10402-datasheet?assetguid=c877d743-306d-43a1-805a-04d3d70e43e3</field>
+        <field name="Description">Bidirectional transient-voltage-suppression diode</field>
+      </fields>
+      <libsource lib="Device" part="D_TVS" description="Bidirectional transient-voltage-suppression diode" />
+      <property name="MPN" value="XGD10402KR" />
+      <property name="Mouser" value="" />
+      <property name="Farnell" value="" />
+      <property name="rating" value="" />
+      <property name="ki_keywords" value="diode TVS thyrector" />
+      <property name="ki_fp_filters" value="TO-???* *_Diode_* *SingleDiode* D_*" />
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1" />
+            <pin num="2" />
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="J2">
+      <value>SIM8051-6-0-14-01-A</value>
+      <footprint>Jitter_Footprints:nanoSIM_SIM8051-6-0-14_small_court</footprint>
+      <datasheet>https://gct.co/download?type=PDFDrawing&amp;name=SIM8051.pdf</datasheet>
+      <fields>
+        <field name="MPN">SIM8051-6-0-14-01-A</field>
+        <field name="Mouser">640-SIM8051601401A</field>
+        <field name="Digikey" />
+        <field name="Footprint">Jitter_Footprints:nanoSIM_SIM8051-6-0-14_small_court</field>
+        <field name="Datasheet">https://gct.co/download?type=PDFDrawing&amp;name=SIM8051.pdf</field>
+        <field name="Description" />
+      </fields>
+      <libsource lib="Jitter_Components" part="SIM_Card_SIM8051-6-0-14-01-A" description="SIM Card" />
+      <property name="MPN" value="SIM8051-6-0-14-01-A" />
+      <property name="Mouser" value="640-SIM8051601401A" />
+      <property name="Digikey" value="" />
+      <property name="ki_keywords" value="SIM card UICC" />
+      <property name="ki_fp_filters" value="*SIM*Card*Holder*" />
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="2" />
+            <pin num="3" />
+            <pin num="7" />
+            <pin num="6" />
+            <pin num="1" />
+            <pin num="5" />
+            <pin num="SH" />
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="Q1">
+      <value>NX3008NBKSH</value>
+      <footprint>Jitter_IC:SOT-363_SC-70-6</footprint>
+      <datasheet>https://assets.nexperia.com/documents/data-sheet/NX3008NBKS.pdf</datasheet>
+      <description>Dual NMOS transistor</description>
+      <fields>
+        <field name="MPN">NX3008NBKSH</field>
+        <field name="Mouser">771-NX3008NBKSH</field>
+        <field name="Farnell" />
+        <field name="rating">vgs_th &lt; 1.2</field>
+        <field name="Sim.Type" />
+        <field name="alt">NX3008NBKS,115</field>
+        <field name="Footprint">Jitter_IC:SOT-363_SC-70-6</field>
+        <field name="Datasheet">https://assets.nexperia.com/documents/data-sheet/NX3008NBKS.pdf</field>
+        <field name="Description">Dual NMOS transistor</field>
+      </fields>
+      <libsource lib="Transistor_FET" part="Q_Dual_NMOS_S1G1D2S2G2D1" description="Dual NMOS transistor, 6 pin package" />
+      <property name="MPN" value="NX3008NBKSH" />
+      <property name="Mouser" value="771-NX3008NBKSH" />
+      <property name="Farnell" value="" />
+      <property name="rating" value="vgs_th &lt; 1.2" />
+      <property name="Sim.Type" value="" />
+      <property name="alt" value="NX3008NBKS,115" />
+      <property name="ki_keywords" value="transistor NMOS N-MOS N-MOSFET" />
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="2" />
+            <pin num="6" />
+            <pin num="1" />
+          </pins>
+        </unit>
+        <unit name="B">
+          <pins>
+            <pin num="5" />
+            <pin num="3" />
+            <pin num="4" />
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C40">
+      <value>330u</value>
+      <footprint>Capacitor_Tantalum_SMD:CP_EIA-3528-21_Kemet-B</footprint>
+      <datasheet>https://search.kemet.com/component-documentation/download/specsheet/T520B337M006ATE040</datasheet>
+      <fields>
+        <field name="rating">6.3V</field>
+        <field name="MPN">T520B337M006ATE040</field>
+        <field name="Mouser">80-T520B337M06ATE040</field>
+        <field name="Digikey" />
+        <field name="Farnell" />
+        <field name="Footprint">Capacitor_Tantalum_SMD:CP_EIA-3528-21_Kemet-B</field>
+        <field name="Datasheet">https://search.kemet.com/component-documentation/download/specsheet/T520B337M006ATE040</field>
+        <field name="Description" />
+      </fields>
+      <libsource lib="Device" part="C_Polarized_Small" description="Polarized capacitor, small symbol" />
+      <property name="rating" value="6.3V" />
+      <property name="MPN" value="T520B337M006ATE040" />
+      <property name="Mouser" value="80-T520B337M06ATE040" />
+      <property name="Digikey" value="" />
+      <property name="Farnell" value="" />
+      <property name="ki_keywords" value="cap capacitor" />
+      <property name="ki_fp_filters" value="CP_*" />
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1" />
+            <pin num="2" />
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C41">
+      <value>330u</value>
+      <footprint>Capacitor_Tantalum_SMD:CP_EIA-3528-21_Kemet-B</footprint>
+      <datasheet>https://search.kemet.com/component-documentation/download/specsheet/T520B337M006ATE040</datasheet>
+      <fields>
+        <field name="rating">6.3V</field>
+        <field name="MPN">T520B337M006ATE040</field>
+        <field name="Mouser">80-T520B337M06ATE040</field>
+        <field name="Digikey" />
+        <field name="Farnell" />
+        <field name="Footprint">Capacitor_Tantalum_SMD:CP_EIA-3528-21_Kemet-B</field>
+        <field name="Datasheet">https://search.kemet.com/component-documentation/download/specsheet/T520B337M006ATE040</field>
+        <field name="Description" />
+      </fields>
+      <libsource lib="Device" part="C_Polarized_Small" description="Polarized capacitor, small symbol" />
+      <property name="rating" value="6.3V" />
+      <property name="MPN" value="T520B337M006ATE040" />
+      <property name="Mouser" value="80-T520B337M06ATE040" />
+      <property name="Digikey" value="" />
+      <property name="Farnell" value="" />
+      <property name="ki_keywords" value="cap capacitor" />
+      <property name="ki_fp_filters" value="CP_*" />
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1" />
+            <pin num="2" />
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C42">
+      <value>330u</value>
+      <footprint>Capacitor_Tantalum_SMD:CP_EIA-3528-21_Kemet-B</footprint>
+      <datasheet>https://search.kemet.com/component-documentation/download/specsheet/T520B337M006ATE040</datasheet>
+      <fields>
+        <field name="rating">6.3V</field>
+        <field name="MPN">T520B337M006ATE040</field>
+        <field name="Mouser">80-T520B337M06ATE040</field>
+        <field name="Digikey" />
+        <field name="Farnell" />
+        <field name="Footprint">Capacitor_Tantalum_SMD:CP_EIA-3528-21_Kemet-B</field>
+        <field name="Datasheet">https://search.kemet.com/component-documentation/download/specsheet/T520B337M006ATE040</field>
+        <field name="Description" />
+      </fields>
+      <libsource lib="Device" part="C_Polarized_Small" description="Polarized capacitor, small symbol" />
+      <property name="rating" value="6.3V" />
+      <property name="MPN" value="T520B337M006ATE040" />
+      <property name="Mouser" value="80-T520B337M06ATE040" />
+      <property name="Digikey" value="" />
+      <property name="Farnell" value="" />
+      <property name="ki_keywords" value="cap capacitor" />
+      <property name="ki_fp_filters" value="CP_*" />
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1" />
+            <pin num="2" />
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C43">
+      <value>330u</value>
+      <footprint>Capacitor_Tantalum_SMD:CP_EIA-3528-21_Kemet-B</footprint>
+      <datasheet>https://search.kemet.com/component-documentation/download/specsheet/T520B337M006ATE040</datasheet>
+      <fields>
+        <field name="rating">6.3V</field>
+        <field name="MPN">T520B337M006ATE040</field>
+        <field name="Mouser">80-T520B337M06ATE040</field>
+        <field name="Digikey" />
+        <field name="Farnell" />
+        <field name="Footprint">Capacitor_Tantalum_SMD:CP_EIA-3528-21_Kemet-B</field>
+        <field name="Datasheet">https://search.kemet.com/component-documentation/download/specsheet/T520B337M006ATE040</field>
+        <field name="Description" />
+      </fields>
+      <libsource lib="Device" part="C_Polarized_Small" description="Polarized capacitor, small symbol" />
+      <property name="rating" value="6.3V" />
+      <property name="MPN" value="T520B337M006ATE040" />
+      <property name="Mouser" value="80-T520B337M06ATE040" />
+      <property name="Digikey" value="" />
+      <property name="Farnell" value="" />
+      <property name="ki_keywords" value="cap capacitor" />
+      <property name="ki_fp_filters" value="CP_*" />
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1" />
+            <pin num="2" />
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C45">
+      <value>330u</value>
+      <footprint>Capacitor_Tantalum_SMD:CP_EIA-3528-21_Kemet-B</footprint>
+      <datasheet>https://search.kemet.com/component-documentation/download/specsheet/T520B337M006ATE040</datasheet>
+      <fields>
+        <field name="rating">6.3V</field>
+        <field name="MPN">T520B337M006ATE040</field>
+        <field name="Mouser">80-T520B337M06ATE040</field>
+        <field name="Digikey" />
+        <field name="Farnell" />
+        <field name="Footprint">Capacitor_Tantalum_SMD:CP_EIA-3528-21_Kemet-B</field>
+        <field name="Datasheet">https://search.kemet.com/component-documentation/download/specsheet/T520B337M006ATE040</field>
+        <field name="Description" />
+      </fields>
+      <libsource lib="Device" part="C_Polarized_Small" description="Polarized capacitor, small symbol" />
+      <property name="rating" value="6.3V" />
+      <property name="MPN" value="T520B337M006ATE040" />
+      <property name="Mouser" value="80-T520B337M06ATE040" />
+      <property name="Digikey" value="" />
+      <property name="Farnell" value="" />
+      <property name="ki_keywords" value="cap capacitor" />
+      <property name="ki_fp_filters" value="CP_*" />
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1" />
+            <pin num="2" />
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C46">
+      <value>330u</value>
+      <footprint>Capacitor_Tantalum_SMD:CP_EIA-3528-21_Kemet-B</footprint>
+      <datasheet>https://search.kemet.com/component-documentation/download/specsheet/T520B337M006ATE040</datasheet>
+      <fields>
+        <field name="rating">6.3V</field>
+        <field name="MPN">T520B337M006ATE040</field>
+        <field name="Mouser">80-T520B337M06ATE040</field>
+        <field name="Digikey" />
+        <field name="Farnell" />
+        <field name="Footprint">Capacitor_Tantalum_SMD:CP_EIA-3528-21_Kemet-B</field>
+        <field name="Datasheet">https://search.kemet.com/component-documentation/download/specsheet/T520B337M006ATE040</field>
+        <field name="Description" />
+      </fields>
+      <libsource lib="Device" part="C_Polarized_Small" description="Polarized capacitor, small symbol" />
+      <property name="rating" value="6.3V" />
+      <property name="MPN" value="T520B337M006ATE040" />
+      <property name="Mouser" value="80-T520B337M06ATE040" />
+      <property name="Digikey" value="" />
+      <property name="Farnell" value="" />
+      <property name="ki_keywords" value="cap capacitor" />
+      <property name="ki_fp_filters" value="CP_*" />
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1" />
+            <pin num="2" />
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C47">
+      <value>330u</value>
+      <footprint>Capacitor_Tantalum_SMD:CP_EIA-3528-21_Kemet-B</footprint>
+      <datasheet>https://search.kemet.com/component-documentation/download/specsheet/T520B337M006ATE040</datasheet>
+      <fields>
+        <field name="rating">6.3V</field>
+        <field name="MPN">T520B337M006ATE040</field>
+        <field name="Mouser">80-T520B337M06ATE040</field>
+        <field name="Digikey" />
+        <field name="Farnell" />
+        <field name="Footprint">Capacitor_Tantalum_SMD:CP_EIA-3528-21_Kemet-B</field>
+        <field name="Datasheet">https://search.kemet.com/component-documentation/download/specsheet/T520B337M006ATE040</field>
+        <field name="Description" />
+      </fields>
+      <libsource lib="Device" part="C_Polarized_Small" description="Polarized capacitor, small symbol" />
+      <property name="rating" value="6.3V" />
+      <property name="MPN" value="T520B337M006ATE040" />
+      <property name="Mouser" value="80-T520B337M06ATE040" />
+      <property name="Digikey" value="" />
+      <property name="Farnell" value="" />
+      <property name="dnp" />
+      <property name="ki_keywords" value="cap capacitor" />
+      <property name="ki_fp_filters" value="CP_*" />
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1" />
+            <pin num="2" />
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C48">
+      <value>330u</value>
+      <footprint>Capacitor_Tantalum_SMD:CP_EIA-3528-21_Kemet-B</footprint>
+      <datasheet>https://search.kemet.com/component-documentation/download/specsheet/T520B337M006ATE040</datasheet>
+      <fields>
+        <field name="rating">6.3V</field>
+        <field name="MPN">T520B337M006ATE040</field>
+        <field name="Mouser">80-T520B337M06ATE040</field>
+        <field name="Digikey" />
+        <field name="Farnell" />
+        <field name="Footprint">Capacitor_Tantalum_SMD:CP_EIA-3528-21_Kemet-B</field>
+        <field name="Datasheet">https://search.kemet.com/component-documentation/download/specsheet/T520B337M006ATE040</field>
+        <field name="Description" />
+      </fields>
+      <libsource lib="Device" part="C_Polarized_Small" description="Polarized capacitor, small symbol" />
+      <property name="rating" value="6.3V" />
+      <property name="MPN" value="T520B337M006ATE040" />
+      <property name="Mouser" value="80-T520B337M06ATE040" />
+      <property name="Digikey" value="" />
+      <property name="Farnell" value="" />
+      <property name="dnp" />
+      <property name="ki_keywords" value="cap capacitor" />
+      <property name="ki_fp_filters" value="CP_*" />
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1" />
+            <pin num="2" />
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U9">
+      <value>TPS25940LRVCR</value>
+      <footprint>Jitter_IC:QFN-20-1EP_3x4mm_P0.5mm_EP1.65x2.65mm_ThermalVias</footprint>
+      <datasheet>https://www.ti.com/lit/ds/symlink/tps25940.pdf</datasheet>
+      <description>eFuse, 2.7 to 18 V, 42 mOhm, 0.6 to 5.3 A adjustable limit, latch-off, OVP, reverse blocking, IMON, DevSleep, WQFN-20 3x4 mm (RVC)</description>
+      <fields>
+        <field name="MPN">TPS25940LRVCR</field>
+        <field name="Manufacturer">Texas Instruments</field>
+        <field name="Footprint">Jitter_IC:QFN-20-1EP_3x4mm_P0.5mm_EP1.65x2.65mm_ThermalVias</field>
+        <field name="Datasheet">https://www.ti.com/lit/ds/symlink/tps25940.pdf</field>
+        <field name="Description">eFuse, 2.7 to 18 V, 42 mOhm, 0.6 to 5.3 A adjustable limit, latch-off, OVP, reverse blocking, IMON, DevSleep, WQFN-20 3x4 mm (RVC)</field>
+      </fields>
+      <libsource lib="Jitter_IC" part="TPS25940LRVCR" description="eFuse, 2.7 to 18 V, 42 mOhm, 0.6 to 5.3 A adjustable limit, latch-off, OVP, reverse blocking, IMON, DevSleep, WQFN-20 3x4 mm (RVC)" />
+      <property name="MPN" value="TPS25940LRVCR" />
+      <property name="Manufacturer" value="Texas Instruments" />
+      <property name="ki_keywords" value="efuse hot swap protection switch current limit reverse blocking" />
+      <property name="ki_fp_filters" value="QFN*1EP*3x4mm*P0.5mm*" />
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="13" />
+            <pin num="9" />
+            <pin num="10" />
+            <pin num="11" />
+            <pin num="12" />
+            <pin num="14" />
+            <pin num="15" />
+            <pin num="1" />
+            <pin num="18" />
+            <pin num="17" />
+            <pin num="21" />
+            <pin num="16" />
+            <pin num="8" />
+            <pin num="7" />
+            <pin num="6" />
+            <pin num="5" />
+            <pin num="4" />
+            <pin num="20" />
+            <pin num="19" />
+            <pin num="3" />
+            <pin num="2" />
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U10">
+      <value>TPS61022RWU</value>
+      <footprint>Jitter_Footprints:Texas_RWU0007A_VQFN_7_adjusted_silk</footprint>
+      <datasheet>https://www.ti.com/lit/ds/symlink/tps61022.pdf</datasheet>
+      <fields>
+        <field name="MPN">TPS61022RWUT</field>
+        <field name="Mouser">595-TPS61022RWUT</field>
+        <field name="Digikey" />
+        <field name="alt">TPS61022RWUR</field>
+        <field name="Manufacturer">Texas Instruments</field>
+        <field name="Footprint">Jitter_Footprints:Texas_RWU0007A_VQFN_7_adjusted_silk</field>
+        <field name="Datasheet">https://www.ti.com/lit/ds/symlink/tps61022.pdf</field>
+        <field name="Description" />
+      </fields>
+      <libsource lib="Jitter_Components" part="TPS61022RWU" description="Synchronous Boost Regulator, Adjustable Output up to 5.5V, 8A Valley Switch Current Limit, VQFN" />
+      <property name="MPN" value="TPS61022RWUT" />
+      <property name="Mouser" value="595-TPS61022RWUT" />
+      <property name="Digikey" value="" />
+      <property name="alt" value="TPS61022RWUR" />
+      <property name="Manufacturer" value="Texas Instruments" />
+      <property name="ki_keywords" value="Step-Up Boost DC-DC Regulator Adjustable" />
+      <property name="ki_fp_filters" value="WSON*1EP*2x2mm*P0.65mm*" />
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="7" />
+            <pin num="6" />
+            <pin num="5" />
+            <pin num="1" />
+            <pin num="2" />
+            <pin num="3" />
+            <pin num="4" />
+          </pins>
+        </unit>
+      </units>
+    </comp>
+  </components>
+  <libparts>
+    <libpart lib="Device" part="C_Polarized_Small">
+      <description>Polarized capacitor, small symbol</description>
+      <footprints>
+        <fp>CP_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">C</field>
+        <field name="Value">C_Polarized_Small</field>
+        <field name="Footprint" />
+        <field name="Datasheet" />
+        <field name="Description">Polarized capacitor, small symbol</field>
+      </fields>
+      <pins>
+        <pin num="1" name="" type="passive" />
+        <pin num="2" name="" type="passive" />
+      </pins>
+    </libpart>
+    <libpart lib="Device" part="D_TVS">
+      <description>Bidirectional transient-voltage-suppression diode</description>
+      <footprints>
+        <fp>TO-???*</fp>
+        <fp>*_Diode_*</fp>
+        <fp>*SingleDiode*</fp>
+        <fp>D_*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">D</field>
+        <field name="Value">D_TVS</field>
+        <field name="Footprint" />
+        <field name="Datasheet" />
+        <field name="Description">Bidirectional transient-voltage-suppression diode</field>
+      </fields>
+      <pins>
+        <pin num="1" name="A1" type="passive" />
+        <pin num="2" name="A2" type="passive" />
+      </pins>
+    </libpart>
+    <libpart lib="Diode" part="BAT54A">
+      <description>schottky barrier diode</description>
+      <docs>http://www.diodes.com/_files/datasheets/ds11005.pdf</docs>
+      <footprints>
+        <fp>SOT?23*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">D</field>
+        <field name="Value">BAT54A</field>
+        <field name="Footprint">Package_TO_SOT_SMD:SOT-23</field>
+        <field name="Datasheet">http://www.diodes.com/_files/datasheets/ds11005.pdf</field>
+        <field name="Description">schottky barrier diode</field>
+      </fields>
+      <pins>
+        <pin num="1" name="" type="passive" />
+        <pin num="2" name="" type="passive" />
+        <pin num="3" name="" type="passive" />
+      </pins>
+    </libpart>
+    <libpart lib="Jitter_Components" part="SIM_Card_SIM8051-6-0-14-01-A">
+      <description>SIM Card</description>
+      <docs>~</docs>
+      <footprints>
+        <fp>*SIM*Card*Holder*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">SIM_Card_SIM8051-6-0-14-01-A</field>
+        <field name="Footprint">Jitter_Footprints:nanoSIM_SIM8051-6-0-14</field>
+        <field name="Datasheet">~</field>
+        <field name="Description">SIM Card</field>
+        <field name="MPN">SIM8051-6-0-14-01-A</field>
+      </fields>
+      <pins>
+        <pin num="1" name="VCC" type="power_in" />
+        <pin num="2" name="RST" type="input" />
+        <pin num="3" name="CLK" type="input" />
+        <pin num="5" name="GND" type="power_in" />
+        <pin num="6" name="VPP" type="input" />
+        <pin num="7" name="I/O" type="bidirectional" />
+        <pin num="SH" name="SHIELD" type="passive" />
+      </pins>
+    </libpart>
+    <libpart lib="Jitter_Components" part="TPS61022RWU">
+      <description>Synchronous Boost Regulator, Adjustable Output up to 5.5V, 8A Valley Switch Current Limit, VQFN</description>
+      <docs>https://www.ti.com/lit/ds/symlink/tps61022.pdf</docs>
+      <footprints>
+        <fp>WSON*1EP*2x2mm*P0.65mm*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">TPS61022RWU</field>
+        <field name="Footprint" />
+        <field name="Datasheet">https://www.ti.com/lit/ds/symlink/tps61022.pdf</field>
+        <field name="Description">Synchronous Boost Regulator, Adjustable Output up to 5.5V, 8A Valley Switch Current Limit, VQFN</field>
+      </fields>
+      <pins>
+        <pin num="1" name="GND" type="power_in" />
+        <pin num="2" name="SW" type="power_out" />
+        <pin num="3" name="VOUT" type="power_out" />
+        <pin num="4" name="FB" type="input" />
+        <pin num="5" name="EN" type="input" />
+        <pin num="6" name="MODE" type="input" />
+        <pin num="7" name="VIN" type="power_in" />
+      </pins>
+    </libpart>
+    <libpart lib="Jitter_IC" part="TPS25940LRVCR">
+      <description>eFuse, 2.7 to 18 V, 42 mOhm, 0.6 to 5.3 A adjustable limit, latch-off, OVP, reverse blocking, IMON, DevSleep, WQFN-20 3x4 mm (RVC)</description>
+      <docs>https://www.ti.com/lit/ds/symlink/tps25940.pdf</docs>
+      <footprints>
+        <fp>QFN*1EP*3x4mm*P0.5mm*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">TPS25940LRVCR</field>
+        <field name="Footprint">Package_DFN_QFN:QFN-20-1EP_3x4mm_P0.5mm_EP1.65x2.65mm</field>
+        <field name="Datasheet">https://www.ti.com/lit/ds/symlink/tps25940.pdf</field>
+        <field name="Description">eFuse, 2.7 to 18 V, 42 mOhm, 0.6 to 5.3 A adjustable limit, latch-off, OVP, reverse blocking, IMON, DevSleep, WQFN-20 3x4 mm (RVC)</field>
+        <field name="MPN">TPS25940LRVCR</field>
+        <field name="Manufacturer">Texas Instruments</field>
+      </fields>
+      <pins>
+        <pin num="1" name="DEVSLP" type="input" />
+        <pin num="2" name="PGOOD" type="open_collector" />
+        <pin num="3" name="PGTH" type="input" />
+        <pin num="4" name="OUT" type="power_out" />
+        <pin num="5" name="OUT" type="passive" />
+        <pin num="6" name="OUT" type="passive" />
+        <pin num="7" name="OUT" type="passive" />
+        <pin num="8" name="OUT" type="passive" />
+        <pin num="9" name="IN" type="power_in" />
+        <pin num="10" name="IN" type="passive" />
+        <pin num="11" name="IN" type="passive" />
+        <pin num="12" name="IN" type="passive" />
+        <pin num="13" name="IN" type="passive" />
+        <pin num="14" name="EN/UVLO" type="input" />
+        <pin num="15" name="OVP" type="input" />
+        <pin num="16" name="GND" type="power_in" />
+        <pin num="17" name="ILIM" type="passive" />
+        <pin num="18" name="dVdT" type="passive" />
+        <pin num="19" name="IMON" type="output" />
+        <pin num="20" name="~{FLT}" type="open_collector" />
+        <pin num="21" name="GND" type="passive" />
+      </pins>
+    </libpart>
+    <libpart lib="Transistor_FET" part="Q_Dual_NMOS_S1G1D2S2G2D1">
+      <description>Dual NMOS transistor, 6 pin package</description>
+      <fields>
+        <field name="Reference">Q</field>
+        <field name="Value">Q_Dual_NMOS_S1G1D2S2G2D1</field>
+        <field name="Footprint" />
+        <field name="Datasheet" />
+        <field name="Description">Dual NMOS transistor, 6 pin package</field>
+      </fields>
+      <pins>
+        <pin num="1" name="S" type="passive" />
+        <pin num="2" name="G" type="input" />
+        <pin num="3" name="D" type="passive" />
+        <pin num="4" name="S" type="passive" />
+        <pin num="5" name="G" type="input" />
+        <pin num="6" name="D" type="passive" />
+      </pins>
+    </libpart>
+  </libparts>
+</export>

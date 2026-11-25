@@ -3063,37 +3063,36 @@ def test_two_clones_of_one_library():
 
 def test_signed_tables_stay_valid():
     """A table signed for a released board must keep passing in every later
-    bomcheck. tests/fixtures/compat/<date>/ holds the signed tables of that
-    date and boards that use them: each board stays fully checked. Never edit
-    those files; a format change adds a new folder instead."""
-    import glob
+    bomcheck. tests/fixtures/compat/ holds real signed tables, one per format
+    feature or naming rule, with the boards that use them: each board stays
+    fully checked. Never edit those files; a new format feature adds files."""
     import shutil
     import tempfile
     import todo as TD
-    for snap in sorted(glob.glob(os.path.join(FIX, "compat", "*"))):
-        att = os.path.join(snap, "attestations")
-        for f in glob.glob(os.path.join(att, "reference", "*", "*.toml")):
-            P.Document(f, tomlite.load(f))     # every table still loads
-        for board in sorted(glob.glob(os.path.join(snap, "*", "netlist.xml"))):
-            where = os.path.dirname(board)
-            comps, _ = N.parse(board)
-            _lines, items = TD.collect(comps, att, where)
-            check(comps and not items,
-                  f"compat {os.path.basename(snap)}/{os.path.basename(where)}: "
-                  f"every part still checked against its signed table",
-                  str([(i.kind, i.mpn, i.detail) for i in items][:5]))
+    snap = os.path.join(FIX, "compat")
+    att = os.path.join(snap, "attestations")
+    for f in glob.glob(os.path.join(att, "reference", "*", "*.toml")):
+        P.Document(f, tomlite.load(f))     # every table still loads
+    boards = sorted(glob.glob(os.path.join(snap, "*", "netlist.xml")))
+    check(len(boards) == 2, "compat: both boards present", str(boards))
+    for board in boards:
+        where = os.path.dirname(board)
+        comps, _ = N.parse(board)
+        _lines, items = TD.collect(comps, att, where)
+        check(comps and not items,
+              f"compat {os.path.basename(where)}: every part still checked "
+              f"against its signed table",
+              str([(i.kind, i.mpn, i.detail) for i in items][:5]))
     # The check is not empty: a renamed pin on the symbol is still caught.
-    snap = sorted(glob.glob(os.path.join(FIX, "compat", "*")))[0]
     tmp = tempfile.mkdtemp()
     text = open(os.path.join(snap, "sl23-sen6x", "netlist.xml")).read()
     open(os.path.join(tmp, "netlist.xml"), "w").write(
         text.replace('name="IO_13"', 'name="IO_31"', 1))
     comps, _ = N.parse(os.path.join(tmp, "netlist.xml"))
-    _lines, items = TD.collect(comps, os.path.join(snap, "attestations"), tmp)
+    _lines, items = TD.collect(comps, att, tmp)
     check(any(i.kind.startswith("interface") for i in items),
           "compat: a pin renamed on the symbol is still reported",
           str([(i.kind, i.mpn) for i in items]))
-
 
 def main():
     for fn in (test_drawing_labels_give_names_not_numbering,

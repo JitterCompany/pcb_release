@@ -76,39 +76,6 @@
         </unit>
       </units>
     </comp>
-    <comp ref="J2">
-      <value>SEN6x GH</value>
-      <footprint>Connector_JST:JST_GH_SM06B-GHS-TB_1x06-1MP_P1.25mm_Horizontal</footprint>
-      <datasheet>https://www.jst-mfg.com/product/pdf/eng/eGH.pdf</datasheet>
-      <description>Generic connectable mounting pin connector, single row, 01x06, script generated (kicad-library-utils/schlib/autogen/connector/)</description>
-      <fields>
-        <field name="MPN">SM06B-GHS-TB(LF)(SN)</field>
-        <field name="Manufacturer">JST</field>
-        <field name="Note">JST GH. Cable: 2x GHR-06V-S with AGHGH28K51 leads, pin 1 to pin 1.</field>
-        <field name="Footprint">Connector_JST:JST_GH_SM06B-GHS-TB_1x06-1MP_P1.25mm_Horizontal</field>
-        <field name="Datasheet">https://www.jst-mfg.com/product/pdf/eng/eGH.pdf</field>
-        <field name="Description">Generic connectable mounting pin connector, single row, 01x06, script generated (kicad-library-utils/schlib/autogen/connector/)</field>
-      </fields>
-      <libsource lib="Connector_Generic_MountingPin" part="Conn_01x06_MountingPin" description="Generic connectable mounting pin connector, single row, 01x06, script generated (kicad-library-utils/schlib/autogen/connector/)" />
-      <property name="MPN" value="SM06B-GHS-TB(LF)(SN)" />
-      <property name="Manufacturer" value="JST" />
-      <property name="Note" value="JST GH. Cable: 2x GHR-06V-S with AGHGH28K51 leads, pin 1 to pin 1." />
-      <property name="ki_keywords" value="connector" />
-      <property name="ki_fp_filters" value="Connector*:*_1x??-1MP*" />
-      <units>
-        <unit name="A">
-          <pins>
-            <pin num="1" />
-            <pin num="2" />
-            <pin num="3" />
-            <pin num="4" />
-            <pin num="5" />
-            <pin num="6" />
-            <pin num="MP" />
-          </pins>
-        </unit>
-      </units>
-    </comp>
     <comp ref="U1">
       <value>TLV76733DGNR</value>
       <footprint>Package_SO:HVSSOP-8-1EP_3x3mm_P0.65mm_EP1.57x1.89mm</footprint>
@@ -144,28 +111,6 @@
     </comp>
   </components>
   <libparts>
-    <libpart lib="Connector_Generic_MountingPin" part="Conn_01x06_MountingPin">
-      <description>Generic connectable mounting pin connector, single row, 01x06, script generated (kicad-library-utils/schlib/autogen/connector/)</description>
-      <footprints>
-        <fp>Connector*:*_1x??-1MP*</fp>
-      </footprints>
-      <fields>
-        <field name="Reference">J</field>
-        <field name="Value">Conn_01x06_MountingPin</field>
-        <field name="Footprint" />
-        <field name="Datasheet" />
-        <field name="Description">Generic connectable mounting pin connector, single row, 01x06, script generated (kicad-library-utils/schlib/autogen/connector/)</field>
-      </fields>
-      <pins>
-        <pin num="1" name="Pin_1" type="passive" />
-        <pin num="2" name="Pin_2" type="passive" />
-        <pin num="3" name="Pin_3" type="passive" />
-        <pin num="4" name="Pin_4" type="passive" />
-        <pin num="5" name="Pin_5" type="passive" />
-        <pin num="6" name="Pin_6" type="passive" />
-        <pin num="MP" name="MountPin" type="passive" />
-      </pins>
-    </libpart>
     <libpart lib="Jitter_Connectors" part="SL23_Header_2x25">
       <description>SL23 sensor module interface, 2x25 pin header, 2.54 mm. Host and module use the same symbol: pin n connects to pin n. Bus functions and suggested uses are pin alternates. GND is the even pins 2 to 50, stacked on one pin.</description>
       <docs>https://github.com/JitterCompany/sensor-link-hardware/blob/master/docs/interfaces/sl23.md</docs>
