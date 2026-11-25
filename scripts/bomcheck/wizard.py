@@ -263,7 +263,8 @@ class Wizard:
         if self.recollect is not None:
             self.reorder()
         return {"open": [{"mpn": m, "refs": " ".join(its[0].refs),
-                          "what": dict(TD.KINDS).get(its[0].kind, its[0].kind)}
+                          "what": dict(TD.KINDS).get(its[0].kind, its[0].kind)
+                          + (f" ({its[0].detail})" if its[0].detail else "")}
                          for m, its in self.order()],
                 "fields": len(DC.parse_fields(self.fields_csv)),
                 "library": os.path.basename(self.library) if self.library else "",
@@ -949,8 +950,10 @@ class Wizard:
         if other is None:
             name = self.ask("    The interface's name, to type its table now "
                             "(e.g. SL23; Enter = later)")
-            if name:
-                self.fill_interface(ln, name)
+            if name and self.fill_interface(ln, name):
+                self.tell(f"The {name} table is signed. This part stays open "
+                          f"until the symbol has the field {TD.FIELD} = "
+                          f"{name}: the field is what links the two.")
         raise Skip()
 
     def do_interface_unfilled(self, it, ln):
@@ -962,13 +965,13 @@ class Wizard:
         self.fill_interface(ln, name)
 
     def fill_interface(self, ln, name):
-        """Type, or confirm, each pin's name from the interface spec, then
+        """-> True once signed. Type, or confirm, each pin's name from the interface spec, then
         compare with the symbol and sign. The symbol's names are not shown
         while typing: they are what the table checks."""
         c = ln.comp
         path = TD.interface_draft_path(self.att, name, c.libsource)
         if not os.path.isfile(path) and not self.start_interface(path, ln, name):
-            return
+            return False
         self.show_spec(path)
         hints = IF.hints_of(path)
         var = _variant(path, "")
@@ -984,10 +987,12 @@ class Wizard:
         if len([n for n in blank if n not in hints]) > 8:
             self.tell("Many pins with one name can go in one line first: "
                       "NAME = pins, e.g. GND = 2-50/2 (every second pin from 2 "
-                      "to 50) or GND = 2 4 10-12. Enter = none or done.")
+                      "to 50) or GND = 2 4 10-12. Then the other pins one by "
+                      "one.")
             while True:
-                ans = self.ask("    shared name")
-                if not ans:
+                ans = self.ask("    shared name (Enter = go pin by pin)",
+                               extra=[(":p", "pin by pin")])
+                if not ans or ans == ":p":
                     break
                 nm, nums, wrong = IF.parse_shared(ans, set(blank))
                 if wrong or not nums:
@@ -1011,9 +1016,10 @@ class Wizard:
             self.say(f"    Left empty: pin {', '.join(left)}. The table stays a "
                      f"draft in {self.rel(path)}; the next run asks for those "
                      f"pins again.")
-            return
+            return False
         self.check_table(path, ln, word="spec", code="interface_difference")
         self.sign_interface(path, ln)
+        return True
 
     def start_interface(self, path, ln, name):
         """Ask for the spec and write a blank table, with names read from a
@@ -1034,8 +1040,9 @@ class Wizard:
             self.say("    not a URL, and no such file")
         pins = {p.num for p in ln.comp.pins}
         hints, source = {}, ""
-        if not IF.is_url(where) and not where.lower().endswith(".pdf"):
-            with open(where, encoding="utf-8", errors="replace") as f:
+        local = where if not IF.is_url(where) else self.repo_copy(where)
+        if local and not local.lower().endswith(".pdf"):
+            with open(local, encoding="utf-8", errors="replace") as f:
                 tables = [(h, {n: v for n, v in t.items() if n in pins})
                           for h, t in IF.spec_tables(f.read())]
             tables = [(h, t) for h, t in tables if t]
@@ -1077,6 +1084,25 @@ class Wizard:
         if self.library and dst.startswith(self.library + os.sep):
             self.saved_in_library.append(dst)
         return dst
+
+    def repo_copy(self, url):
+        """A GitHub link to a file of the board's own repo -> that file here,
+        so its pin tables can be read. "" otherwise."""
+        m = re.match(r"https://github\.com/[^/]+/([^/]+)/blob/[^/]+/(.+)", url)
+        root = os.path.dirname(self.att)
+        if not m:
+            return ""
+        try:
+            origin = subprocess.run(["git", "-C", root, "remote", "get-url",
+                                     "origin"], capture_output=True, text=True,
+                                    timeout=10).stdout.strip()
+        except Exception:                                        # noqa: BLE001
+            origin = ""
+        repo = re.sub(r"\.git$", "", origin).rsplit("/", 1)[-1].rsplit(":", 1)[-1]
+        if m.group(1) not in (repo, os.path.basename(root)):
+            return ""
+        local = os.path.join(root, urllib.parse.unquote(m.group(2)))
+        return local if os.path.isfile(local) else ""
 
     def show_spec(self, path):
         """Point at the interface spec a table names: a URL or a file."""

@@ -111,4 +111,6 @@ def uncommitted(root):
                            capture_output=True, text=True, timeout=10)
     except Exception:                                            # noqa: BLE001
         return []
-    return [line[3:] for line in r.stdout.splitlines() if line.strip()]
+    # A table deleted and written again shows twice (D and ??): count it once.
+    return list(dict.fromkeys(line[3:] for line in r.stdout.splitlines()
+                              if line.strip()))
