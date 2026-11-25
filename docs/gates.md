@@ -15,6 +15,7 @@ them and nothing else would catch the failure before the boards are made.
 | `drift` | the board no longer matches the `release_spec.toml` committed at its last release |
 | `pinmap` | the MCU pin map is invalid, or no longer matches the schematic |
 | `bomfields` | the parts of one BOM line disagree on Manufacturer, MPN, Farnell, Mouser or Digikey |
+| `bomcheck` | a BOM line is not checked against a signed datasheet pin table, or its symbol differs from that table |
 
 ## `erc`
 
@@ -143,3 +144,23 @@ group. A project without a schematic (a panel) has no BOM and passes.
 
 A release runs this gate too, and like every gate a failure stops the release before
 anything is packaged.
+
+## `bomcheck`
+
+Runs `scripts/bomcheck/cli.py status` on the board. It fails while any BOM line is
+open: a part without a signed pin table, a symbol whose pins differ from its table,
+a polarity mark not checked, a datasheet missing. The output lists each open line.
+
+It is offline: it reads the signed tables and a netlist from `kicad-cli`, and needs no
+PDFs and no network. Tables are read from the board repo's `attestations/` and from
+the component libraries in the project's `sym-lib-table`, so CI needs the library
+submodules checked out.
+
+The fix is `bomcheck wizard` on the board, see the
+[bomcheck README](../scripts/bomcheck/README.md). A board that is not there yet
+lists the gate in `todo=` in the CI board list: it then warns every run and does not
+fail. A repo that updates pcb_release to this version has to do that for every board
+without signed tables, or its CI fails.
+
+A release runs this gate too.
+

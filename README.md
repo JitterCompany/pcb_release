@@ -17,6 +17,7 @@ the failure before the boards are made.
 | `drift` | the board no longer matches the spec committed at its last release |
 | `pinmap` | the MCU pin map is invalid, or no longer matches the schematic |
 | `bomfields` | the parts of one BOM line disagree on Manufacturer, MPN, Farnell, Mouser or Digikey |
+| `bomcheck` | a BOM line is not checked against a signed datasheet pin table, or its symbol differs from that table |
 
 Every gate is enforced for every board unless that board says otherwise, so a new board
 cannot go silently unchecked. Details in **[Gates](docs/gates.md)**.
@@ -39,9 +40,9 @@ Add the submodule, add two workflow files, add a `release.toml` per board. See
 
 | command | does |
 |---|---|
-| `check` | every gate: ERC and schema, DRC and pick&place, 3D, pin map, release-spec drift, BOM fields |
+| `check` | every gate: ERC and schema, DRC and pick&place, 3D, pin map, release-spec drift, BOM fields, bomcheck |
 | `release` | the full manufacturing release, see [Deliverables](docs/deliverables.md). Runs the gates first; nothing is built or packaged when one fails |
-| `erc` \| `drc` \| `3d` \| `drift` \| `pinmap` \| `bomfields` | one gate on its own |
+| `erc` \| `drc` \| `3d` \| `drift` \| `pinmap` \| `bomfields` \| `bomcheck` | one gate on its own |
 | `bom` | `BOM_<board>.csv` beside the project, to read the parts over |
 | `manual` | the legacy interactive workflow, see below |
 
@@ -69,7 +70,7 @@ The `bomfields` gate checks that the parts of a BOM line agree with each other.
 [bomcheck](scripts/bomcheck/README.md) checks that each part agrees with its datasheet:
 pin names per symbol unit, polarity marks against the footprint, and the windings of
 numbered-only parts. A person confirms each pin table once, and later runs check the
-board against the signed tables. Not a gate yet.
+board against the signed tables. The `bomcheck` gate runs that check.
 
 ### Manual workflow (legacy, interactive, no config)
 
@@ -105,7 +106,7 @@ Boards pass all gates unless the board list says otherwise:
 | `skip=` | gate not applicable, e.g. no MCU means no pin map | silent |
 | `todo=` | gate applies but is known to fail for now | warning every run, does not fail |
 
-Gate names are `erc`, `drc`, `3d`, `drift`, `pinmap`, `bomfields`, in any order and any combination. A
+Gate names are `erc`, `drc`, `3d`, `drift`, `pinmap`, `bomfields`, `bomcheck`, in any order and any combination. A
 typo is a hard error rather than a quietly unenforced gate.
 
 Naming one board in a local run enforces that board's `todo=` gates, which is how you
