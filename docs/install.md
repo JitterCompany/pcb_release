@@ -61,6 +61,11 @@ What the submodule adds over pinning `tools-ref` is a copy on your own machine, 
 can run the checks by hand before pushing, and one SHA governing both that copy and CI,
 so a local run predicts what CI will say.
 
+The other side of pinning: your boards get new or stricter gates only when you bump the
+submodule. Only the workflow file follows master (`@master` in `uses:`). Bump at the
+start of a board revision, run every gate, and give a new gate that fails `todo=` in
+the board list. The revision then has time to clear it before its release.
+
 ## Requirements
 
 Only for running it locally: `kicad-cli` (KiCad 9 or 10) on PATH and Python 3.8+. No pip

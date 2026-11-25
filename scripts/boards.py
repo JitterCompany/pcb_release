@@ -38,7 +38,7 @@ import sys
 # The gate vocabulary a board list may name. `pinmap` covers both pinmap gates:
 # they are one concern to a board owner, and splitting them here would only
 # invite listing one and forgetting the other.
-GATES = ("erc", "drc", "3d", "drift", "pinmap", "bomfields")
+GATES = ("erc", "drc", "3d", "drift", "pinmap", "bomfields", "bomcheck")
 
 
 def parse_list(text):

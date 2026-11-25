@@ -8,7 +8,8 @@ the KiCad symbol carry the pin table the manufacturer prints for this part?
   [FORMAT.md](FORMAT.md).
 - bomcheck reads a draft table from the PDF, you check and sign it, and from
   then on every board with that part is checked against it.
-- It runs on its own. `pcb-release.sh` and CI do not call it yet.
+- `pcb-release.sh` runs `status` as the `bomcheck` gate, in `check` and
+  `release` ([Gates](../../docs/gates.md#bomcheck)). It also runs on its own.
 - The `bomfields` gate is a different check: it compares the parts of one BOM
   line with each other, not with a datasheet.
 
