@@ -4,7 +4,7 @@ A connector that implements an interface (SL23) has a datasheet that only
 numbers its contacts. The pin names on its symbol come from the interface
 spec, so the spec is their reference: a signed table, pin number = signal
 name, keyed to the symbols that follow it. A symbol names its interface in
-the field `Interface` (todo.FIELD).
+the field `Pinout_Spec` (todo.FIELD).
 
 The spec may be a URL or a file, often markdown. A pin table in a markdown
 spec can be read to pre-fill a draft, but only as a hint next to each pin:

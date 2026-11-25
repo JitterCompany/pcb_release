@@ -2731,7 +2731,7 @@ Every even pin is `GND`. The odd pins:
 
 def _slx_netlist(path, interface="SLX", names=None):
     names = names or _SLX_NAMES
-    field = (f'<field name="Interface">{interface}</field>' if interface else "")
+    field = (f'<field name="Pinout_Spec">{interface}</field>' if interface else "")
     pins = "".join(f'<pin num="{n}" name="{v}" type="passive"/>'
                    for n, v in names.items())
     open(path, "w").write(
@@ -2809,7 +2809,7 @@ def test_interface_tables():
     bare = _slx_netlist(os.path.join(top, "bare.xml"), interface="")
     _l, its = TD.collect(bare, att)
     check([i.kind for i in its] == ["interface_unset"]
-          and "Interface = <name>" in its[0].detail,
+          and "Pinout_Spec = <name>" in its[0].detail,
           "interface: without the field the names are open, with what to do",
           str([(i.kind, i.detail) for i in its]))
     numbered_sym = _slx_netlist(os.path.join(top, "num.xml"), interface="",
@@ -2891,6 +2891,153 @@ def test_interface_tables():
           "interface: a machine-read name is a hint, never a value")
 
 
+def _alias_netlist(path, part, names):
+    """One part, MPN M, on symbol L:<part> with these pin names."""
+    pins = "".join(f'<pin num="{n}" name="{v}" type="passive"/>'
+                   for n, v in names.items())
+    open(path, "w").write(
+        '<?xml version="1.0"?><export version="E"><components>'
+        '<comp ref="U1"><value>M</value><footprint>P:SOT-23</footprint>'
+        '<fields><field name="MPN">M</field>'
+        '<field name="Datasheet">https://example.com/m.pdf</field></fields>'
+        f'<libsource lib="L" part="{part}"/></comp></components><libparts>'
+        f'<libpart lib="L" part="{part}"><pins>{pins}</pins></libpart>'
+        '</libparts></export>')
+    return N.parse(path)[0]
+
+
+def test_alias_blocks_name_their_symbols():
+    """An alias names a symbol's pin, so it holds for the symbol it was
+    accepted on. A block that lists its symbols does not apply to another
+    symbol of the same part: that is its own item, and the wizard asks
+    whether the other symbol has the same pinout."""
+    import tempfile
+    import threading
+    import todo as TD
+    import webui
+    import wizard as WZ
+    import reffile as R
+    top = tempfile.mkdtemp()
+    att = os.path.join(top, "attestations")
+    live = os.path.join(att, "reference", "datasheet")
+    os.makedirs(live)
+    ref = os.path.join(live, "M.toml")
+    head = ('doc_id = "X"\norigin = "manual"\nextracted_by = "T"\n'
+            'reviewed_by = "T"\nreviewed_on = "2026-11-25"\n\n'
+            '  [[variant]]\n  package = "SOT-23"\n  mpns = ["M"]\n\n'
+            '    [variant.pins]\n    1 = "VFB"\n    2 = "COMP"\n    3 = "AGND"\n')
+    a_names = {"1": "FB", "2": "CMP", "3": "AGND"}
+    sym_a = _alias_netlist(os.path.join(top, "a.xml"), "A", a_names)
+    sym_b = _alias_netlist(os.path.join(top, "b.xml"), "B", a_names)
+    kinds = lambda comps: [i.kind for i in TD.collect(comps, att)[1]]
+
+    # -- an old file: [variant.symbol_alias] holds for any symbol -------------
+    open(ref, "w").write(head + '\n    [variant.symbol_alias]\n'
+                         '    1 = "FB"\n    2 = "CMP"\n')
+    var = P.Document(ref, tomlite.load(ref)).variants[0]
+    check(kinds(sym_a) == [] and kinds(sym_b) == []
+          and P.compare(var, sym_b[0].pins, "L:B") == P.compare(var, sym_b[0].pins),
+          "alias blocks: a file without symbols checks as before",
+          str(kinds(sym_b)))
+
+    # -- a block for A: passes on A, its own item on B ------------------------
+    open(ref, "w").write(head + '\n    [[variant.alias_for]]\n'
+                         '    symbols = ["L:A"]\n\n    [variant.alias_for.pins]\n'
+                         '    1 = "FB"\n    2 = "CMP"\n')
+    check(kinds(sym_a) == [], "alias blocks: a block for A passes on A",
+          str(kinds(sym_a)))
+    _l, its = TD.collect(sym_b, att)
+    check([i.kind for i in its] == ["alias_other_symbol"]
+          and "L:A" in its[0].detail and "L:B" in its[0].detail
+          and {f["pin"] for f in its[0].findings} == {"1", "2"},
+          "alias blocks: a block for A on B is its own item, naming both",
+          str([(i.kind, i.detail) for i in its]))
+    bare = os.path.join(top, "bare.toml")
+    open(bare, "w").write(head + '\n    [[variant.alias_for]]\n'
+                          '    symbols = ["A"]\n\n    [variant.alias_for.pins]\n'
+                          '    1 = "FB"\n    2 = "CMP"\n')
+    bv = P.Document(bare, tomlite.load(bare)).variants[0]
+    check(not P.compare(bv, sym_a[0].pins, "L:A")
+          and P.compare(bv, sym_a[0].pins, "Other:B"),
+          "alias blocks: a bare symbol name matches it in any library")
+
+    # -- wizard, "same": B is added to A's block ------------------------------
+    def wizard(comps, answers, ui=None):
+        lines, items = TD.collect(comps, att)
+        feed, said, asked = iter(answers), [], []
+        w = WZ.Wizard(att, top, lines, items, auto_open=False, by="T", ui=ui,
+                      ask=lambda p: (asked.append(p), next(feed))[1],
+                      say=said.append)
+        w.do_alias_other_symbol(items[0], lines[0])
+        return said, asked
+    WZ._find_pdf = lambda *a: ""
+    said, asked = wizard(sym_b, [""])
+    var = P.Document(ref, tomlite.load(ref)).variants[0]
+    check(any("name these pins the same" in x for x in said)
+          and any("(y)" in x for x in asked)
+          and [b.symbols for b in var.alias_for] == [["L:A", "L:B"]]
+          and kinds(sym_b) == [],
+          "alias blocks: wizard, same pinout: B added to A's block, the "
+          "default", "\n".join(said) + open(ref).read())
+
+    # -- wizard, differing: a second block for B ------------------------------
+    open(ref, "w").write(head + '\n    [[variant.alias_for]]\n'
+                         '    symbols = ["L:A"]\n\n    [variant.alias_for.pins]\n'
+                         '    1 = "FB"\n    2 = "CMP"\n')
+    sym_c = _alias_netlist(os.path.join(top, "c.xml"), "C",
+                           {"1": "FBX", "2": "CMP", "3": "AGND"})
+    said, asked = wizard(sym_c, ["", "FBX", ""])   # Enter = "differs", A's CMP
+    var = P.Document(ref, tomlite.load(ref)).variants[0]
+    check(any("(n)" in x for x in asked) and any("(FB)" in x for x in asked)
+          and [(b.symbols, b.pins) for b in var.alias_for]
+          == [(["L:A"], {"1": "FB", "2": "CMP"}),
+              (["L:C"], {"1": "FBX", "2": "CMP"})]
+          and kinds(sym_c) == [] and kinds(sym_a) == [],
+          "alias blocks: wizard, differing pinout: a second block for C, "
+          "A's names offered", "\n".join(asked) + open(ref).read())
+
+    # -- the wizard writes the symbol into an alias it accepts ----------------
+    sym_d = _alias_netlist(os.path.join(top, "d.xml"), "D",
+                           {"1": "FB", "2": "COMP", "3": "AGND"})
+    R.add_alias_block(ref, "M", "L:D")   # D looked at, nothing accepted yet
+    lines, items = TD.collect(sym_d, att)
+    check([i.kind for i in items] == ["pin_difference"],
+          "alias blocks: with its own block, the rest is a plain difference",
+          str(items))
+    w = WZ.Wizard(att, top, lines, items, auto_open=False, by="T",
+                  ask=lambda p: "a", say=lambda t: None)
+    w.do_pin_difference(items[0], lines[0])
+    var = P.Document(ref, tomlite.load(ref)).variants[0]
+    check(var.alias_for[-1].symbols == ["L:D"]
+          and var.alias_for[-1].pins == {"1": "FB"} and not var.alias,
+          "alias blocks: an alias the wizard accepts names the symbol",
+          open(ref).read())
+
+    # -- the web page: the same question, the choices as buttons --------------
+    open(ref, "w").write(head + '\n    [[variant.alias_for]]\n'
+                         '    symbols = ["L:A"]\n\n    [variant.alias_for.pins]\n'
+                         '    1 = "FB"\n    2 = "CMP"\n')
+    ui = webui.WebUI(echo=lambda t: None)
+    t = threading.Thread(target=wizard, args=(sym_b, [], ui), daemon=True)
+    t.start()
+    s = ui.state()
+    while not s["question"]:
+        s = ui.state(s["version"], timeout=5)
+    q = s["question"]
+    ui.submit(q["id"], "y")
+    t.join(10)
+    check([b[0] for b in q["buttons"]] == ["y", "n"] and q["default"] == "y"
+          and "same: add L:B to the block" in dict(q["buttons"]).values()
+          and not q["text"] and not t.is_alive()
+          and P.Document(ref, tomlite.load(ref)).variants[0].alias_for[0].symbols
+          == ["L:A", "L:B"],
+          "alias blocks: web page asks it with buttons, and the answer lands",
+          str(q))
+    check(any(v == "-" for v, _l in WZ.Wizard(att, top, [], []).buttons_for(
+              [], {}, [("-", "no alias")])[1]),
+          "alias blocks: no alias is a button where a name is typed")
+
+
 def main():
     for fn in (test_defect_is_caught, test_polarity_is_not_lost,
                test_provenance_rejects_known_bad_pdfs, test_whole_token_matching,
@@ -2952,7 +3099,8 @@ def main():
                test_half_typed_pin_stub_on_polar_part,
                test_wizard_closes_its_viewers,
                test_web_front_end_asks_the_same_questions,
-               test_interface_tables):
+               test_interface_tables,
+               test_alias_blocks_name_their_symbols):
         if "-v" in sys.argv:
             print(f"{fn.__name__}:")
         try:

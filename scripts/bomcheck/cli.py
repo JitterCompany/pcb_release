@@ -204,6 +204,7 @@ def cmd_status(a):
     section("polarity", "Polarity: datasheet, symbol and footprint disagree")
     section("footprint_mark", "Confirm which pad a footprint's polarity mark is at")
     section("datasheet_missing", "No datasheet in the schematic")
+    section("alias_other_symbol", "Names accepted for another symbol of this part")
     section("connections", "Inside the part: datasheet and symbol disagree")
     section("connections_unread", "Compare the symbol's drawing with the datasheet")
     section("connections_unfilled", "Say which pins are connected inside the part "
@@ -394,7 +395,7 @@ def cmd_report(a):
                     L.append(f"**ERROR** `reference_not_this_package` — {why}")
                     n_err += 1
                 else:
-                    findings = P.compare(var, c.pins)
+                    findings = P.compare(var, c.pins, c.libsource)
                     # A DISAGREEMENT is a pin both sides describe differently.
                     # A pin the table simply does not cover is a gap in the
                     # EVIDENCE -- the STM32 table reads 96 of 100 pins -- and
@@ -402,7 +403,7 @@ def cmd_report(a):
                     # for a part whose every read pin agrees.
                     bad = [f for f in findings
                            if f["code"] in ("pin_name_mismatch", "pin_polarity",
-                                            "pin_unnamed")]
+                                            "pin_unnamed", TD.OTHER_SYMBOL)]
                     gaps = [f for f in findings
                             if f["code"] in ("pin_extra", "pin_missing",
                                              "reference_incomplete")]
@@ -479,8 +480,8 @@ def interface_report(L, c, var, interfaces):
         return 1, 0
     errors, warnings = 0, 0
     broken, why = P.structurally_disagrees(iv, c.pins)
-    found = [] if broken else P.compare(iv, c.pins)
-    bad = [f for f in found if f["code"] in TD.DISAGREE]
+    found = [] if broken else P.compare(iv, c.pins, c.libsource)
+    bad = [f for f in found if f["code"] in TD.DISAGREE + (TD.OTHER_SYMBOL,)]
     gaps = [f for f in found if f["code"] in TD.GAPS + ("reference_unfilled",)]
     if broken:
         L.append(f"**ERROR** `interface_not_this_symbol` — {why}")
@@ -855,7 +856,7 @@ def cmd_prepare(a):
                 doc = P.Document(path, tomlite.load(path))
                 if doc.reviewed_by or doc.origin == "manual":
                     continue
-                kept_alias[ln.mpn] = dict(var.alias)
+                kept_alias[ln.mpn] = (dict(var.alias), var.alias_for)
                 old_paths[ln.mpn] = path
                 ln.table = ln.draft = None
             print(f"[bomcheck] --refresh: {len(kept_alias)} unsigned machine-read "
@@ -911,9 +912,18 @@ def cmd_prepare(a):
                     outcome = "draft"
                     new = P.Document(res["path"], tomlite.load(res["path"]))
                     have = {n: nm for v in new.variants for n, nm in v.pins.items()}
-                    for pin, name in kept_alias.get(ln.mpn, {}).items():
+                    alias, blocks = kept_alias.get(ln.mpn, ({}, []))
+                    for pin, name in alias.items():
                         if pin in have:
                             DC.add_alias(res["path"], ln.mpn, pin, name, have[pin])
+                    for b in blocks:
+                        kept = [(p, n) for p, n in b.pins.items() if p in have]
+                        for pin, name in kept:
+                            DC.add_alias(res["path"], ln.mpn, pin, name,
+                                         have[pin], b.symbols[0])
+                        for k in range(1, len(b.symbols) if kept else 0):
+                            R.add_block_symbol(res["path"], ln.mpn,
+                                               b.symbols[:k], b.symbols[k])
                 elif res:
                     os.remove(res["path"])
             rec["outcome"] = outcome
@@ -1058,7 +1068,7 @@ def cmd_review(a):
             for mpn in var.mpns:
                 for c in by_mpn.get(mpn, [])[:1]:
                     checked += 1
-                    for f in P.compare(var, c.pins):
+                    for f in P.compare(var, c.pins, c.libsource):
                         code = f["code"]
                         if code == "pin_name_convention":
                             # A recognised naming convention, not a difference.
@@ -1070,7 +1080,8 @@ def cmd_review(a):
                                 f["datasheet"], "convention (auto)", f["msg"],
                                 accept="auto"))
                             continue
-                        if code not in ("pin_name_mismatch", "pin_polarity"):
+                        if code not in ("pin_name_mismatch", "pin_polarity",
+                                        TD.OTHER_SYMBOL):
                             continue
                         rename, why = _looks_like_rename(f["symbol"],
                                                          f["datasheet"])
@@ -1290,9 +1301,11 @@ def cmd_promote(a):
                     # reference_unfilled and reference_incomplete belong here
                     # too: a stub nobody has typed in, or a table covering half
                     # the part, is not something to promote into evidence.
-                    unresolved += [x["msg"] for x in P.compare(v, c.pins)
+                    unresolved += [x["msg"] for x in P.compare(v, c.pins,
+                                                               c.libsource)
                                    if x["code"] in ("pin_name_mismatch",
                                                     "pin_polarity",
+                                                    TD.OTHER_SYMBOL,
                                                     "reference_unfilled",
                                                     "reference_incomplete")]
         if not doc.reviewed_by:
@@ -1385,9 +1398,10 @@ def cmd_apply(a):
     refs = _load_refs(att)
     with tempfile.TemporaryDirectory(prefix="bomcheck_") as tmp:
         comps, _ = N.parse(a.netlist or export_netlist(sch, tmp))
-    mpn_of = {}
+    mpn_of, symbol_of = {}, {}
     for c in comps:
         m, _ = c.mpn_effective
+        symbol_of[c.ref] = c.libsource
         if m:
             mpn_of[c.ref] = m
 
@@ -1403,7 +1417,8 @@ def cmd_apply(a):
             for var in doc.variants:
                 if mpn in var.mpns and str(p.pin) in var.pins and not done:
                     if not a.dry_run:
-                        DC.add_alias(f, mpn, p.pin, p.symbol, p.datasheet)
+                        DC.add_alias(f, mpn, p.pin, p.symbol, p.datasheet,
+                                     symbol_of.get(p.ref, ""))
                     n_alias += 1
                     done = True
                     print(f"[bomcheck]   {'would record' if a.dry_run else 'recorded'}"

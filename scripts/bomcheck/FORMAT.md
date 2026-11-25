@@ -61,7 +61,10 @@ reviewed_on  = "2026-09-30"
     6 = "EN"
     7 = "NC"
 
-    [variant.symbol_alias]         # optional: pin = the symbol's name, accepted
+    [[variant.alias_for]]          # optional: aliases for these symbols only
+    symbols      = ["Jitter_IC:TMUX1309A"]
+
+    [variant.alias_for.pins]       # pin = the symbol's name, accepted
     6 = "~{EN}"   # datasheet: EN
 ```
 
@@ -71,9 +74,47 @@ Rules the checker applies:
   `reviewed_by` is an error. Sign by adding the two lines, or through the wizard.
 - **Names are the datasheet's**, never copied from the symbol. A copy of the
   symbol would agree with the thing it is there to check.
-- **`symbol_alias` is per pin and per exact name.** `1 = "S"` accepts the
+- **An alias is per pin and per exact name.** `1 = "S"` accepts the
   symbol calling pin 1 `S`. If the symbol later puts `G` on pin 1, or `S` on a
   different pin, that is reported again.
+- **An alias is per symbol.** It names a symbol's pin, so it is only known
+  to be right for the symbol it was accepted on. See below.
+
+### Aliases and symbols
+
+The table is keyed to the part, but an alias is about a symbol too. So an
+alias block lists the symbols it was accepted for:
+
+```toml
+    [[variant.alias_for]]
+    symbols      = ["Jitter_Connectors:SL23_Header_2x25"]   # or a bare symbol name
+
+    [variant.alias_for.pins]
+    1 = "IO_1"   # datasheet: 1
+    2 = "GND"    # datasheet: 2
+
+    [[variant.alias_for]]          # another symbol, other names
+    symbols      = ["Jitter_Connectors:Other_Header_2x25"]
+
+    [variant.alias_for.pins]
+    1 = "SDA"    # datasheet: 1
+```
+
+- `symbols` uses the same matching as an interface table: `Lib:Name`, or
+  `Name` for that symbol in any library.
+- One block per set of names. Symbols with the same names share a block.
+- A block applies only to the symbols it lists. On another symbol of the
+  same part, the pins its aliases would settle are reported as
+  `alias_other_symbol`, naming both symbols, not as plain differences. The
+  wizard then asks whether the other symbol has the same pinout: if yes, it
+  is added to the block; if not, you confirm or type each name for it, and
+  it gets its own block.
+- Once a symbol has a block of its own, even an empty one, the blocks of
+  other symbols are not looked at for it. Its remaining differences are
+  plain `pin_difference` items.
+- An older file has `[variant.symbol_alias]` (pin = name, no `symbols`). It
+  applies to every symbol, as before. The wizard writes new aliases into
+  blocks with the symbol.
 - **`pin_count` above the number of listed pins** marks the table as partial.
   The listed pins are still compared, and the line stays open until the rest
   are typed in.
@@ -124,12 +165,14 @@ reviewed_on  = "2026-11-24"
     1 = "IO_1"
     2 = "GND"
 
-    [variant.symbol_alias]         # optional, as in a datasheet table
+    [[variant.alias_for]]          # optional, as in a datasheet table
 ```
 
-- **The symbol names its interface** in the field `Interface` (here
-  `Interface = SL23`), in the symbol library. bomcheck reads it from the
-  placed symbol, else from the library symbol.
+- **The symbol names its interface** in the field `Pinout_Spec` (here
+  `Pinout_Spec = SL23`), in the symbol library. bomcheck reads it from the
+  placed symbol, else from the library symbol. The field is not called
+  `Interface`: the component library uses that name for a sensor's bus
+  (`Interface = I2C`).
 - **Keyed to symbols, not MPNs.** `symbols` lists the symbols with this
   pinout: `Lib:Name`, or `Name` for that symbol in any library. A connector
   with another pinout for the same interface (the FFC) gets its own file.
@@ -147,8 +190,8 @@ What `bomcheck` reports for a symbol:
 
 | case | item |
 |---|---|
-| numbers-only part table, symbol names its pins, no `Interface` field | `interface_unset` |
-| `Interface` field, no signed table for this symbol | `interface_unfilled` |
+| numbers-only part table, symbol names its pins, no `Pinout_Spec` field | `interface_unset` |
+| `Pinout_Spec` field, no signed table for this symbol | `interface_unfilled` |
 | names differ from the spec | `interface_difference` |
 | table misses pins of the symbol | `interface_partial` |
 | table not signed | `interface_unsigned` |
@@ -251,8 +294,8 @@ the schematic yet, so give it a copy the same way.
 
 ## Hand-editing
 
-Anything the wizard does can be done in an editor: fill a stub, add a
-`symbol_alias` line, sign. Move a finished draft to `reference/datasheet/`
+Anything the wizard does can be done in an editor: fill a stub, add an
+alias line, sign. Move a finished draft to `reference/datasheet/`
 (drop the `DRAFT-`/`STUB-` prefix), or run `bomcheck promote`, which refuses
 unsigned or unfinished tables. A finished interface draft moves from
 `reference/draft/interface/` to `reference/interface/` by hand: `promote`

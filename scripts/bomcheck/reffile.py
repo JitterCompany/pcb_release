@@ -10,6 +10,7 @@ import re
 import shutil
 
 import atomic
+import pintable as P
 import polarity as PO
 import tomlite
 
@@ -118,6 +119,101 @@ def add_pins(path, names):
     new = "".join(f"\n    {num} = {tomlite.quote(name)}   # typed by hand"
                   for num, name in names.items())
     _write(path, text[:at] + new + text[at:])
+
+
+# ---- alias blocks ------------------------------------------------------------
+# [[variant.alias_for]] blocks: aliases accepted for the symbols they list.
+_VARIANT = re.compile(r"^[ \t]*\[\[variant\]\][ \t]*(#.*)?$", re.M)
+_BLOCK = re.compile(r"^[ \t]*\[\[variant\.alias_for\]\][ \t]*(#.*)?$", re.M)
+_PINS = re.compile(r"^[ \t]*\[variant\.alias_for\.pins\][ \t]*(#.*)?$", re.M)
+_HEADER = re.compile(r"^[ \t]*\[\[?[A-Za-z_]", re.M)
+_SYMBOLS = re.compile(r"^[ \t]*symbols\s*=\s*\[[^\]]*\][^\n]*$", re.M)
+
+
+def _variant_span(text, mpn):
+    """-> (start, end) of the [[variant]] section for this MPN. An
+    interface table has no MPNs: its first variant."""
+    heads = [m.start() for m in _VARIANT.finditer(text)]
+    if not heads:
+        raise ValueError("no [[variant]] in the table")
+    vs = tomlite.loads(text).get("variant") or []
+    k = next((i for i, v in enumerate(vs) if mpn in (v.get("mpns") or [])), 0)
+    return heads[k], heads[k + 1] if k + 1 < len(heads) else len(text)
+
+
+def _alias_blocks(text, start, end):
+    """-> [(start, end, symbols)] of the alias blocks in one variant. A
+    block runs to the next header that is not its own pins table."""
+    out = []
+    for m in _BLOCK.finditer(text, start, end):
+        stop, pos = end, m.end()
+        for h in _HEADER.finditer(text, pos, end):
+            if not _PINS.match(text, h.start()):
+                stop = h.start()
+                break
+        sym = _SYMBOLS.search(text, m.end(), stop)
+        syms = tomlite.loads(sym.group(0).strip())["symbols"] if sym else []
+        out.append((m.start(), stop, [str(x) for x in syms]))
+    return out
+
+
+def _symbols_line(symbols):
+    return "    symbols = [" + ", ".join(tomlite.quote(s) for s in symbols) + "]"
+
+
+def _block_for(text, mpn, symbol):
+    start, end = _variant_span(text, mpn)
+    return end, next((b for b in _alias_blocks(text, start, end)
+                      if P.symbol_matches(b[2], symbol)), None)
+
+
+def add_alias_block(path, mpn, symbol):
+    """An alias block for `symbol`, empty, at the end of the variant. Does
+    nothing when there is one."""
+    text = _read(path)
+    end, block = _block_for(text, mpn, symbol)
+    if block is not None:
+        return
+    new = ("\n\n    [[variant.alias_for]]   # accepted for these symbols only\n"
+           + _symbols_line([symbol]) + "\n\n    [variant.alias_for.pins]\n")
+    tail = text[end:]
+    _write(path, text[:end].rstrip("\n") + new + ("\n" + tail if tail.strip() else ""))
+
+
+def add_alias_entry(path, mpn, symbol, entry, key):
+    """Put one alias line into the block for `symbol`, made if needed.
+    `entry` is the whole line."""
+    add_alias_block(path, mpn, symbol)
+    text = _read(path)
+    _end, block = _block_for(text, mpn, symbol)
+    b0, b1, _syms = block
+    region = text[b0:b1]
+    rx = re.compile(rf"^[ \t]*{re.escape(key)}\s*=.*$", re.M)
+    m = _PINS.search(region)
+    if m is None:
+        region = region.rstrip("\n") + "\n\n    [variant.alias_for.pins]\n"
+        m = _PINS.search(region)
+    body = region[m.end():]
+    if rx.search(body):
+        body = rx.sub(lambda _m: entry, body, count=1)
+    else:
+        body = body.rstrip("\n") + "\n" + entry + "\n"
+    region = region[:m.end()] + body
+    tail = text[b1:]
+    _write(path, text[:b0] + region + ("\n" + tail if tail.strip() else ""))
+
+
+def add_block_symbol(path, mpn, symbols, symbol):
+    """Add `symbol` to the alias block that lists exactly `symbols`."""
+    text = _read(path)
+    start, end = _variant_span(text, mpn)
+    for b0, b1, syms in _alias_blocks(text, start, end):
+        if syms == list(symbols):
+            m = _SYMBOLS.search(text, b0, b1)
+            line = _symbols_line(syms + [symbol])
+            _write(path, text[:m.start()] + line + text[m.end():])
+            return
+    raise ValueError(f"{path}: no alias block for {', '.join(symbols)}")
 
 
 def promote(path, live_dir):

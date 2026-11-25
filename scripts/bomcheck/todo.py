@@ -38,6 +38,7 @@ KINDS = [
     ("stub_unfilled", "Type the pin names from the package drawing"),
     ("polarity_unfilled", "Say what the marking on the part means"),
     ("draft_review", "Check the pins read from the datasheet"),
+    ("alias_other_symbol", "Names accepted for another symbol of this part"),
     ("pin_difference", "Pin names that differ from the datasheet"),
     ("polarity", "Polarity: datasheet, symbol and footprint disagree"),
     ("footprint_mark", "Confirm which pad a footprint's polarity mark is at"),
@@ -58,6 +59,9 @@ AUTOMATIC = {"not_prepared"}
 DISAGREE = ("pin_name_mismatch", "pin_polarity", "pin_unnamed",
             "pin_name_role_unknown", "pin_unit_mismatch")
 GAPS = ("pin_missing", "pin_extra", "reference_incomplete")
+# A difference an alias would settle, but the alias was accepted for another
+# symbol. The wizard asks whether this symbol has that symbol's pinout.
+OTHER_SYMBOL = "pin_alias_other_symbol"
 
 
 class Item:
@@ -137,8 +141,9 @@ def signed_docs(att, project=None):
 # ---- interface tables ----------------------------------------------------
 # A connector that implements an interface (SL23) has two references: the
 # part's datasheet, which only numbers the contacts, and the interface spec,
-# which names them. The symbol says which interface with this field.
-FIELD = "Interface"
+# which names them. The symbol says which interface with this field. Not
+# "Interface": the component library already uses that for a sensor's bus.
+FIELD = "Pinout_Spec"
 INTERFACE_DRAFTS = os.path.join("draft", "interface")
 
 # Pin names that carry no function: a connector's Pin_1, a choke's "1".
@@ -151,7 +156,7 @@ def numbered_only(pins):
 
 
 def interface_of(comp):
-    """The symbol's Interface field: on the placed symbol, else on the
+    """The symbol's Pinout_Spec field: on the placed symbol, else on the
     library symbol the netlist carries. "" when there is none."""
     value = comp.field(FIELD)
     lp = getattr(comp, "libpart", None)
@@ -164,8 +169,7 @@ def interface_of(comp):
 def covers_symbol(var, lib_id):
     """An interface variant lists the symbols it is for: `Lib:Name`, or a
     bare `Name` for that symbol in any library."""
-    name = lib_id.partition(":")[2]
-    return any(s == lib_id or (":" not in s and s == name) for s in var.symbols)
+    return P.symbol_matches(var.symbols, lib_id)
 
 
 def interface_docs(att, project=None):
@@ -236,8 +240,10 @@ def interface_items(ln, docs, drafts):
         return [Item("interface_unfilled", ln.mpn, ln.refs, dpath or "", detail)]
     out = []
     broken, why = P.structurally_disagrees(var, c.pins)
-    found = P.compare(var, c.pins)
+    found = P.compare(var, c.pins, c.libsource)
     bad = [f for f in found if f["code"] in DISAGREE]
+    if not broken:
+        out += other_symbol_items(ln, path, found)
     if broken:
         out.append(Item("interface_difference", ln.mpn, ln.refs, path,
                         f"{name}: {why}", code="interface_structure"))
@@ -293,7 +299,7 @@ def pending_fields(review_dir, parts):
 def pending_pins(review_dir, promoted):
     """Accepted pin rows whose alias is not in any table yet."""
     aliases = {(m, pin, name) for _f, d in promoted for v in d.variants
-               for m in v.mpns for pin, name in v.alias.items()}
+               for m in v.mpns for pin, name in v.all_aliases()}
     out = []
     for p in DC.parse_pins(os.path.join(review_dir, "decisions-pins.csv")):
         if p.accepted and not p.auto and \
@@ -440,7 +446,7 @@ def _table_items(ln, promoted):
     if ln.table is None and ln.draft is None:
         return [Item("not_prepared", ln.mpn, ln.refs)]
     if ln.table is None:
-        found = P.compare(ln.draft, c.pins)
+        found = P.compare(ln.draft, c.pins, c.libsource)
         if any(f["code"] == "reference_unfilled" for f in found):
             kind = "polarity_unfilled" if ln.draft.polarity else "stub_unfilled"
             return [Item(kind, ln.mpn, ln.refs, ln.draft_path,
@@ -455,8 +461,10 @@ def _table_items(ln, promoted):
 
     out = []
     broken, why = P.structurally_disagrees(ln.table, c.pins)
-    found = P.compare(ln.table, c.pins)
+    found = P.compare(ln.table, c.pins, c.libsource)
     bad = [f for f in found if f["code"] in DISAGREE]
+    if not broken:
+        out += other_symbol_items(ln, ln.table_path, found)
     if broken:
         out.append(Item("pin_difference", ln.mpn, ln.refs, ln.table_path,
                         detail=why, code="table_structure"))
@@ -472,6 +480,18 @@ def _table_items(ln, promoted):
     if not doc.reviewed_by:
         out.append(Item("unsigned", ln.mpn, ln.refs, ln.table_path))
     return out
+
+
+def other_symbol_items(ln, path, found):
+    """Pins whose alias was accepted for another symbol: one item, naming
+    both symbols, instead of a plain difference per pin."""
+    other = [f for f in found if f["code"] == OTHER_SYMBOL]
+    if not other:
+        return []
+    syms = sorted({s for f in other for s in f["alias_for"]})
+    return [Item("alias_other_symbol", ln.mpn, ln.refs, path,
+                 f"{len(other)} pin name(s) accepted for {', '.join(syms)}, "
+                 f"not for {ln.comp.libsource}", other)]
 
 
 def asks_connections(var, pins):
@@ -608,8 +628,9 @@ def table_rows(lines, att):
             named = {p.num for p in pins} if var.marked else set()
         r.listed = len(named & {p.num for p in pins})
         r.missing = r.pins - r.listed
-        found = P.compare(var, pins)
-        bad = {f["pin"] for f in found if f["code"] in DISAGREE}
+        found = P.compare(var, pins, ln.comp.libsource)
+        bad = {f["pin"] for f in found
+               if f["code"] in DISAGREE + (OTHER_SYMBOL,)}
         r.differ = len(bad)
         r.signed = bool(P.Document(path, tomlite.load(path)).reviewed_by)
         half = PO.classify(ln.comp) and half_typed_pin_stub(ln)

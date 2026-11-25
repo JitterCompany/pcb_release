@@ -280,16 +280,22 @@ def write_howto(path):
     atomic.write_text(path, HOWTO)
 
 
-def add_alias(ref_path, mpn, pin, sym_name, ds_name):
+def add_alias(ref_path, mpn, pin, sym_name, ds_name, symbol=""):
     """Accept the symbol's name for one pin, in the reference file.
 
     Appended as text rather than by re-rendering the file, so a reviewed pin
     table is never rewritten by a machine as a side effect of accepting a name.
+    With `symbol` (`Lib:Name`) it goes into that symbol's alias block, since
+    the name is only known to be right for that symbol.
     """
     text = open(ref_path, encoding="utf-8").read()
     key = pin if re.fullmatch(r"[A-Za-z0-9_-]+", pin) else '"' + pin + '"'
     value = '"' + sym_name.replace("\\", "\\\\").replace('"', '\\"') + '"'
     entry = f"    {key} = {value}   # datasheet: {ds_name}"
+    if symbol:
+        import reffile
+        reffile.add_alias_entry(ref_path, mpn, symbol, entry, key)
+        return True
     head = "[variant.symbol_alias]"
     rx = re.compile(rf"^\s*{re.escape(key)}\s*=.*$", re.M)
     if head in text:

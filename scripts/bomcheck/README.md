@@ -46,10 +46,11 @@ to happen to it:
 | give a datasheet URL | you | wizard, or `datasheet_set` in `review/decisions-fields.csv`, then `apply` |
 | type the pin names | you | wizard, or fill the stub in `reference/draft/` |
 | check a machine-read table | you | wizard shows it beside the symbol; you confirm or correct it against the PDF |
+| names accepted for another symbol | you | the table's aliases were accepted for another symbol of this part: same pinout (add this symbol to the block), or confirm or type each name for this symbol |
 | pin names that differ | you | per pin: same pin (alias), table wrong (retype), symbol wrong (fix now, or waive as a known issue of this revision) |
 | table misses pins | you | type the missing ones |
 | sign a table | you | only a signed table counts |
-| names nothing checks | you | the datasheet only numbers the pins and the symbol names them: give the symbol an `Interface` field |
+| names nothing checks | you | the datasheet only numbers the pins and the symbol names them: give the symbol a `Pinout_Spec` field |
 | type an interface table | you | wizard shows the interface spec; you type or confirm each pin's name from it, and sign |
 | names that differ from the spec | you | per pin, as for a datasheet |
 
@@ -97,13 +98,14 @@ Two signed tables then check the symbol:
   the footprint. It does not take over the symbol's names.
 - the interface table (per symbol): pin number = signal name, from the
   interface spec. The symbol names its interface in the field
-  `Interface = SL23`. The table lives in the component library, so every
-  board with that symbol reuses it.
+  `Pinout_Spec = SL23`. The field is not called `Interface`: the component
+  library uses that for a sensor's bus. The table lives in the component
+  library, so every board with that symbol reuses it.
 
 The wizard shows the spec (a URL or a file; markdown is fine) and asks each
 pin's name. A pin table in a markdown spec is read as a hint: it is offered
 as the answer, and you still check every name in the spec. The symbol's
-names are never shown while you type. Without an `Interface` field, the
+names are never shown while you type. Without a `Pinout_Spec` field, the
 names stay open in `bomcheck`. See FORMAT.md.
 
 **Waivers**: a design finding you will not fix now is waived in the wizard,

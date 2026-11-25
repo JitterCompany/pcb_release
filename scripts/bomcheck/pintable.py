@@ -41,7 +41,8 @@ class Variant:
                  "pins", "alias", "source", "confidence", "ordering_check",
                  "active_low", "pin_count", "polarity_known", "bus_role",
                  "numbered", "polarity", "marked", "joined", "dots",
-                 "pad_layout", "symbol_checked", "mark", "symbols")
+                 "pad_layout", "symbol_checked", "mark", "symbols",
+                 "alias_for")
 
     def __init__(self, doc, d):
         self.doc = doc
@@ -91,6 +92,18 @@ class Variant:
                              f"numbers as keys, e.g. 22 = \"FB\"")
         self.alias = {str(k).strip(): str(v).strip()
                       for k, v in (d.get("symbol_alias") or {}).items()}
+        # An alias names a symbol's pin, so it is only known to be right for
+        # the symbol it was accepted on. Blocks that say which symbols they
+        # are for apply to those only; [variant.symbol_alias] applies to all.
+        self.alias_for = []
+        for b in d.get("alias_for") or []:
+            syms = [str(x).strip() for x in b.get("symbols") or []]
+            if not syms:
+                raise ValueError(f"{doc}: an [[variant.alias_for]] block "
+                                 f"needs symbols = [\"Lib:Name\"]")
+            self.alias_for.append(AliasBlock(syms, {
+                str(k).strip(): str(v).strip()
+                for k, v in (b.get("pins") or {}).items()}))
         # Pins the datasheet marks active-low in PROSE while printing a plain
         # name in the NAME column. TI's TMUX1309A prints "EN" in Table 5-2 and
         # "Active low logic input" in the description beside it; KiCad encodes
@@ -126,6 +139,27 @@ class Variant:
         role = str(d.get("bus_role", "")).strip().lower()
         self.bus_role = _ROLES.get(role, role)
 
+    def aliases(self, symbol):
+        """-> {pin: name} that apply to this symbol (`Lib:Name`)."""
+        out = dict(self.alias)
+        for b in self.alias_for:
+            if symbol and symbol_matches(b.symbols, symbol):
+                out.update(b.pins)
+        return out
+
+    def other_blocks(self, symbol):
+        """Alias blocks for other symbols, when none is for this one. Their
+        names were never accepted for this symbol."""
+        if any(symbol and symbol_matches(b.symbols, symbol)
+               for b in self.alias_for):
+            return []
+        return list(self.alias_for)
+
+    def all_aliases(self):
+        """-> [(pin, name)] of every alias, for whichever symbol."""
+        return list(self.alias.items()) + [
+            kv for b in self.alias_for for kv in b.pins.items()]
+
     def covers(self, mpn, decoders=None):
         """Does this variant claim the given MPN?
 
@@ -148,6 +182,22 @@ class Variant:
                 raise ValueError(f"{self.doc}: unknown decoder {self.mpn_match!r}")
             return bool(dec.matches(mpn))
         return False
+
+
+class AliasBlock:
+    """Aliases accepted for the symbols listed."""
+
+    __slots__ = ("symbols", "pins")
+
+    def __init__(self, symbols, pins):
+        self.symbols, self.pins = symbols, pins
+
+
+def symbol_matches(entries, lib_id):
+    """`Lib:Name` matches itself; a bare `Name` matches that symbol in any
+    library."""
+    name = lib_id.partition(":")[2]
+    return any(s == lib_id or (":" not in s and s == name) for s in entries)
 
 
 class Document:
@@ -484,12 +534,33 @@ def structurally_disagrees(variant, pins):
     return False, ""
 
 
-def compare(variant, pins):
+# Findings an alias for this symbol could have settled.
+_ALIASABLE = ("pin_name_mismatch", "pin_polarity", "pin_unnamed",
+              "pin_name_role_unknown")
+
+
+def compare(variant, pins, symbol=""):
     """Reference table vs a symbol's pin list -> list of finding dicts.
 
     Findings carry the pin number and both names so a report can be read without
-    opening the datasheet.
+    opening the datasheet. `symbol` is the placed symbol (`Lib:Name`): alias
+    blocks for other symbols do not apply to it.
     """
+    out = _compare(variant, pins, variant.aliases(symbol))
+    others = variant.other_blocks(symbol)
+    for f in out:
+        block = next((b for b in others if f["pin"] in b.pins), None)
+        if f["code"] in _ALIASABLE and block is not None:
+            f["code"] = "pin_alias_other_symbol"
+            f["alias"], f["alias_for"] = block.pins[f["pin"]], block.symbols
+            f["msg"] = (f"pin {f['pin']}: datasheet says {f['datasheet']!r}, "
+                        f"symbol {symbol or '?'} says {f['symbol']!r}; the "
+                        f"alias {f['alias']!r} was accepted for "
+                        f"{', '.join(block.symbols)} only")
+    return out
+
+
+def _compare(variant, pins, alias):
     out = []
     sym = {p.num: p.name for p in pins}
     if variant.polarity:
@@ -573,7 +644,7 @@ def compare(variant, pins):
                                f"{ref_name} (ISO 7816)"})
             continue
         # An alias is a reviewed decision for this pin and this exact name.
-        if num in variant.alias and variant.alias[num] == sym_name:
+        if num in alias and alias[num] == sym_name:
             continue
         effective = sym_name
         if _norm_pin_name(effective) == _norm_pin_name(ref_name):

@@ -838,6 +838,57 @@ class Wizard:
             return
         self.check_table(it.path, ln, it.findings)
 
+    def do_alias_other_symbol(self, it, ln):
+        """The table's aliases were accepted for symbol A; this board places
+        B. Either B has A's pinout (add B to A's block), or B gets its own
+        block, starting from A's names."""
+        var = _variant(it.path, ln.mpn)
+        sym = ln.comp.libsource
+        names = {p.num: p.name for p in ln.comp.pins}
+        pins = {f["pin"] for f in it.findings}
+        block = max(var.other_blocks(sym),
+                    key=lambda b: len(pins & set(b.pins)))
+        other = ", ".join(block.symbols)
+        nums = sorted((n for n in block.pins if n in names), key=P._pinsort)
+        same = all(block.pins[n] == names[n] for n in nums)
+        self.tell(f"Pin names in this table were accepted for {other}. This "
+                  f"board places {sym}, so they do not apply to it.")
+        self.say(f"    {'pin':>5}  {'datasheet':16} {other[:24]:24} {sym[:24]}")
+        for n in nums:
+            mark = "" if block.pins[n] == names[n] else "  <"
+            self.say(f"    {n:>5}  {var.pins.get(n, '-') or '-':16} "
+                     f"{block.pins[n]:24} {names[n]}{mark}")
+        if same:
+            self.tell("Both symbols name these pins the same.")
+        ans = self.ask(f"    Is the pinout of {sym} the same as of {other}",
+                       ["y", "n"], "y" if same else "n",
+                       labels={"y": f"same: add {sym} to the block",
+                               "n": "differs: go pin by pin"})
+        if ans == "y":
+            R.add_block_symbol(it.path, ln.mpn, block.symbols, sym)
+            self.say(f"    {sym} added to the block for {other}")
+            return
+        self.tell(f"For each pin, the name {sym} may use for it. Enter takes "
+                  f"the name accepted for {other}; - = no alias, the symbol "
+                  f"must use the {_word(it)}'s name.")
+        typed = {}
+        for n in nums:
+            ans = self.ask(f"    pin {n} ({_word(it)}: {var.pins.get(n) or '-'})",
+                           default=block.pins[n],
+                           extra=[("-", "no alias")])
+            typed[n] = "" if ans == "-" else ans
+        if typed == {n: block.pins[n] for n in nums}:
+            R.add_block_symbol(it.path, ln.mpn, block.symbols, sym)
+            self.say(f"    same names: {sym} added to the block for {other}")
+            return
+        # An empty block still says the other symbol's names were looked at,
+        # so what differs now is a plain pin difference.
+        R.add_alias_block(it.path, ln.mpn, sym)
+        for n, name in typed.items():
+            if name:
+                DC.add_alias(it.path, ln.mpn, n, name, var.pins.get(n, ""), sym)
+        self.say(f"    a new alias block for {sym} in {self.rel(it.path)}")
+
     def do_table_partial(self, it, ln, word="datasheet"):
         var = _variant(it.path, ln.mpn)
         gaps = sorted((p for p in ln.comp.pins
@@ -1243,7 +1294,8 @@ class Wizard:
         names the reference (datasheet or spec), `code` the waiver."""
         var = _variant(path, ln.mpn)
         if findings is None:
-            findings = [f for f in P.compare(var, ln.comp.pins)
+            findings = [f for f in P.compare(var, ln.comp.pins,
+                                             ln.comp.libsource)
                         if f["code"] in TD.DISAGREE]
         mixed = [f for f in findings if f["code"] == "pin_unit_mismatch"]
         findings = [f for f in findings if f["code"] != "pin_unit_mismatch"]
@@ -1263,7 +1315,8 @@ class Wizard:
             if self.ask("    These pins", ["a", "1"],
                         labels={"a": "all the same", "1": "one by one"}) == "a":
                 for f in findings:
-                    DC.add_alias(path, ln.mpn, f["pin"], f["symbol"], f["datasheet"])
+                    DC.add_alias(path, ln.mpn, f["pin"], f["symbol"],
+                                 f["datasheet"], ln.comp.libsource)
                 return
         for f in findings:
             self.say(f"\n    pin {f['pin']}: {word} {f['datasheet']!r}, "
@@ -1277,7 +1330,8 @@ class Wizard:
                            labels={"a": "same pin", "t": "retype name",
                                    "y": "fix symbol now", "k": "known issue"})
             if ans == "a":
-                DC.add_alias(path, ln.mpn, f["pin"], f["symbol"], f["datasheet"])
+                DC.add_alias(path, ln.mpn, f["pin"], f["symbol"],
+                             f["datasheet"], ln.comp.libsource)
             elif ans == "t":
                 R.set_pin_names(path, {f["pin"]: self.ask("      name")})
             elif ans == "k":
@@ -1440,6 +1494,12 @@ def _variant(path, mpn):
     doc = P.Document(path, tomlite.load(path))
     return next((v for v in doc.variants if mpn in v.mpns), None) or next(
         v for v in doc.variants if not v.mpns)
+
+
+def _word(it):
+    """What the table's names come from."""
+    return ("spec" if os.path.basename(os.path.dirname(it.path)) == "interface"
+            else "datasheet")
 
 
 def _connector_like(ln):
