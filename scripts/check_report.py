@@ -50,6 +50,11 @@ def fmt_loc(v):
     return f" @ {', '.join(pts)} mm" if pts else ""
 
 
+# What to do about a type that --error-type promotes.
+FIX = {"footprint_symbol_field_mismatch":
+       "Update PCB from Schematic (F8) in the PCB editor and save the board."}
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("report", help="kicad-cli JSON report file")
@@ -62,6 +67,9 @@ def main():
                          "design issues (e.g. footprint_link_issues = no fp-lib table in "
                          "a headless run). Repeatable or comma-separated; counted as "
                          "'ignored', never gate, still visible in the KiCad GUI.")
+    ap.add_argument("--error-type", action="append", default=[],
+                    help="violation 'type' key(s) that gate as errors whatever "
+                         "severity KiCad gives them. Repeatable or comma-separated.")
     args = ap.parse_args()
 
     try:
@@ -86,6 +94,12 @@ def main():
     n_excl = len(violations) - len(kept)
     ignored = [v for v in kept if v.get("type") in ignore_types]
     active = [v for v in kept if v.get("type") not in ignore_types]
+    error_types = set()
+    for t in args.error_type:
+        error_types.update(s.strip() for s in t.split(",") if s.strip())
+    # A promoted type is an error here only; the board file keeps KiCad's severity.
+    active = [dict(v, severity="error") if v.get("type") in error_types else v
+              for v in active]
     counts = Counter(v.get("severity") for v in active)
     n_err = counts.get("error", 0)
     n_warn = counts.get("warning", 0)
@@ -111,6 +125,10 @@ def main():
     # No RESULT line here on purpose: pcb-release.sh prints ONE verdict per stage,
     # in one style, so nothing else claims a pass/fail. Say WHY we are about to
     # fail, though -- the caller only knows the exit code.
+    promoted = Counter(v.get("type") for v in active if v.get("type") in error_types)
+    for t, c in sorted(promoted.items()):
+        print(f"[{args.label}] {c} x {t} counted as error(s). {FIX.get(t, '')}".rstrip())
+
     fail = n_err > 0 or (args.strict and n_warn > 0)
     if fail:
         why = "errors present" if n_err else "warnings present (--strict)"
