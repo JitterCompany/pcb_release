@@ -133,8 +133,10 @@ def signed_docs(att, project=None):
     out = list(own)
     for root in LIB.read_roots(project):
         for f, d in load_docs(os.path.join(root, "attestations"), "datasheet"):
-            if not {m for v in d.variants for m in v.mpns} & covered:
+            mpns = {m for v in d.variants for m in v.mpns}
+            if not mpns & covered:
                 out.append((f, d))
+                covered |= mpns     # two clones of one library: read it once
     return out
 
 
@@ -182,8 +184,10 @@ def interface_docs(att, project=None):
     out = list(own)
     for root in LIB.read_roots(project):
         for f, d in load_docs(os.path.join(root, "attestations"), "interface"):
-            if not {s for v in d.variants for s in v.symbols} & covered:
+            syms = {s for v in d.variants for s in v.symbols}
+            if not syms & covered:
                 out.append((f, d))
+                covered |= syms
     return out
 
 

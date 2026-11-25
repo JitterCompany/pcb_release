@@ -3038,8 +3038,39 @@ def test_alias_blocks_name_their_symbols():
           "alias blocks: no alias is a button where a name is typed")
 
 
+def test_two_clones_of_one_library():
+    """--library names the clone tables are signed into; the board also pins
+    the same library as a submodule. Each table is read once, from the
+    --library clone."""
+    import shutil
+    import tempfile
+    import library as LIB
+    import todo as TD
+    base = tempfile.mkdtemp()
+    roots = []
+    for name, by in (("work", "new"), ("pinned", "old")):
+        d = os.path.join(base, name, "attestations", "reference", "datasheet")
+        os.makedirs(d)
+        shutil.copy(os.path.join(FIX, "reference", "TMUX1309APWR.toml"), d)
+        f = os.path.join(d, "TMUX1309APWR.toml")
+        text = open(f).read()
+        open(f, "w").write(f"# {by}\n" + text)
+        roots.append(os.path.join(base, name))
+    att = os.path.join(base, "board", "attestations")
+    os.makedirs(att)
+    saved = LIB.read_roots
+    LIB.read_roots = lambda project: roots
+    try:
+        docs = TD.signed_docs(att, "board")
+    finally:
+        LIB.read_roots = saved
+    check(len(docs) == 1 and "/work/" in docs[0][0],
+          "library: a table in two clones is read once, from the first root",
+          str([f for f, _d in docs]))
+
+
 def main():
-    for fn in (test_defect_is_caught, test_polarity_is_not_lost,
+    for fn in (test_two_clones_of_one_library, test_defect_is_caught, test_polarity_is_not_lost,
                test_provenance_rejects_known_bad_pdfs, test_whole_token_matching,
                test_near_family_never_merges, test_enumeration_xor_decoder,
                test_extract_matches_hand_transcription,

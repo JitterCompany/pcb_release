@@ -71,10 +71,12 @@ def component_library(project, override=""):
 
 
 def read_roots(project):
-    """-> [root] whose signed tables a board reads, after its own."""
+    """-> [root] whose signed tables a board reads, after its own. The
+    library named by --library comes first: it is the clone tables are signed
+    into, newer than the copy the board pins as a submodule."""
     roots = libraries(project)
     extra = component_library(project)
-    return roots + ([extra] if extra and extra not in roots else [])
+    return ([extra] if extra else []) + [r for r in roots if r != extra]
 
 
 def signed_dir(root):
