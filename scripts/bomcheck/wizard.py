@@ -91,7 +91,8 @@ class Wizard:
         self.buttons = self.tui or ui is not None
 
     # ---- prompting --------------------------------------------------------
-    def ask(self, prompt, choices=None, default="", labels=None, files=False):
+    def ask(self, prompt, choices=None, default="", labels=None, files=False,
+            extra=()):
         """One answer. Commands start with a colon so no typed answer can
         collide with one (a FET has a pin called S): :o opens the datasheet,
         :s skips the line, :q quits. In a multiple-choice prompt the bare
@@ -106,11 +107,13 @@ class Wizard:
             hint += f" ({default})" if default else ""
             try:
                 if self.ui is not None:
-                    buttons, actions = self.buttons_for(choices, labels or {})
+                    buttons, actions = self.buttons_for(choices, labels or {},
+                                                        extra)
                     ans = self.ui.ask(prompt.strip(), buttons, default,
                                       not choices, actions).strip()
                 elif self.tui:
-                    ans = self.ask_tui(prompt, choices, default, labels or {})
+                    ans = self.ask_tui(prompt, choices, default, labels or {},
+                                       extra)
                 else:
                     ans = self.ask_raw(f"{prompt}{hint}: ").strip()
             except (EOFError, KeyboardInterrupt, tui.Stop):
@@ -141,11 +144,13 @@ class Wizard:
             self.say(f"  answer one of {', '.join(choices)} "
                      f"(or s to skip, q to stop)")
 
-    def buttons_for(self, choices, labels):
-        """-> [(value, label)] for the answers, and for datasheet/skip/stop."""
+    def buttons_for(self, choices, labels, extra=()):
+        """-> [(value, label)] for the answers, and for this prompt's own
+        commands (`extra`, e.g. :n) and datasheet/back/skip/stop. Every
+        command a terminal user can type is a button too."""
         words = {"y": "yes", "n": "no"}
         buttons = [(c, labels.get(c) or words.get(c, c)) for c in choices or []]
-        actions = ([(":o", "datasheet")] if self.line is not None else []) + \
+        actions = list(extra) + ([(":o", "datasheet")] if self.line is not None else []) + \
             ([(":b", "back")] if self.can_back() else []) + \
             [(":s", "skip part"), (":q", "stop")]
         return buttons, actions
@@ -153,8 +158,8 @@ class Wizard:
     def can_back(self):
         return self.part_no > 1 or (self.part_no == 1 and self.answered > 0)
 
-    def ask_tui(self, prompt, choices, default, labels):
-        buttons, actions = self.buttons_for(choices, labels)
+    def ask_tui(self, prompt, choices, default, labels, extra=()):
+        buttons, actions = self.buttons_for(choices, labels, extra)
         indent = len(prompt) - len(prompt.lstrip())
         return tui.prompt(prompt.strip(), buttons, default, text=not choices,
                           actions=actions, indent=indent).strip()
@@ -636,12 +641,14 @@ class Wizard:
                                  "C2 on a SIM holder), type those."
                                  if pictured else ""))
         var = _variant(it.path, ln.mpn)
+        pin_cmds = [("-", "not connected")] + (
+            [] if numbered_only(c.pins) else [(":n", "numbers only")])
         left = []
         for p in sorted(c.pins, key=lambda p: P._pinsort(p.num)):
             if var.pins.get(p.num):
                 continue  # typed in an earlier session
             name = self.ask(f"    pin {p.num}" + (f" (pad {p.num})" if pictured
-                                                    else ""))
+                                                    else ""), extra=pin_cmds)
             if name == ":n":
                 return self.numbers_only(it, ln)
             if not name:
@@ -940,7 +947,8 @@ class Wizard:
         left = []
         for n in blank:
             ans = self.ask(f"    pin {n}" + (f" (pad {n})" if pictured else ""),
-                           default=hints.get(n, ""))
+                           default=hints.get(n, ""),
+                           extra=[("-", "not connected")])
             if not ans:
                 left.append(n)
                 continue

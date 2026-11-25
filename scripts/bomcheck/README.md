@@ -72,6 +72,10 @@ URL, file:// too) to give a part its datasheet; one the script cannot download
 opens in the page itself. `--no-browser` only prints the address, `--port`
 picks another port.
 
+The terminal and the page are two front ends for the same actions. Every
+command a terminal user can type (`:n`, `-`, `:o`, `:b`, `:s`, `:q`) is also a
+button where it applies. A new command gets its button in the same change.
+
 For scripts and agents, pipe the answers in, one per line: the prompts are plain
 lines then, and `:s` / `:q` skip and stop. `bomcheck` (status) exits 1 while
 anything is open.

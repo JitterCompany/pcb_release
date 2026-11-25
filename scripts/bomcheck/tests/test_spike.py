@@ -2688,6 +2688,10 @@ def test_web_front_end_asks_the_same_questions():
     q, r = answer("S0B")
     check(q["prompt"] == "pin 1" and q["text"] and r["ok"],
           "web: the first question is pin 1, typed", str(q))
+    acts = [v for v, _l in q["actions"]]
+    check("-" in acts and ":n" in acts and ":s" in acts,
+          "web: a pin prompt offers not connected, numbers only and skip "
+          "as buttons, like the commands a terminal user types", str(acts))
     q, r = answer("q")                  # a pin may be called q
     q, r = answer(":q")
     t.join(10)
