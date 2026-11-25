@@ -129,6 +129,10 @@ the URL gives no PDF, or run `bomcheck add-pdf URL FILE`. The copy is filed
 under that URL, so every later lookup finds it. It lives in your cache only, so
 a colleague does the same once.
 
+Some vendor sites refuse scripted downloads whatever the headers: st.com and
+mouser.com did in 2026-08, ti.com did not. bomcheck does not try to get round
+that. Hand it the PDF the same way.
+
 Datasheets are cached in `~/.cache/bomcheck` (`BOMCHECK_CACHE` overrides).
 Failed downloads are remembered for 24 h, so a blocked vendor costs one timeout
 a day, not one per run.
