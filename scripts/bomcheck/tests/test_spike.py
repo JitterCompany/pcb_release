@@ -3104,7 +3104,9 @@ def test_signed_tables_stay_valid():
 
 
 def main():
-    for fn in (test_signed_tables_stay_valid, test_two_clones_of_one_library, test_defect_is_caught, test_polarity_is_not_lost,
+    for fn in (test_drawing_labels_give_names_not_numbering,
+               test_unfilled_stub_says_so, test_no_connect_is_agreement,
+               test_signed_tables_stay_valid, test_two_clones_of_one_library, test_defect_is_caught, test_polarity_is_not_lost,
                test_provenance_rejects_known_bad_pdfs, test_whole_token_matching,
                test_near_family_never_merges, test_enumeration_xor_decoder,
                test_extract_matches_hand_transcription,

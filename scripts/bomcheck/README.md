@@ -147,8 +147,9 @@ unless `BOMCHECK_TEST_BOARD` points at a board repo's folder that holds
 
 `bomcheck` reads a pin table from a datasheet given only the **MPN and the
 document** — never the symbol — and a separate stage compares that table to the
-KiCad symbol. On the first test board, 15 parts have a verified datasheet and an extracted
-table, and **10 agree with the symbol on every pin read**.
+KiCad symbol. Each datasheet layout the reader handles has a regression test in
+`tests/test_spike.py`, with the page text in `tests/fixtures/`; the test's
+docstring names the vendor quirk.
 
     python3 cli.py report   PROJECT_DIR              # validate against promoted references
     python3 cli.py extract  PROJECT_DIR --mpn X --pdf F   # propose a pin table
