@@ -13,6 +13,7 @@ Usage: python3 tests/test_bomcheck.py [-v]        (exit 0 pass, 1 fail)
 """
 import glob
 import os
+import shutil
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -31,14 +32,10 @@ import suggest as SG
 import tables as T
 
 FIX = os.path.join(HERE, "fixtures")
-# A few tests run against a real board's data, which is not public. Point
-# BOMCHECK_TEST_BOARD at the folder that holds attestations/ and the board
-# folder; without it those tests are skipped.
-BOARD = os.environ.get("BOMCHECK_TEST_BOARD", "")
-REF = (os.path.join(BOARD, "attestations", "reference", "datasheet") if BOARD
-       else os.path.join(HERE, "fixtures", "reference"))
-DS = (next(iter(glob.glob(os.path.join(BOARD, "*", "datasheets"))), "")
-      if BOARD else "")
+REF = os.path.join(FIX, "reference")
+# One real vendor PDF, unaltered, so the whole chain from PDF to pin table is
+# tested, pdftotext included. The .txt fixtures start after that step.
+REF_PDF = os.path.join(FIX, "pdf", "tmux1309a.pdf")
 
 FAILS = []
 
@@ -202,32 +199,35 @@ def test_no_connect_is_agreement():
           str(got))
 
 
-def test_provenance_rejects_known_bad_pdfs():
-    """Two wrong PDFs sat in a test board's datasheets/. Both must be
-    rejected. Vendor PDFs are not in this repo: skipped without the board."""
-    if not os.path.isdir(DS):
-        print("skip: provenance of real PDFs (set BOMCHECK_TEST_BOARD)")
+def test_reference_pdf_to_pin_table():
+    """The full chain on a real datasheet: PDF -> text -> verdict -> pin table,
+    for both parts the document describes. A change of PDF reader, its version
+    or its flags shows up here, where the .txt fixtures cannot see it."""
+    if not shutil.which("pdftotext"):
+        FAILS.append("pdftotext is missing (poppler-utils): the reference PDF "
+                     "test cannot run")
         return
-    cases = [
-        ("ADS114S08IPBSR", "ads114s08b.pdf", "wrong-part",
-         "B-variant datasheet vs the fitted non-B part"),
-        ("EG915NEAAC-N05-SNNSA", "quectel_ec21_series_hardware_design_v2-3-1.pdf",
-         "wrong-part", "EC21 document next to an EG915N line"),
-        ("BC847BPN", "BC847BPN.pdf", "confirmed", "control: the right part"),
-        ("SIC472ED-T1-GE3", "vishay_sic47x_75786.pdf", "confirmed",
-         "control: family datasheet naming the exact order code"),
-    ]
-    import tempfile
-    with tempfile.TemporaryDirectory() as tmp:
-        for mpn, pdf, want, why in cases:
-            path = os.path.join(DS, pdf)
-            if not os.path.isfile(path):
-                FAILS.append(f"missing fixture PDF {pdf}")
-                continue
-            f = D.fetch(mpn, "local-archive", path, tmp)
-            v = D.verify(mpn, f.text, "")
-            check(v["verdict"] == want, f"provenance: {mpn} vs {pdf} -> {want} ({why})",
-                  f"got {v['verdict']}")
+    text, pages = D.pdf_to_text(REF_PDF)
+    check(pages > 40, "pdf: the reference PDF converts to text", f"{pages} pages")
+    for mpn, want in (("TMUX1309APWR", "confirmed"), ("TMUX1308APWR", "confirmed"),
+                      ("TMUX1309PWR", "family-only"), ("TMUX1108PWR", "wrong-part"),
+                      ("ADS114S08IPBSR", "wrong-part")):
+        got = D.verify(mpn, text, "")["verdict"]
+        check(got == want, f"pdf: {mpn} -> {want}", f"got {got}")
+    tables = {
+        "TMUX1309APWR": ("S0B S2B DB S3B S1B EN N.C. GND "
+                         "A1 A0 S3A S0A DA S1A S2A VDD"),
+        "TMUX1308APWR": ("S4 S6 D S7 S5 EN N.C. GND "
+                         "A2 A1 A0 S3 S0 S1 S2 VDD"),
+    }
+    for mpn, names in tables.items():
+        want = {str(n): v for n, v in enumerate(names.split(), 1)}
+        got = T.read_pin_table(text, T.Context(mpn=mpn, package="TSSOP16",
+                                               expect_pins=16))["pins"]
+        bad = {k: (v, got.get(k)) for k, v in want.items() if got.get(k) != v}
+        check(not bad and len(got) == 16,
+              f"pdf: {mpn} pin table read from the PDF matches the datasheet",
+              str(bad or got))
 
 
 def test_whole_token_matching():
@@ -697,17 +697,6 @@ def test_conventions_live_in_matching_not_extraction():
               f"layering: extraction does not equate names via {token!r}")
     check("def spi_role" in src,
           "layering: ...but reading the role FROM the document belongs there")
-
-    # And the stored table keeps the datasheet's own spelling. That draft is
-    # real board data, so this part needs BOMCHECK_TEST_BOARD.
-    if not BOARD:
-        return
-    d = os.path.join(BOARD, "attestations", "reference", "draft")
-    f = os.path.join(d, "DRAFT-ADS114S08IPBSR.toml")
-    if os.path.isfile(f):
-        text = open(f, encoding="utf-8").read()
-        check('"REFN0"' in text and '"REF0_N"' not in text,
-              "layering: the draft stores the datasheet spelling, verbatim")
 
 
 def test_parameter_rows_are_not_pins():
@@ -3110,7 +3099,7 @@ def main():
     for fn in (test_drawing_labels_give_names_not_numbering,
                test_unfilled_stub_says_so, test_no_connect_is_agreement,
                test_signed_tables_stay_valid, test_two_clones_of_one_library, test_defect_is_caught, test_polarity_is_not_lost,
-               test_provenance_rejects_known_bad_pdfs, test_whole_token_matching,
+               test_reference_pdf_to_pin_table, test_whole_token_matching,
                test_near_family_never_merges, test_enumeration_xor_decoder,
                test_extract_matches_hand_transcription,
                test_extract_number_first_full_word_types,

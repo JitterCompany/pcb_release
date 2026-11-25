@@ -268,12 +268,12 @@ From `scripts/bomcheck/`:
 
     python3 tests/test_tomlite.py && python3 tests/test_bomcheck.py
 
-- Both are offline. They use the page text and netlists in `tests/fixtures/`.
-- Each datasheet layout the reader handles has a test, and its docstring names
-  the vendor quirk.
-- A few tests need real vendor PDFs, which are not in this repo. They are
-  skipped unless `BOMCHECK_TEST_BOARD` points at a folder that holds
-  `attestations/` and the board folder with its `datasheets/`.
+- Both are offline. They need `pdftotext`; everything else is in
+  `tests/fixtures/`.
+- Each datasheet layout the reader handles has a test on saved page text, and
+  its docstring names the vendor quirk.
+- One test starts from a real PDF (`tests/fixtures/pdf/`) and reads it all the
+  way to the pin tables, so a change of PDF reader shows up too.
 - `tests/fixtures/compat/` is frozen. See
   [Compatibility](FORMAT.md#compatibility-a-signed-file-is-a-promise).
 
