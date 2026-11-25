@@ -457,7 +457,8 @@ def _table_items(ln, promoted):
                          _summary(found), found)]
         broken, why = P.structurally_disagrees(ln.draft, c.pins)
         n_bad = len({f["pin"] for f in found if f["code"] in DISAGREE})
-        detail = ("could not be read" if broken else
+        detail = ("numbers only, not signed" if ln.draft.numbered else
+                  "could not be read" if broken else
                   f"{len(ln.draft.pins)}/{len(c.pins)} read"
                   + (f", {n_bad} differ" if n_bad else ""))
         return [Item("draft_review", ln.mpn, ln.refs, ln.draft_path, detail,

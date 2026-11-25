@@ -668,7 +668,8 @@ class Wizard:
         the footprint. A symbol's names are NOT taken over: an interface
         table checks those, or nothing does and that stays open."""
         c = ln.comp
-        R.make_numbered(it.path, [p.num for p in c.pins])
+        if not _variant(it.path, ln.mpn).numbered:
+            R.make_numbered(it.path, [p.num for p in c.pins])
         if not numbered_only(c.pins):
             iface = TD.interface_of(c)
             self.tell("The part's table records the pin numbers only. It does "
@@ -811,6 +812,8 @@ class Wizard:
 
     def do_draft_review(self, it, ln):
         var = _variant(it.path, ln.mpn)
+        if var.numbered:    # stopped halfway through a numbers-only part
+            return self.numbers_only(it, ln)
         broken, why = P.structurally_disagrees(var, ln.comp.pins)
         self.show_table(var, ln.comp.pins)
         self.show_pdf(ln, var.pins.values())
