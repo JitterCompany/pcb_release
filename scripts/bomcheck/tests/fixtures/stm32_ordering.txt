@@ -1,0 +1,84 @@
+ordering information scheme
+           Example:                                             STM32         L   4Rx   V   I   T   6 P TR
+           Device family
+           STM32 = Arm® based 32-bit microcontroller
+
+
+           Product type
+           L = ultra-low-power
+
+
+           Device subfamily
+           4R5 = STM32L4R5xx
+           4R7 = STM32L4R7xx, LCD-TFT, Chrom-GRC
+           4R9 = STM32L4R9xx, LCD-TFT Chrom-GRC and DSI Host
+
+
+           Pin count
+           V = 100 pins
+           Q = 132 balls
+           Z = 144 pins/balls
+           A = 169 balls
+
+
+           Flash memory size
+           I = 2 Mbytes of Flash memory
+           G = 1 Mbyte of Flash memory
+
+
+           Package
+           T = LQFP
+           I = UFBGA (7 x 7 mm)
+           J = UFBGA (10 x 10 mm)
+           Y = WLCSP
+
+
+           Temperature range
+           6 = Industrial temperature range, -40 to 85 °C (105 °C junction)
+           3 = Industrial temperature range, -40 to 125 °C (130°C junction)
+
+
+           Option
+           P = Dedicated pinout supporting external SMPS
+           S = new sawing
+
+
+           Packing
+           TR = tape and reel
+           xxx = programmed parts
+
+
+
+304/307                                       DS12023 Rev 5
+STM32L4R5xx, STM32L4R7xx and STM32L4R9xx                                        Revision history
+
+
+9        Revision history
+
+                                Table 138. Document revision history
+              Date       Revision                             Changes
+
+           10-Oct-2017      1       Initial release.
+                                    Added:
+                                    – Section 6.3.10: MIPI D-PHY characteristics
+                                    – Section 6.3.11: MIPI D-PHY PLL characteristics
+                                    – Section 6.3.12: MIPI D-PHY regulator characteristics
+                                    Updated:
+                                    – Cover page Features (Performance benchmark and Energy
+           24-Nov-2017      2
+                                      benchmark)
+                                    – Table 4: STM32L4R5xx modes overview
+                                    – Section 3.12: Clocks and startup
+                                    – Figure 18: STM32L4R5xx WLCSP144 ballout(1)
+                                    – Figure 19: STM32L4R5xx UFBGA132 ballout(1)
+                                    – Table 21: General operating conditions
+                                    Added:
+                                    – Figure 4: STM32L4R5xxxP and STM32L4R7xxxP with external
+                                      SMPS power supply overview
+                                    – Figure 11: STM32L4R5xxxP UFBGA169 external SMPS ballout(1)
+                                    – Figure 14: STM32L4R5ZxxxP external SMPS LQFP144 pinout(1)
+                                    – Figure 17: STM32L4R9ZxxxP WLCSP144 external SMPS
+                                      ballout(1)
+                                    – Figure 20: STM32L4R5xxxP UFBGA132 external SMPS ballout(1)
+                                    Updated:
+           19-Jan-2018      3       – Footnotes of Table 2: STM32L4R5

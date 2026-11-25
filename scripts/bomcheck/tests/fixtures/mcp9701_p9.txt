@@ -1,0 +1,29 @@
+                                                                                                    MCP970X
+3.0        PIN DESCRIPTIONS
+The descriptions of the pins are listed in Table 3-1.
+
+TABLE 3-1:            PIN FUNCTION TABLE
+   Pin No.          Pin No.         Pin No.
+                                                     Symbol                             Function
+    SC70            SOT-23          TO-92
+       1               —                —               NC    No Connect (this pin is not connected to the die).
+       2                3               3             GND     Power Ground Pin
+       3                2               2             VOUT    Output Voltage Pin
+       4                1               1              VDD    Power Supply Input
+       5               —                —               NC    No Connect (this pin is not connected to the die).
+
+3.1        Power Ground Pin (GND)                                     3.3      Power Supply Input (VDD)
+GND is the system ground pin.                                         The operating voltage as specified in the DC Electrical
+                                                                      Characteristics table is applied to VDD.
+3.2        Output Voltage Pin (VOUT)
+                                                                      3.4      No Connect Pin (NC)
+The sensor output can be measured at VOUT. The
+voltage range over the operating temperature range for                This pin is not connected to the die. It can be used to
+the MCP9700/9700A/9700B is 100 mV to 1.75V. The                       improve thermal conduction to the package by
+voltage range over the operating temperature range for                connecting it to a printed circuit board (PCB) trace from
+the MCP9701/9701A is 200 mV to 3V.                                    the thermal source.
+
+
+
+
+ 2005-2024 Microchip Technology Inc. and its subsidiaries                                                DS20001942L-page 9

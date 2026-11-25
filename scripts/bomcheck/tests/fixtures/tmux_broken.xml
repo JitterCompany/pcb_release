@@ -1,0 +1,393 @@
+<?xml version='1.0' encoding='utf-8'?>
+<export version="E">
+  <!-- FIXTURE: a test board before its fix — the DEFECT. U9/U10 carry MPN TMUX1309APWR on symbol Jitter_IC:TMUX1109. Pin 8 is DA where the fitted part has GND; pin 14 VDD where the part has S1A. Must FAIL validation. -->
+  <design>
+    <source>board.kicad_sch</source>
+    <date>FIXTURE</date>
+    <tool>Eeschema 10.0.5</tool>
+    <sheet number="1" name="/" tstamps="/">
+      <title_block>
+        <title />
+        <company />
+        <rev>1.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="2" name="/Microcontroller/" tstamps="/40c64ba9-6dc5-4175-a9b2-64736230881e/">
+      <title_block>
+        <title>Microcontroller + debug &amp; LED</title>
+        <company />
+        <rev>1.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="3" name="/LTE Modem/" tstamps="/57ea1d4e-59af-4c62-8b12-5ef11dbf321b/">
+      <title_block>
+        <title>modem</title>
+        <company />
+        <rev>1.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="4" name="/DC-DC 3.8V/" tstamps="/940116c2-0552-4592-b39b-cd4f10568132/">
+      <title_block>
+        <title>DC-DC step down to 3.8V</title>
+        <company />
+        <rev>1.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="5" name="/Pump control/" tstamps="/effdd170-e386-4cdc-808e-4391d270ae5a/">
+      <title_block>
+        <title>Pump control</title>
+        <company />
+        <rev>1.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="6" name="/External temperature sensors/" tstamps="/d122060d-a0d2-4bfc-8694-3bd4f44bf4c0/">
+      <title_block>
+        <title>Temperature ADC</title>
+        <company />
+        <rev>1.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="7" name="/External temperature sensors/Temp input 1/" tstamps="/d122060d-a0d2-4bfc-8694-3bd4f44bf4c0/75c0a679-abc4-439a-be1f-e5059ab3e926/">
+      <title_block>
+        <title>PT100 input</title>
+        <company />
+        <rev>1.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="8" name="/External temperature sensors/Temp input 2/" tstamps="/d122060d-a0d2-4bfc-8694-3bd4f44bf4c0/77409181-dcba-4967-9897-6754b4a5ee0c/">
+      <title_block>
+        <title>PT100 input</title>
+        <company />
+        <rev>1.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="9" name="/External temperature sensors/Temp input 3/" tstamps="/d122060d-a0d2-4bfc-8694-3bd4f44bf4c0/951bb3f6-e588-47e7-affa-8329bcacbbfa/">
+      <title_block>
+        <title>PT100 input</title>
+        <company />
+        <rev>1.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="10" name="/External temperature sensors/Temp input 4/" tstamps="/d122060d-a0d2-4bfc-8694-3bd4f44bf4c0/5350d4ad-5fe7-47b1-b944-4af91fff6fa4/">
+      <title_block>
+        <title>PT100 input</title>
+        <company />
+        <rev>1.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="11" name="/LDOs/" tstamps="/d6f61536-5507-4390-8644-9d1b8ab1d6d2/">
+      <title_block>
+        <title>LDO regulators</title>
+        <company />
+        <rev>1.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="12" name="/Valve control/" tstamps="/127aa169-a72f-455c-9b63-d5631290fad8/">
+      <title_block>
+        <title>Valve</title>
+        <company />
+        <rev>1.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="13" name="/Power input/" tstamps="/5e4b9bea-cdb4-4946-9671-a9644accf372/">
+      <title_block>
+        <title>Power Input</title>
+        <company />
+        <rev>1.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+    <sheet number="14" name="/PCB temperature/" tstamps="/4e82b9ce-cdf5-49fa-9b04-4d3ee7768e03/">
+      <title_block>
+        <title>PCB temperature sensor</title>
+        <company />
+        <rev>1.0</rev>
+        <date>FIXTURE</date>
+        <source>board.kicad_sch</source>
+        <comment number="1" value="" />
+        <comment number="2" value="" />
+        <comment number="3" value="" />
+        <comment number="4" value="" />
+        <comment number="5" value="" />
+        <comment number="6" value="" />
+        <comment number="7" value="" />
+        <comment number="8" value="" />
+        <comment number="9" value="" />
+      </title_block>
+    </sheet>
+  </design>
+  <components>
+    <comp ref="U9">
+      <value>TMUX1309APWR</value>
+      <footprint>Package_SO:TSSOP-16_4.4x5mm_P0.65mm</footprint>
+      <datasheet>https://www.ti.com/lit/ds/symlink/tmux1309a.pdf</datasheet>
+      <description>2-channel 4:1 multiplexer</description>
+      <fields>
+        <field name="MPN">TMUX1309APWR</field>
+        <field name="Mouser">595-TMUX1309APWR</field>
+        <field name="Farnell" />
+        <field name="rating" />
+        <field name="Footprint">Package_SO:TSSOP-16_4.4x5mm_P0.65mm</field>
+        <field name="Datasheet">https://www.ti.com/lit/ds/symlink/tmux1309a.pdf</field>
+        <field name="Description">2-channel 4:1 multiplexer</field>
+      </fields>
+      <libsource lib="Jitter_IC" part="TMUX1109" description="2-channel 4:1 precision multiplexer" />
+      <property name="MPN" value="TMUX1309APWR" />
+      <property name="Mouser" value="595-TMUX1309APWR" />
+      <property name="Farnell" value="" />
+      <property name="rating" value="" />
+      <property name="Sheetname" value="External temperature sensors" />
+      <property name="Sheetfile" value="temp_inputs.kicad_sch" />
+      <property name="ki_keywords" value="analog switch selector multiplexer 4-to-1" />
+      <property name="ki_fp_filters" value="TSSOP*4.4x5mm*P0.65mm*" />
+      <sheetpath names="/External temperature sensors/" tstamps="/d122060d-a0d2-4bfc-8694-3bd4f44bf4c0/" />
+      <tstamps>6825b4a2-0c2a-4c1c-9c98-554f11ab3112</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1" />
+            <pin num="16" />
+            <pin num="2" />
+            <pin num="4" />
+            <pin num="5" />
+            <pin num="6" />
+            <pin num="7" />
+            <pin num="13" />
+            <pin num="12" />
+            <pin num="11" />
+            <pin num="10" />
+            <pin num="15" />
+            <pin num="14" />
+            <pin num="3" />
+            <pin num="8" />
+            <pin num="9" />
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U10">
+      <value>TMUX1309APWR</value>
+      <footprint>Package_SO:TSSOP-16_4.4x5mm_P0.65mm</footprint>
+      <datasheet>https://www.ti.com/lit/ds/symlink/tmux1309a.pdf</datasheet>
+      <description>2-channel 4:1 multiplexer</description>
+      <fields>
+        <field name="MPN">TMUX1309APWR</field>
+        <field name="Mouser">595-TMUX1309APWR</field>
+        <field name="Farnell" />
+        <field name="rating" />
+        <field name="Footprint">Package_SO:TSSOP-16_4.4x5mm_P0.65mm</field>
+        <field name="Datasheet">https://www.ti.com/lit/ds/symlink/tmux1309a.pdf</field>
+        <field name="Description">2-channel 4:1 multiplexer</field>
+      </fields>
+      <libsource lib="Jitter_IC" part="TMUX1109" description="2-channel 4:1 precision multiplexer" />
+      <property name="MPN" value="TMUX1309APWR" />
+      <property name="Mouser" value="595-TMUX1309APWR" />
+      <property name="Farnell" value="" />
+      <property name="rating" value="" />
+      <property name="Sheetname" value="External temperature sensors" />
+      <property name="Sheetfile" value="temp_inputs.kicad_sch" />
+      <property name="ki_keywords" value="analog switch selector multiplexer 4-to-1" />
+      <property name="ki_fp_filters" value="TSSOP*4.4x5mm*P0.65mm*" />
+      <sheetpath names="/External temperature sensors/" tstamps="/d122060d-a0d2-4bfc-8694-3bd4f44bf4c0/" />
+      <tstamps>9e2131d1-d549-4c5c-b509-625a88b825ad</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1" />
+            <pin num="16" />
+            <pin num="2" />
+            <pin num="4" />
+            <pin num="5" />
+            <pin num="6" />
+            <pin num="7" />
+            <pin num="13" />
+            <pin num="12" />
+            <pin num="11" />
+            <pin num="10" />
+            <pin num="15" />
+            <pin num="14" />
+            <pin num="3" />
+            <pin num="8" />
+            <pin num="9" />
+          </pins>
+        </unit>
+      </units>
+    </comp>
+  </components>
+  <libparts>
+    <libpart lib="Jitter_IC" part="TMUX1109">
+      <description>2-channel 4:1 precision multiplexer</description>
+      <docs>https://www.ti.com/lit/ds/symlink/tmux1109.pdf</docs>
+      <footprints>
+        <fp>TSSOP*4.4x5mm*P0.65mm*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">TMUX1109PW</field>
+        <field name="Footprint">Package_SO:TSSOP-16_4.4x5mm_P0.65mm</field>
+        <field name="Datasheet">https://www.ti.com/lit/ds/symlink/tmux1109.pdf</field>
+        <field name="Description">2-channel 4:1 precision multiplexer</field>
+      </fields>
+      <pins>
+        <pin num="1" name="A0" type="input" />
+        <pin num="2" name="EN" type="input" />
+        <pin num="3" name="VSS" type="power_in" />
+        <pin num="4" name="S1A" type="passive" />
+        <pin num="5" name="S2A" type="passive" />
+        <pin num="6" name="S3A" type="passive" />
+        <pin num="7" name="S4A" type="passive" />
+        <pin num="8" name="DA" type="passive" />
+        <pin num="9" name="DB" type="passive" />
+        <pin num="10" name="S4B" type="passive" />
+        <pin num="11" name="S3B" type="passive" />
+        <pin num="12" name="S2B" type="passive" />
+        <pin num="13" name="S1B" type="passive" />
+        <pin num="14" name="VDD" type="power_in" />
+        <pin num="15" name="GND" type="power_in" />
+        <pin num="16" name="A1" type="input" />
+      </pins>
+    </libpart>
+  </libparts>
+</export>

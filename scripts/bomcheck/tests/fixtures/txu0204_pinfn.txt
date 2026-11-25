@@ -1,0 +1,38 @@
+Pin Functions
+                       PIN
+                                                           I/O                                         DESCRIPTION
+       Name        PW, BQA               RUT, DTR
+        A1               2                  2               I          Input A1. Referenced to VCCA.
+        A2               3                  3               I          Input A2. Referenced to VCCA.
+        A3               4                  4               I          Input A3. Referenced to VCCA.
+       A4Y               5                  5              O           Output A4. Referenced to VCCA.
+       B1Y               13                 10             O           Output B1. Referenced to VCCB.
+       B2Y               12                 9              O           Output B2. Referenced to VCCB.
+       B3Y               11                 8              O           Output B3. Referenced to VCCB.
+        B4               10                 7               I          Input B4. Referenced to VCCB.
+       GND               7                  6              —           Ground
+        NC              6, 9                               —           No internal connection.
+                                                                       Output Enable. Pull to GND to place all outputs in high-impedance mode. Pull
+        OE               8                  12              I
+                                                                       to VCCA or VCCB to enable all outputs.
+       VCCA              1                  1              —           A-port supply voltage. 1.1 V ≤ VCCA ≤ 5.5 V
+       VCCB              14                 11             —           B-port supply voltage. 1.1 V ≤ VCCB ≤ 5.5 V
+       PAD               —                                 —           Thermal pad. May be grounded (recommended) or left floating.
+
+
+
+
+4      Submit Document Feedback                                                                                  Copyright © 2021 Texas Instruments Incorporated
+
+                                                            Product Folder Links: TXU0304
+                                                                                                                                   TXU0304
+www.ti.com                                                                                     SCES935A – MAY 2021 – REVISED NOVEMBER 2021
+
+
+7 Specifications
+7.1 Absolute Maximum Ratings
+over operating free-air temperature range (unless otherwise noted)(1)
+                                                                                                                    MIN        MAX UNIT
+ VCCA         Supply voltage A                                                                                      –0.5         6.5       V
+ VCCB         Supply voltage B                                                                                      –0.5         6.5       V
+                                                        

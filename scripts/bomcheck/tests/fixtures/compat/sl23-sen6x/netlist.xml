@@ -1,0 +1,212 @@
+<export version="E">
+  <components>
+    <comp ref="J1">
+      <value>SL23_Header_2x25</value>
+      <footprint>Connector_PinSocket_2.54mm:PinSocket_2x25_P2.54mm_Vertical</footprint>
+      <datasheet>https://suddendocs.samtec.com/prints/ssw-1xx-xx-xxx-x-xx-xxx-xx-mkt.pdf</datasheet>
+      <description>SL23 sensor module interface, 2x25 pin header, 2.54 mm. Host and module use the same symbol: pin n connects to pin n. Bus functions and suggested uses are pin alternates. GND is the even pins 2 to 50, stacked on one pin.</description>
+      <fields>
+        <field name="MPN">SSW-125-01-T-D</field>
+        <field name="Pinout_Spec">SL23</field>
+        <field name="Note">2x25 socket, mounted on the bottom side. Plugs onto the host's pin header.</field>
+        <field name="Footprint">Connector_PinSocket_2.54mm:PinSocket_2x25_P2.54mm_Vertical</field>
+        <field name="Datasheet">https://suddendocs.samtec.com/prints/ssw-1xx-xx-xxx-x-xx-xxx-xx-mkt.pdf</field>
+        <field name="Description">SL23 sensor module interface, 2x25 pin header, 2.54 mm. Host and module use the same symbol: pin n connects to pin n. Bus functions and suggested uses are pin alternates. GND is the even pins 2 to 50, stacked on one pin.</field>
+      </fields>
+      <libsource lib="Jitter_Connectors" part="SL23_Header_2x25" description="SL23 sensor module interface, 2x25 pin header, 2.54 mm. Host and module use the same symbol: pin n connects to pin n. Bus functions and suggested uses are pin alternates. GND is the even pins 2 to 50, stacked on one pin." />
+      <property name="MPN" value="SSW-125-01-T-D" />
+      <property name="Pinout_Spec" value="SL23" />
+      <property name="Note" value="2x25 socket, mounted on the bottom side. Plugs onto the host's pin header." />
+      <property name="ki_keywords" value="SL23 sensor module connector sensor-link SL" />
+      <property name="ki_fp_filters" value="*2x25*P2.54mm*" />
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="36" />
+            <pin num="18" />
+            <pin num="20" />
+            <pin num="22" />
+            <pin num="24" />
+            <pin num="28" />
+            <pin num="30" />
+            <pin num="32" />
+            <pin num="34" />
+            <pin num="26" />
+            <pin num="38" />
+            <pin num="40" />
+            <pin num="42" />
+            <pin num="44" />
+            <pin num="46" />
+            <pin num="48" />
+            <pin num="50" />
+            <pin num="10" />
+            <pin num="2" />
+            <pin num="4" />
+            <pin num="6" />
+            <pin num="8" />
+            <pin num="12" />
+            <pin num="14" />
+            <pin num="16" />
+            <pin num="49" />
+            <pin num="47" />
+            <pin num="1" />
+            <pin num="3" />
+            <pin num="5" />
+            <pin num="7" />
+            <pin num="9" />
+            <pin num="11" />
+            <pin num="13" />
+            <pin num="15" />
+            <pin num="17" />
+            <pin num="19" />
+            <pin num="21" />
+            <pin num="23" />
+            <pin num="25" />
+            <pin num="27" />
+            <pin num="29" />
+            <pin num="31" />
+            <pin num="33" />
+            <pin num="35" />
+            <pin num="37" />
+            <pin num="39" />
+            <pin num="41" />
+            <pin num="43" />
+            <pin num="45" />
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U1">
+      <value>TLV76733DGNR</value>
+      <footprint>Package_SO:HVSSOP-8-1EP_3x3mm_P0.65mm_EP1.57x1.89mm</footprint>
+      <datasheet>https://www.ti.com/lit/ds/symlink/tlv767.pdf</datasheet>
+      <description>1 A LDO, 2.5 to 16 V in, 3.3 V fixed out, stable with ceramic caps, HVSSOP-8 PowerPAD</description>
+      <fields>
+        <field name="MPN">TLV76733DGNR</field>
+        <field name="Manufacturer">Texas Instruments</field>
+        <field name="Footprint">Package_SO:HVSSOP-8-1EP_3x3mm_P0.65mm_EP1.57x1.89mm</field>
+        <field name="Datasheet">https://www.ti.com/lit/ds/symlink/tlv767.pdf</field>
+        <field name="Description">1 A LDO, 2.5 to 16 V in, 3.3 V fixed out, stable with ceramic caps, HVSSOP-8 PowerPAD</field>
+      </fields>
+      <libsource lib="Jitter_IC" part="TLV76733DGN" description="1 A LDO, 2.5 to 16 V in, 3.3 V fixed out, stable with ceramic caps, HVSSOP-8 PowerPAD" />
+      <property name="MPN" value="TLV76733DGNR" />
+      <property name="Manufacturer" value="Texas Instruments" />
+      <property name="ki_keywords" value="LDO linear regulator 3.3V 1A" />
+      <property name="ki_fp_filters" value="HVSSOP*1EP*3x3mm*P0.65mm*" />
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="8" />
+            <pin num="5" />
+            <pin num="3" />
+            <pin num="4" />
+            <pin num="6" />
+            <pin num="9" />
+            <pin num="1" />
+            <pin num="2" />
+            <pin num="7" />
+          </pins>
+        </unit>
+      </units>
+    </comp>
+  </components>
+  <libparts>
+    <libpart lib="Jitter_Connectors" part="SL23_Header_2x25">
+      <description>SL23 sensor module interface, 2x25 pin header, 2.54 mm. Host and module use the same symbol: pin n connects to pin n. Bus functions and suggested uses are pin alternates. GND is the even pins 2 to 50, stacked on one pin.</description>
+      <docs>https://github.com/JitterCompany/sensor-link-hardware/blob/master/docs/interfaces/sl23.md</docs>
+      <footprints>
+        <fp>*2x25*P2.54mm*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">SL23_Header_2x25</field>
+        <field name="Footprint">Connector_PinHeader_2.54mm:PinHeader_2x25_P2.54mm_Vertical</field>
+        <field name="Datasheet">https://github.com/JitterCompany/sensor-link-hardware/blob/master/docs/interfaces/sl23.md</field>
+        <field name="Description">SL23 sensor module interface, 2x25 pin header, 2.54 mm. Host and module use the same symbol: pin n connects to pin n. Bus functions and suggested uses are pin alternates. GND is the even pins 2 to 50, stacked on one pin.</field>
+        <field name="MPN">68602-450HLF</field>
+        <field name="Pinout_Spec">SL23</field>
+      </fields>
+      <pins>
+        <pin num="1" name="IO_1" type="passive" />
+        <pin num="2" name="GND" type="passive" />
+        <pin num="3" name="IO_2" type="passive" />
+        <pin num="4" name="GND" type="passive" />
+        <pin num="5" name="IO_3" type="passive" />
+        <pin num="6" name="GND" type="passive" />
+        <pin num="7" name="IO_4" type="passive" />
+        <pin num="8" name="GND" type="passive" />
+        <pin num="9" name="IO_5" type="passive" />
+        <pin num="10" name="GND" type="passive" />
+        <pin num="11" name="IO_6" type="passive" />
+        <pin num="12" name="GND" type="passive" />
+        <pin num="13" name="IO_7" type="passive" />
+        <pin num="14" name="GND" type="passive" />
+        <pin num="15" name="IO_8" type="passive" />
+        <pin num="16" name="GND" type="passive" />
+        <pin num="17" name="IO_9" type="passive" />
+        <pin num="18" name="GND" type="passive" />
+        <pin num="19" name="IO_10" type="passive" />
+        <pin num="20" name="GND" type="passive" />
+        <pin num="21" name="IO_11" type="passive" />
+        <pin num="22" name="GND" type="passive" />
+        <pin num="23" name="IO_12" type="passive" />
+        <pin num="24" name="GND" type="passive" />
+        <pin num="25" name="IO_13" type="passive" />
+        <pin num="26" name="GND" type="passive" />
+        <pin num="27" name="IO_14" type="passive" />
+        <pin num="28" name="GND" type="passive" />
+        <pin num="29" name="IO_15" type="passive" />
+        <pin num="30" name="GND" type="passive" />
+        <pin num="31" name="IO_16" type="passive" />
+        <pin num="32" name="GND" type="passive" />
+        <pin num="33" name="IO_17" type="passive" />
+        <pin num="34" name="GND" type="passive" />
+        <pin num="35" name="IO_18" type="passive" />
+        <pin num="36" name="GND" type="passive" />
+        <pin num="37" name="IO_19" type="passive" />
+        <pin num="38" name="GND" type="passive" />
+        <pin num="39" name="IO_20" type="passive" />
+        <pin num="40" name="GND" type="passive" />
+        <pin num="41" name="IO_21" type="passive" />
+        <pin num="42" name="GND" type="passive" />
+        <pin num="43" name="IO_22" type="passive" />
+        <pin num="44" name="GND" type="passive" />
+        <pin num="45" name="IO_23" type="passive" />
+        <pin num="46" name="GND" type="passive" />
+        <pin num="47" name="5V5" type="passive" />
+        <pin num="48" name="GND" type="passive" />
+        <pin num="49" name="VBAT" type="passive" />
+        <pin num="50" name="GND" type="passive" />
+      </pins>
+    </libpart>
+    <libpart lib="Jitter_IC" part="TLV76733DGN">
+      <description>1 A LDO, 2.5 to 16 V in, 3.3 V fixed out, stable with ceramic caps, HVSSOP-8 PowerPAD</description>
+      <docs>https://www.ti.com/lit/ds/symlink/tlv767.pdf</docs>
+      <footprints>
+        <fp>HVSSOP*1EP*3x3mm*P0.65mm*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">TLV76733DGN</field>
+        <field name="Footprint">Package_SO:HVSSOP-8-1EP_3x3mm_P0.65mm_EP1.57x1.89mm</field>
+        <field name="Datasheet">https://www.ti.com/lit/ds/symlink/tlv767.pdf</field>
+        <field name="Description">1 A LDO, 2.5 to 16 V in, 3.3 V fixed out, stable with ceramic caps, HVSSOP-8 PowerPAD</field>
+        <field name="MPN">TLV76733DGNR</field>
+        <field name="Mouser" />
+        <field name="Farnell" />
+        <field name="rating" />
+      </fields>
+      <pins>
+        <pin num="1" name="OUT" type="power_out" />
+        <pin num="2" name="SNS" type="input" />
+        <pin num="3" name="NC" type="no_connect" />
+        <pin num="4" name="GND" type="power_in" />
+        <pin num="5" name="EN" type="input" />
+        <pin num="6" name="GND" type="power_in" />
+        <pin num="7" name="NC" type="no_connect" />
+        <pin num="8" name="IN" type="power_in" />
+        <pin num="9" name="PAD" type="passive" />
+      </pins>
+    </libpart>
+  </libparts>
+</export>

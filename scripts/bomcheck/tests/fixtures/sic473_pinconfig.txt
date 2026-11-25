@@ -1,0 +1,82 @@
+PIN CONFIGURATION
+
+                 27 MODE
+
+
+
+
+                                                                          21 COMP
+
+
+
+
+                                                                                                                                                                                                            27 MODE
+                                                                                                                                                  21 COMP
+                                                       23 AGND
+
+
+
+                                                                                    20 VSNS
+
+
+
+
+                                                                                                                                                                      23 AGND
+                           26 VDD
+
+
+
+
+                                                                                                                                        20 VSNS
+                                    25 ILIM
+
+
+
+                                                                 22 VFB
+                                              24 fSW
+
+
+
+
+                                                                                                                                                                                                   26 VDD
+                                                                                                                                                                                         25 ILIM
+                                                                                                                                                            22 VFB
+
+
+                                                                                                                                                                                24 fSW
+    VCIN 1                                                                            Ĳ       19 SS                          SS 19                                                                                    1 VCIN
+
+   PGOOD 2                                    28 AGND                                         18 ULTRASONIC         ULTRASONIC 18                                     28 AGND
+                                                                                                                                                                                                                      2 PGOOD
+                                                                                              17 PGND                       PGND 17
+     EN 3                                                                                                                                                                                                             3 EN
+                                                                                              16 VDRV                       VDRV 16
+   BOOT 4                                                                                     15 GL                          GL 15                                                                                    4 BOOT
+                                                                                                                                                                                                    29
+                           30                                                                 14 SW                         SW 14                                                                   VIN
+  PHASE 5                  VIN                          29 PGND                                                                                        30 PGND                                                        5 PHASE
+                                                                                              13 SW                         SW 13
+  PHASE 6                                                                             ķ                                                    ķ                                                                          6 PHASE
+                                                                                              12 SW                         SW 12
+                   VIN 7
+
+                               VIN 8
+
+
+                                                       PGND 9
+                                                                 PGND 10
+                                                                 PGND 11
+
+
+
+
+                                                                                                                                                  PGND 11
+                                                                                                                                                            PGND 10
+                                                                                                                                                                      PGND 9
+
+
+
+                                                                                                                                                                                             VIN 8
+                                                                                                                                                                                                        VIN 7
+                                                                                                Fig. 3 - SiC47x Pin Configuration
+

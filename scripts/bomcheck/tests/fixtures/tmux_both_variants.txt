@@ -1,0 +1,207 @@
+                                                                                                                              TMUX1308A, TMUX1309A
+www.ti.com                                                                                                     SCDS477A – JUNE 2024 – REVISED JUNE 2025
+
+                                                  Table 5-1. Pin Functions TMUX1308A
+             PIN
+                                     TYPE(1)                                                      DESCRIPTION(2)
+ NAME              NO.
+ S4                  1                 I/O           Source pin 4. Signal path can be an input or output.
+ S6                  2                 I/O           Source pin 6. Signal path can be an input or output.
+ D                   3                 I/O           Drain pin (common). Signal path can be an input or output.
+ S7                  4                 I/O           Source pin 7. Signal path can be an input or output.
+ S5                  5                 I/O           Source pin 5. Signal path can be an input or output.
+                                                     Active low logic input. When this pin is high, all switches are turned off. When this pin is low, the A[2:0]
+ EN                  6                  I
+                                                     address inputs determine which switch is turned on as listed in Section 8.5.
+ N.C.                7           Not Connected       Not internally connected.
+ GND                 8                  P            Ground (0V) reference
+ A2                  9                  I            Address line 2. Controls the switch configuration as listed in Section 8.5.
+ A1                 10                  I            Address line 1. Controls the switch configuration as listed in Section 8.5.
+ A0                 11                  I            Address line 0. Controls the switch configuration as listed in Section 8.5.
+ S3                 12                 I/O           Source pin 3. Signal path can be an input or output.
+ S0                 13                 I/O           Source pin 0. Signal path can be an input or output.
+ S1                 14                 I/O           Source pin 1. Signal path can be an input or output.
+ S2                 15                 I/O           Source pin 2. Signal path can be an input or output.
+                                                     Positive power supply. This pin is the most positive power-supply potential. For reliable operation,
+ VDD                16                  P
+                                                     connect a decoupling capacitor ranging from 0.1µF to 10µF between VDD and GND.
+                                                     Exposed thermal pad with conductive die attached. No requirement to solder this pad. If connected,
+ Thermal pad                           —
+                                                     then it should be left floating or tied to GND.
+
+(1)     I = input, O = output, I/O = input and output, P = power.
+(2)     For what to do with unused pins, refer to Section 8.4.
+
+
+
+
+Copyright © 2025 Texas Instruments Incorporated                                                                          Submit Document Feedback                   5
+                                                  Product Folder Links: TMUX1308A TMUX1309A
+TMUX1308A, TMUX1309A
+SCDS477A – JUNE 2024 – REVISED JUNE 2025                                                                                                       www.ti.com
+
+
+
+
+      S0B        1                            16         VDD                         S0B                  1                    16            VDD
+
+      S2B        2                            15         S2A                         S2B                  2                    15            S2A
+
+       DB        3                            14         S1A                           DB                 3                    14            S1A
+
+      S3B        4                            13         DA                          S3B                  4                    13            DA
+      S1B        5                            12         S0A
+                                                                                     S1B                  5                    12            S0A
+                 6                            11         S3A
+                                                                                                          6                    11            S3A
+      N.C.       7                            10         A0
+                                                                                     N.C.                 7                    10            A0
+     GND         8                             9         A1
+                                                                                     GND                  8                     9            A1
+
+               Not to scale
+                                                                                                         Not to scale
+     Figure 5-4. TMUX1309A: PW Package, 16-Pin
+                                                                              Figure 5-5. TMUX1309A: DYY Package, 16-Pin
+                  TSSOP (Top View)
+                                                                                         SOT-23-THIN (Top View)
+
+
+
+                                                                               VDD
+                                                              S0B
+                                                              1
+
+
+
+
+                                                                               16
+
+
+
+
+                                            S2B      2                                15            S2A
+
+                                             DB      3                                14            S1A
+
+                                            S3B      4              Thermal           13            DA
+                                                                     Pad
+                                            S1B      5                                12            S0A
+
+                                                     6                                11            S3A
+
+                                            N.C.     7                                10            A0
+                                                              8
+
+
+
+
+                                                                               9
+
+
+
+
+                                                                                     Not to scale
+                                                              GND
+
+
+
+
+                                                                               A1
+
+
+
+
+                              Figure 5-6. TMUX1309A: BQB Package, 16-Pin WQFN (Top View)
+
+
+
+
+6     Submit Document Feedback                                                                                Copyright © 2025 Texas Instruments Incorporated
+
+                                           Product Folder Links: TMUX1308A TMUX1309A
+                                                                                                                              TMUX1308A, TMUX1309A
+www.ti.com                                                                                                     SCDS477A – JUNE 2024 – REVISED JUNE 2025
+
+                                                  Table 5-2. Pin Functions TMUX1309A
+             PIN
+                                     TYPE(1)                                                      DESCRIPTION(2)
+ NAME              NO.
+ S0B                 1                 I/O           Source pin 0 of mux B. Can be an input or output.
+ S2B                 2                 I/O           Source pin 2 of mux B. Can be an input or output.
+ DB                  3                 I/O           Drain pin (Common) of mux B. Can be an input or output.
+ S3B                 4                 I/O           Source pin 3 of mux B. Can be an input or output.
+ S1B                 5                 I/O           Source pin 1 of mux B. Can be an input or output.
+                                                     Active low logic input. When this pin is high, all switches are turned off. When this pin is low, the A[1:0]
+ EN                  6                  I
+                                                     address inputs determine which switch is turned on.
+ N.C.                7           Not Connected       Not internally connected.
+ GND                 8                  P            Ground (0V) reference
+ A1                  9                  I            Address line 1. Controls the switch configuration as listed in Section 8.5.
+ A0                 10                  I            Address line 0. Controls the switch configuration as listed in Section 8.5.
+ S3A                11                 I/O           Source pin 3 of mux A. Can be an input or output.
+ S0A                12                 I/O           Source pin 0 of mux A. Can be an input or output.
+ DA                 13                 I/O           Drain pin (Common) of mux A. Can be an input or output.
+ S1A                14                 I/O           Source pin 1 of mux A. Can be an input or output.
+ S2A                15                 I/O           Source pin 2 of mux A. Can be an input or output.
+                                                     Positive power supply. This pin is the most positive power-supply potential. For reliable operation,
+ VDD                16                  P
+                                                     connect a decoupling capacitor ranging from 0.1µF to 10µF between VDD and GND.
+                                                     Exposed thermal pad with conductive die attached. No requirement to solder this pad. If connected,
+ Thermal pad                           —
+                                                     then it should be left floating or tied to GND.
+
+(1)     I = input, O = output, I/O = input and output, P = power.
+(2)     For what to do with unused pins, refer to Section 8.4.
+
+
+
+
+Copyright © 2025 Texas Instruments Incorporated                                                                          Submit Document Feedback                   7
+                                                  Product Folder Links: TMUX1308A TMUX1309A
+TMUX1308A, TMUX1309A
+SCDS477A – JUNE 2024 – REVISED JUNE 2025                                                                                                 www.ti.com
+
+6 Specifications
+6.1 Absolute Maximum Ratings
+over operating free-air temperature range (unless otherwise noted)(1) (2) (3)
+                                                                                                           MIN               MAX         UNIT
+    VDD                 Supply voltage                                                                     –0.5                   6
+    VSEL or VEN         Logic control input pin voltage (EN, A0, A1, A2)                                   –0.5                   6        V
+    VS or VD            Source or drain voltage (Sx, D)                                                    –0.5          VDD+1.0
+    ISEL or IEN         Logic control input pin current (EN, A0, A1, A2)                                    –30                30
+    IS or ID (CONT)     Continuous current through switch (Sx, D pins) –40°C to +85°C                       –50                50
+                                                                                                                                          mA
+    IS or ID (CONT)     Continuous current through switch (Sx, D pins) –40°C to +125°C                      –25                25
+    IGND                Continuous current through GND                                                     –100               100
+    Ptot                Total power dissipation(4)                                                                            500         mW
+    Tstg                Storage temperature                                                                 –65               150
+                                                                                                                                           °C
+    TJ                  Junction temperature                                                                                  150
+
+(1)        Operation outside the Absolute Maximum Ratings may cause permanent device damage. Absolute maximum ratings do not imply
+           functional operation of the device at these or any other conditions beyond those listed under Recommended Operating Conditions.
+           If briefly operating outside the Recommended Operating Conditions but within the Absolute Maximum Ratings, the device may not
+           sustain damage, but it may not be fully functional. Operating the device in this manner may affect device reliability, functionality,
+           performance, and shorten the device lifetime.
+(2)        The algebraic convention, whereby the most negative value is a minimum and the most positive value is a maximum.
+(3)        All voltages are with respect to ground, unless otherwise specified.
+(4)        For TSSOP package: Ptot derates linearily above TA = 80°C by 7.2mW/°C.
+
+
+6.2 ESD Ratings
+                                                                                                                          VALUE            UNIT
+                                            Human body model (HBM), per ANSI/ESDA/JEDEC JS-001, all pins(1)               ±2000
+    V(ESD)        Electrostatic discharge   Charged device model (CDM), per JEDEC specification JESD22-C101                                  V
+                                                                                                                           ±750
+                                            or ANSI/ESDA/JEDEC JS-002, all pins(2)
+
+(1)        JEDEC document JEP155 states that 500V HBM allows safe manufacturing with a standard ESD control process.
+(2)        JEDEC document JEP157 states that 250V CDM allows safe manufacturing with a standard ESD control process.
+
+
+
+
+8          Submit Document Feedback                                                                     Copyright © 2025 Texas Instruments Incorporated
+
+                                                     Product Folder Links: TMUX1308A TMUX1309A

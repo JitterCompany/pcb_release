@@ -1,0 +1,53 @@
+PIN DESCRIPTION
+   PIN NUMBER                          SYMBOL                                                                              DESCRIPTION
+                                                                               Supply voltage for internal regulators VDD and VDRV. This pin should be tied to VIN through a RC filter,
+                                                                               but can also be connected to a lower supply voltage (> 5 V) to reduce losses in the internal linear
+         1                                     VCIN
+                                                                               regulators. Connect a 0.1 μF decoupling capacitor from the VCIN pin to AGND; the capacitor should
+                                                                               be placed close to the VCIN pin
+                                                                               Open-drain power good indicator - high impedance indicates power is good. An external pull-up
+         2                                    PGOOD
+                                                                               resistor is required
+                                                                               Enable pin. Tie high/low to enable/disable the IC accordingly. This is a high voltage compatible pin,
+         3                                      EN
+                                                                               can be tied to VIN
+                                                                               High side driver bootstrap voltage. Connect a capacitor and resistor, in series, from the BOOT pin to
+         4                                    BOOT                             the PHASE pin. It is recommended for the BOOT resistor to be 4.7 Ohm or larger for SiC473 and
+                                                                               SiC474
+        5, 6                              PHASE                                Return path of high side gate driver
+                                                                               Power stage input voltage. Drain of high side MOSFET. Place VIN decoupling capacitors to PGND
+      7, 8, 29                                  VIN
+                                                                               close to the VIN and PGND pads
+  9, 10, 11, 17, 30                           PGND                             Power ground
+      12, 13, 14                               SW                              Power stage switch node
+          15                                   GL                              Low side MOSFET gate signal
+                                                                               Supply voltage for internal gate driver. When using the internal LDO as a bias power supply, VDRV is
+         16                                    VDRV
+                                                                               the LDO output. Connect a 4.7 μF decoupling capacitor to PGND, close to the VDRV pin.
+                                                                               Float to disable ultrasonic mode, connect to VDD to enable. Depending on the operation mode set by
+         18                     ULTRASONIC                                     the mode pin, power save mode or forced continuous mode will be enabled when the ultrasonic
+                                                                               mode is disabled
+                                                                               Set the soft start ramp by connecting a capacitor to AGND. An internal current source will charge the
+         19                                     SS
+                                                                               capacitor
+         20                                   VSNS                             Power inductor signal feedback pin for system stability compensation
+                                                                               Output of the internal error amplifier. The feedback loop compensation network is connected from
+         21                                   COMP
+                                                                               this pin to the AGND pin
+                                                                               Feedback input for switching regulator used to program the output voltage - connect to an external
+         22                                     VFB
+                                                                               resistor divider from VOUT to AGND
+                                                                               Analog ground. Connect pin 23 to 28 with a short and wide trace, and pin 28 to Pin 30 with a wide
+       23, 28                                 AGND
+                                                                               shape, directly under the IC package
+         24                                    fSW                             Set the on-time by connecting a resistor to AGND
+         25                                   ILIMIT                           Set the current limit by connecting a resistor to AGND
+                                                                               Bias supply for the IC. VDD is output of an internal LDO to provide bias supply voltage for the IC.
+         26                                    VDD
+                                                                               Connect a 1 μF decoupling capacitor from VDD to AGND close to the VDD pin
+         27                                   MODE                             Set various operation modes by connecting a resistor to AGND. See specification table for details
+
+
+
+S25-1437-Rev. J, 17-Nov-2025                                  2                              Document Number: 75786
+                           

@@ -1,0 +1,114 @@
+                                                                                                                  Table 15. STM32L4Rxxx pin definitions (continued)
+
+
+
+
+                                                                                                                                                                                                                                                                                                            STM32L4R5xx, STM32L4R7xx and STM32L4R9xx
+                                                                                      Pin number
+
+                          STM32L4R5xxx, STM32L4R7xxx                                                                               STM32L4R9xxx
+
+
+
+
+                                                                                                                                                                                        (function after reset)
+
+
+
+
+                                                                                                                                                                                                                                                                                     Additional functions
+                                                                                                                                                                                                                                                           Alternate functions
+                                                                                                                                                                                                                             I/O structure
+                                                                                                                                                                                              Pin name
+                                                                                                                                                  WLCSP144_SMPS
+                                                                                       UFBGA169_SMPS
+
+
+
+
+                                                                                                                                                                                                                 Pin type
+                          UBGA132_SMPS
+
+
+
+
+                                                  LQFP144_SMPS
+
+
+
+
+                                                                                                                                                                                                                                             Notes
+                                                                           WLCSP144
+
+
+
+
+                                                                                                                                                                  WLCSP144
+                                                                                                       UFBGA169
+
+
+
+
+                                                                                                                                       UFBGA144
+
+
+
+
+                                                                                                                                                                             UFBGA169
+                LQFP100
+
+
+
+
+                                                                 LQFP144
+
+
+
+
+                                                                                                                   LQFP100
+
+                                                                                                                             LQFP144
+                                         BGA132
+
+
+
+
+                21        L1             L1       32             32        L11         L1              L1            -       29        K2         L11             L11        L1         VREF+                     S               -           -                   -              VREFBUF_OUT
+                22        M1             M1       33             33        L12         L2              L2            -       30        L1         L12             L12        L2         VDDA                      S               -           -                   -                          -
+                                                                                                                                                                                        VDDA/
+                  -           -            -          -            -          -             -             -        20          -          -            -             -          -                                 S               -           -                   -                          -
+DS12023 Rev 5
+
+
+
+
+                                                                                                                                                                                        VREF+
+                                                                                                                                                                                                                                                        TIM2_CH1,
+                                                                                                                                                                                                                                                        TIM5_CH1,
+                                                                                                                                                                                                                                                        TIM8_ETR,                OPAMP1_VINP,
+                                                                                                                                                                                                                                                     USART2_CTS_NSS,               ADC1_IN5,
+                23        L2             L2       34             34        J9          K3              K3          21        31        K3          J9             J9         K3            PA0                   I/O        FT_a              -
+                                                                                                                                                                                                                                                        UART4_TX,                RTC_TAMP2,W
+                                                                                                                                                                                                                                                       SAI1_EXTCLK,                  KUP1
+                                                                                                                                                                                                                                                        TIM2_ETR,
+                                                                                                                                                                                                                                                        EVENTOUT
+                                                                                                                                                                                        OPAMP
+                  -       M3             M3           -            -          -        M1              M1            -         -          -            -             -          -                                   I        TT               -                   -                          -
+                                                                                                                                                                                        1_VINM
+
+
+
+
+                                                                                                                                                                                                                                                                                                            Pinouts and pin description
+                                                                                                                                                                                                                                                         TIM2_CH2,
+                                                                                                                                                                                                                                                         TIM5_CH2,
+                                                                                                                                                                                                                                                        I2C1_SMBA,
+                                                                                                                                                                                                                                                         SPI1_SCK,
+                                                                                                                                                                                                                                                                      OPAMP1_VINM,
+                24        M2             M2       35             35        K10         N2              N2          22        32        L2         K10 K10                    M1            PA1                   I/O        FT_la             -       USART2_RTS_DE,
+                                                                                                                                                                                                                                                                        ADC1_IN6
+                                                                                                                                                                                                                                                         UART4_RX,
+                                                                                                                                                                                                                                                     OCTOSPIM_P1_DQS,
+                                                                                                                                                                                                                                                        TIM15_CH1N,
+                                                                                                                                                                                                                                                         EVENTOUT
+83/307

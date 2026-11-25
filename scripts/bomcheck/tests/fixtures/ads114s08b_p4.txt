@@ -1,0 +1,54 @@
+ADS114S06B, ADS114S08B
+SBAS852A – AUGUST 2017 – REVISED FEBRUARY 2020                                                                                                 www.ti.com
+
+
+                                                                  Pin Functions
+            PIN
+    NO.       NAME              FUNCTION                                                         DESCRIPTION (1)
+1            AINCOM             Analog input          Common analog input for single-ended measurements
+2                 AIN5          Analog input          Analog input 5
+3                 AIN4          Analog input          Analog input 4
+4                 AIN3          Analog input          Analog input 3
+5                 AIN2          Analog input          Analog input 2
+6                 AIN1          Analog input          Analog input 1
+7                 AIN0          Analog input          Analog input 0
+8          START/SYNC           Digital input         Start conversion
+9                 CS            Digital input         Chip select; active low
+10                DIN           Digital input         Serial data input
+11             SCLK             Digital input         Serial clock input
+12          DOUT/DRDY           Digital output        Serial data output combined with data ready; active low
+13            DRDY              Digital output        Data ready; active low
+14            DGND             Digital ground         Digital ground
+                                                      Digital I/O power supply. In case IOVDD is not tied to DVDD, connect a 100-nF (or larger) capacitor to
+15            IOVDD             Digital supply
+                                                      DGND.
+16            DVDD              Digital supply        Digital core power supply. Connect a 100-nF (or larger) capacitor to DGND.
+17                CLK           Digital input         External clock input. Connect to DGND to use the internal oscillator.
+18            RESET             Digital input         Reset; active low
+19          GPIO3/AIN11      Analog input/output      General-purpose I/O (2); analog input 11 (ADS114S08B only)
+20          GPIO2/AIN10      Analog input/output      General-purpose I/O (2); analog input 10 (ADS114S08B only)
+21          GPIO1/AIN9       Analog input/output      General-purpose I/O (2); analog input 9 (ADS114S08B only)
+22          GPIO0/AIN8       Analog input/output      General-purpose I/O (2); analog input 8 (ADS114S08B only)
+                                                      Positive voltage reference output. Connect a 1-µF to 47-µF capacitor to REFCOM if the internal
+23           REFOUT            Analog output
+                                                      voltage reference is enabled.
+24           REFCOM            Analog output          Negative voltage reference output. Connect to AVSS.
+25                NC                 —                Leave unconnected or connect to AVSS
+26             AVDD            Analog supply          Positive analog power supply. Connect a 330-nF (or larger) capacitor to AVSS.
+27             AVSS            Analog supply          Negative analog power supply
+28             AVSS            Analog supply          Negative analog power supply
+29            REFN0             Analog input          Negative external reference input 0
+30            REFP0             Analog input          Positive external reference input 0
+31          REFN1/AIN7          Analog input          Negative external reference input 1; analog input 7 (ADS114S08B only)
+32          REFP1/AIN6          Analog input          Positive external reference input 1; analog input 6 (ADS114S08B only)
+Pad         Thermal Pad              —                RHB package only. Thermal power pad. Connect to AVSS.
+
+(1)   See the Unused Inputs and Outputs section for details on how to connect unused pins.
+(2)   General-purpose inputs and outputs use logic levels based on the analog supply.
+
+
+
+
+4         Submit Documentation Feedback                                                             Copyright © 2017–2020, Texas Instruments Incorporated
+
+                                                 Product Folder Links: ADS114S06B ADS114S08B
